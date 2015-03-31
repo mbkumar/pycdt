@@ -16,8 +16,8 @@ setup(
         install_requires=["pymatgen>=3.0.6", "numpy>=1.8"],
         author="Bharat Medasani",
         author_email="mbkumar@gmail.com",
-        url="http://github.com/mbkumar/pycdcd",
-        description="PyCDCD is a python tool to obtain corrections to the "
+        #url="http://github.com/mbkumar/pycdcd",
+        description="PyCDCD is a python package to facilitate "
                   "DFT calculations for point defects in solids",
         long_description=readme(),
         classifiers=[
@@ -34,9 +34,9 @@ setup(
             "Topic :: Software Development :: Libraries :: Python Modules"
             ],
         license="MIT",
-        scripts=glob.glob(os.path.join(SETUP_PTH, "scripts", "*")),
-        test_suite='nose.collector',
-        tests_require=['nose'],
+        #scripts=glob.glob(os.path.join(SETUP_PTH, "scripts", "*")),
+        #test_suite='nose.collector',
+        #tests_require=['nose'],
         #entry_points={
         #    'console_scripts':[
         #        'gen_def_structure=pydii.scripts.gen_def_structure:'
