@@ -4,7 +4,7 @@
 TODO create a VaspInputSet instead?
 """
 
-__author__ = "Geoffroy Hautier"
+__author__ = "Geoffroy Hautier, Bharat Medasani"
 __copyright__ = "Copyright 2014, The Materials Project"
 __version__ = "1.0"
 __maintainer__ = "Geoffroy Hautier"
@@ -17,18 +17,25 @@ from pymatgen.io.vaspio_set import MPVaspInputSet
 import json
 import os
 
-def make_vasp_defect_files(dictio, path_base, task_id, compo, hse=False):
+def make_vasp_defect_files(defect_structs, path_base, task_id, compo, 
+        user_settings=None, hse=False):
     """
-    simple static method creating VASP files ready for defect computations
+    Generates VASP files for defect computations
     Args:
-        dictio:
-            the defects data as a dictionnary
+        defect_structs:
+            the defects data as a dictionnary. Ideally this is generated
+            from ChargedDefectsStructures.
         path_base:
             where do we write the files
         task_id:
-            some id of the bulk computed data
+            some id of the bulk computed data, preferably MP id
         compo:
             Composition of the bulk computed data
+        user_settings:
+            Settings in dict format to override the defaults used in 
+            generating vasp files. The format of the dictionary is
+            {'incar':{...},
+             'kpoints':...}
         hse:
             hse run or not
     """
@@ -39,8 +46,8 @@ def make_vasp_defect_files(dictio, path_base, task_id, compo, hse=False):
             for s in site['supercells']:
                 dict_transf={'history':[{'source':task_id}], 
                         'compo': compo.to_dict, 
-                        'defect_type': site['short_name'], 
-                        'defect_site': site['unique_sites'].to_dict, 
+                        'defect_type': site['name'], 
+                        'defect_site': site['unique_site'].to_dict, 
                         'charge': charge, 'supercell': s['size']}
                 dict_params=MPVaspInputSet().get_all_vasp_input(s['structure'])
                 incar=dict_params['INCAR']

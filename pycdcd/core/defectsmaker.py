@@ -33,7 +33,7 @@ def get_sc_scale(inp_struct, final_site_no):
     return num_mult
 
 
-class ChargedDefectsMaker(object):
+class ChargedDefectsStructures(object):
     """
     A class to generate charged defective structures for use in first 
     principles supercell formalism. The standard defects such as antisites, 
@@ -83,29 +83,35 @@ class ChargedDefectsMaker(object):
             struct = structure
         conv_prim_rat = int(struct.num_sites/prim_struct.num_sites)
         sc_scale = get_sc_scale(struct,cellmax)
+        self.defects = {}
+        sc = struct.copy()
+        sc.make_supercell(sc_scale)
+        self.defects['bulk'] = {'name':'bulk',
+                'supercell':{'size':sc_scale,'structure':sc}}
 
         if intrinsic:
             vacancies = []
             antisites = []
 
-            vac = Vacancy(struct, {}, {})
-            vac_scs = vac.make_supercells_with_defects(sc_scale)
-            struct_species = struct.types_of_specie
-            nb_per_elts = {e:0 for e in structure.composition.elements}
-            for i in range(vac.defectsite_count):
-                vac_site = vac.get_defectsite(i)
-                site_mult = vac.get_defectsite_multiplicity(i)
-                site_mult = int(site_mult/conv_prim_rat)
-                vac_specie = vac_site.specie
-                vac_symbol = vac_site.specie.symbol
-                vac_sc = vac_scs[i+1]
+        vac = Vacancy(struct, {}, {})
+        vac_scs = vac.make_supercells_with_defects(sc_scale)
+        struct_species = struct.types_of_specie
+        nb_per_elts = {e:0 for e in structure.composition.elements}
+        for i in range(vac.defectsite_count):
+            vac_site = vac.get_defectsite(i)
+            site_mult = vac.get_defectsite_multiplicity(i)
+            site_mult = int(site_mult/conv_prim_rat)
+            vac_specie = vac_site.specie
+            vac_symbol = vac_site.specie.symbol
+            vac_sc = vac_scs[i+1]
 
-                list_charges=[]
-                for c in range(max_min_oxid[vac_symbol][0], 
-                        max_min_oxid[vac_symbol][1]+1):
-                    list_charges.append(-c)
-                nb_per_elts[vac_specie] += 1
+            list_charges=[]
+            for c in range(max_min_oxid[vac_symbol][0], 
+                    max_min_oxid[vac_symbol][1]+1):
+                list_charges.append(-c)
+            nb_per_elts[vac_specie] += 1
 
+            if intrinsci:
                 vacancies.append({
                     'name': vac_symbol+str(nb_per_elts[vac_specie])+"_vac",
                     'unique_site': vac_site,
@@ -121,18 +127,22 @@ class ChargedDefectsMaker(object):
                         'name': vac_symbol+str(nb_per_elts[vac_specie])+ \
                                 "_subst_"+subspecie_symbol,
                         'unique_site': vac_site,
-                        'supercell':{'size':s_size,'structure':antiste_sc},
+                        'supercell':{'size':sc_scale,'structure':antiste_sc},
                         'charges':[c-oxid_states[vac_symbol] for c in range(
                             max_min_oxid[subspecie_symbol][0],
                             max_min_oxid[subspecie_symbol][1]+1)]})
-         
+
+        if intrinsic:
+            self.defects['vacancies'] = vacancies 
+            self.defects['antisites'] = antisites
 
         #interstitials
+        interstitials = []
         for elt in self.struct.composition.elements:
             count = 1
             for frac_coord in interstitial_sites:
                 site = PeriodicSite(elt, frac_coord, structure.lattice)
-                self.defects.append({
+                interstitials.append({
                     'name':elt.symbol+str(count)+"_inter",
                     'unique_site':site,
                     'supercell':{'size':s_size,
@@ -140,6 +150,7 @@ class ChargedDefectsMaker(object):
                     'charges':[c for c in range(max_min_oxid[elt][0],
                         max_min_oxid[elt][1]+1)]})
                 count = count+1
+        self.defects['interstitials'] = interstitials
 
     
     def make_interstitial(self, target_site, sc_scale):
