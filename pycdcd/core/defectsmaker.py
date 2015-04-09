@@ -1,5 +1,9 @@
 #!/usr/bin/env python
-from __future__ import divison
+from __future__ import division
+"""
+Code to generate charged defects structure.
+Ideas from pydii's code and geoffroy's code are merged.
+"""
 
 __author__ = "Bharat Medasani, Geoffroy Hautier"
 __copyright__ = "Copyright 2014, The Materials Project"
@@ -14,9 +18,6 @@ import copy
 from pymatgen.core.structure import PeriodicSite
 from pymatgen.symmetry.analyzer import SpacegroupAnalyzer
 from pymatgen.analysis.defects.point_defects import Vacancy
-#from pymatgen.transformations.defect_transformation import \
-#        VacancyTransformation,AntisiteDefectTransformation, \
-#        SubstitutionDefectTransformation
 
 def get_sc_scale(inp_struct, final_site_no):
     lengths = inp_struct.lattice.abc
@@ -40,25 +41,23 @@ class ChargedDefectsStructures(object):
     vacancies are generated.
     TODO: develop a better way to find interstitials
     """
-    def __init__(self, structure, max_min_oxid=None, intrinsic=True,
-                 allowed_subst=None, oxid_states=None, cellmax=128, 
-                 interstitial_sites=[], standardized=False):
+    def __init__(self, structure, max_min_oxi=None, substitutions=None, 
+                 oxi_states=None, cellmax=128, interstitial_sites=[], 
+                 standardized=False):
         """
         Args:
             structure:
                 the bulk structure
-            max_min_oxid:
+            max_min_oxi:
                 The minimal and maximum oxidation state of each element as a 
                 dict. For instance {"O":(-2,0)}
-            intrinsic_flag:
-                If True, compute intrinsic defects, (vacancies and antisites)
-            allowed_subst:
+            substitutions:
                 The allowed substitutions of elements as a dict. If not given, 
                 intrinsic defects are computed. If given, intrinsic (e.g., 
                 anti-sites) and extrinsic are considered explicitly specified. 
                 Example: {"Co":["Zn","Mn"]} means Co sites can be substituted 
                 by Mn or Zn.
-            oxid_states:
+            oxi_states:
                 The oxidation state of the elements in the compound e.g. 
                 {"Fe":2,"O":-2}. If not given, the oxidation state of each
                 site is computed with bond valence sum. WARNING: Bond-valence 
@@ -72,10 +71,9 @@ class ChargedDefectsStructures(object):
 
         self.defects = []
         self.cellmax = cellmax
+        self.struct = structure
 
         spa = SpacegroupAnalyzer(structure,symprec=1e-2)
-        self.struct = spa.get_symmetrized_structure()
-
         prim_struct = spa.get_primitive_standard_structure()
         if standardized:
             struct = prim_struct
@@ -89,15 +87,15 @@ class ChargedDefectsStructures(object):
         self.defects['bulk'] = {'name':'bulk',
                 'supercell':{'size':sc_scale,'structure':sc}}
 
-        if intrinsic:
-            vacancies = []
-            antisites = []
+        vacancies = []
+        substitutions = []
 
         vac = Vacancy(struct, {}, {})
         vac_scs = vac.make_supercells_with_defects(sc_scale)
         struct_species = struct.types_of_specie
         nb_per_elts = {e:0 for e in structure.composition.elements}
-        for i in range(vac.defectsite_count):
+
+        for i in range(vac.defectsite_count()):
             vac_site = vac.get_defectsite(i)
             site_mult = vac.get_defectsite_multiplicity(i)
             site_mult = int(site_mult/conv_prim_rat)
@@ -106,35 +104,33 @@ class ChargedDefectsStructures(object):
             vac_sc = vac_scs[i+1]
 
             list_charges=[]
-            for c in range(max_min_oxid[vac_symbol][0], 
-                    max_min_oxid[vac_symbol][1]+1):
+            for c in range(max_min_oxi[vac_symbol][0], 
+                    max_min_oxi[vac_symbol][1]+1):
                 list_charges.append(-c)
             nb_per_elts[vac_specie] += 1
 
-            if intrinsci:
-                vacancies.append({
-                    'name': vac_symbol+str(nb_per_elts[vac_specie])+"_vac",
-                    'unique_site': vac_site,
-                    'supercell':{'size':sc_scale,'structure':vac_sc},
-                    'charges':list_charges })
+            vacancies.append({
+                'name': vac_symbol+str(nb_per_elts[vac_specie])+"_vac",
+                'unique_site': vac_site,
+                'supercell':{'size':sc_scale,'structure':vac_sc},
+                'charges':list_charges })
 
-                # Antisite generation at all vacancy sites
-                for specie in set(struct_species)-set([vac_specie]):
-                    subspecie_symbol = specie.symbol
-                    antisite_sc = vac_sc.copy()
-                    antisite_sc.append(specie, vac_site.frac_coords)
-                    antisites.append({
+            # Substitutional defects generation
+            if vac_symbol in substitutions:
+                for subspecie_symbol in substitutions[vac_symbol]:
+                    sub_sc = vac_sc.copy()
+                    sub_sc.append(subspecie_symbol, vac_site.frac_coords)
+                    substitutions.append({
                         'name': vac_symbol+str(nb_per_elts[vac_specie])+ \
                                 "_subst_"+subspecie_symbol,
                         'unique_site': vac_site,
-                        'supercell':{'size':sc_scale,'structure':antiste_sc},
+                        'supercell':{'size':sc_scale,'structure':sub_sc},
                         'charges':[c-oxid_states[vac_symbol] for c in range(
                             max_min_oxid[subspecie_symbol][0],
                             max_min_oxid[subspecie_symbol][1]+1)]})
 
-        if intrinsic:
-            self.defects['vacancies'] = vacancies 
-            self.defects['antisites'] = antisites
+        self.defects['vacancies'] = vacancies 
+        self.defects['substitutions'] = substitutions
 
         #interstitials
         interstitials = []
