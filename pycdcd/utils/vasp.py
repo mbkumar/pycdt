@@ -14,7 +14,10 @@ __date__ = "November 4, 2012"
 
 from pymatgen.io.vaspio.vasp_input import Kpoints
 from pymatgen.io.vaspio_set import MPVaspInputSet
-import json
+from monty.serialization import loadfn, dumpfn
+from monty.json import MontyDecoder, MontyEncoder
+
+#import json
 import os
 
 def make_vasp_defect_files(defects, path_base, user_settings=None, 
@@ -42,17 +45,67 @@ def make_vasp_defect_files(defects, path_base, user_settings=None,
 
     for defect in comb_defs:
         for charge in defect['charges']:
-            print charge
             #for s in defect['supercell']:
             s = defect['supercell']
-            print type(s['structure'])
             dict_transf={
                     'defect_type': defect['name'], 
-                    'defect_site': defect['unique_site'].as_dict, 
+                    'defect_site': defect['unique_site'], 
                     'charge': charge, 'supercell': s['size']}
             dict_params=MPVaspInputSet().get_all_vasp_input(s['structure'])
             incar=dict_params['INCAR']
             incar['IBRION']=2
+            incar['ISIF']=2
+            #incar['ISPIN']=1
+            incar['LWAVE']=False
+            incar['EDIFF']=1e-6
+            incar['EDIFFG']=-1e-2
+            #incar['EDIFF']=0.001
+            incar['ISMEAR']=0
+            incar['SIGMA']=0.05
+            incar['LVHAR']=True
+            incar['LORBIT']=11
+            incar['ALGO']="Fast"
+            #incar['ALGO']="Normal"
+            if hse == True:
+                incar['LHFCALC']=True
+                incar["ALGO"]="All"
+                incar["HFSCREEN"]=0.2
+                incar["PRECFOCK"]="Fast"
+                incar["AEXX"]=0.45
+            kpoint=Kpoints.monkhorst_automatic()
+            path=os.path.join(path_base, 
+                    str(defect['name']),"charge"+str(charge))
+            os.makedirs(path)
+            #f=open(path+"/transformations.json",'w')
+            #f.write(json.dumps(dict_transf))
+            dumpfn(dict_transf,os.path.join(path,'transformations.json'),cls=MontyEncoder)
+            comp=s['structure'].composition
+            sum_elec=0
+            elts=set()
+            for p in dict_params['POTCAR']:
+                if p.element not in elts:
+                    sum_elec+=comp.to_dict[p.element]*p.nelectrons
+                    elts.add(p.element)
+                #print p.element
+                #print comp.to_dict[p.element]
+                #print p.valence
+            print sum_elec
+            if charge != 0:
+                incar['NELECT']=sum_elec-charge
+            dict_params['POTCAR'].write_file(os.path.join(path,"POTCAR"))
+            incar.write_file(os.path.join(path,"INCAR"))
+            kpoint.write_file(os.path.join(path,"KPOINTS"))
+            dict_params['POSCAR'].write_file(os.path.join(path,"POSCAR"))
+            count=count+1
+
+    # Generate bulk supercell inputs
+            s = bulk_sys
+            dict_transf={
+                    'defect_type': 'bulk', 
+                    'supercell': s['supercell']['size']}
+            dict_params=MPVaspInputSet().get_all_vasp_input(s['structure'])
+            incar=dict_params['INCAR']
+            incar['IBRION']=-1
             incar['ISIF']=0
             incar['ISPIN']=1
             incar['LWAVE']=False
@@ -72,11 +125,11 @@ def make_vasp_defect_files(defects, path_base, user_settings=None,
                 incar["AEXX"]=0.45
             kpoint=Kpoints.monkhorst_automatic()
             path=os.path.join(path_base, 
-                    str(site['short_name']),"charge"+str(charge))
+                    str(defect['name']),"charge"+str(charge))
             os.makedirs(path)
             #f=open(path+"/transformations.json",'w')
             #f.write(json.dumps(dict_transf))
-            dumpfn(dict_transf,os.path.join(path,'transformations.json'))
+            dumpfn(dict_transf,os.path.join(path,'transformations.json'),cls=MontyEncoder)
             comp=s['structure'].composition
             sum_elec=0
             elts=set()
@@ -90,7 +143,7 @@ def make_vasp_defect_files(defects, path_base, user_settings=None,
             print sum_elec
             if charge != 0:
                 incar['NELECT']=sum_elec-charge
-            dict_params['POTCAR'].write_file(path+"POTCAR")
+            dict_params['POTCAR'].write_file(os.path.join(path,"POTCAR"))
             incar.write_file(os.path.join(path,"INCAR"))
             kpoint.write_file(os.path.join(path,"KPOINTS"))
             dict_params['POSCAR'].write_file(os.path.join(path,"POSCAR"))

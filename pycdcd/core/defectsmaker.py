@@ -33,6 +33,47 @@ def get_sc_scale(inp_struct, final_site_no):
         num_mult[i] -= 1
     return num_mult
 
+def get_optimized_sc_scale(inp_struct, final_site_no):
+    target_site = inp_struct.sites[0]
+    dictio={}
+    result=[]
+    for k1 in range(1,4):
+        for k2 in range(1,4):
+            for k3 in range(1,4):
+                struct = inp_struct.copy()
+                struct.make_supercell([k1,k2,k3])
+                if len(struct.sites) > final_site_no:
+                    continue
+                site_target=None
+                index=None
+                for i in range(struct.num_sites):
+                    s=struct._sites[i]
+                    if s.distance_from_point(target_site.coords)<0.001:
+                        index=i
+                min=1000.0
+                for a in range(-1,1):
+                    for b in range(-1,1):
+                        for c in range(-1,1):
+                            distance = struct.get_distance(index,index,(a,b,c))
+                            if  distance < min and distance>0.00001:
+                                min = distance
+                min=round(min,3)
+                if dictio.has_key(min):
+                    if dictio[min]['num_sites'] > struct.num_sites:
+                        dictio[min]['num_sites'] = struct.num_sites
+                        dictio[min]['supercell'] = [k1,k2,k3]
+                else:
+                    dictio[min]={}
+                    dictio[min]['num_sites'] = struct.num_sites
+                    dictio[min]['supercell'] = [k1,k2,k3]
+    min=-1.0
+    biggest=None
+    for c in dictio:
+        if c>min:
+            biggest=dictio[c]['supercell']
+            min=c
+    return biggest
+
 
 class ChargedDefectsStructures(object):
     """
@@ -80,7 +121,7 @@ class ChargedDefectsStructures(object):
         else:
             struct = structure
         conv_prim_rat = int(struct.num_sites/prim_struct.num_sites)
-        sc_scale = get_sc_scale(struct,cellmax)
+        sc_scale = get_optimized_sc_scale(struct,cellmax)
         self.defects = {}
         sc = struct.copy()
         sc.make_supercell(sc_scale)
@@ -88,7 +129,7 @@ class ChargedDefectsStructures(object):
                 'supercell':{'size':sc_scale,'structure':sc}}
 
         vacancies = []
-        substitutions = []
+        sub_defs = []
 
         vac = Vacancy(struct, {}, {})
         vac_scs = vac.make_supercells_with_defects(sc_scale)
@@ -120,17 +161,17 @@ class ChargedDefectsStructures(object):
                 for subspecie_symbol in substitutions[vac_symbol]:
                     sub_sc = vac_sc.copy()
                     sub_sc.append(subspecie_symbol, vac_site.frac_coords)
-                    substitutions.append({
+                    sub_defs.append({
                         'name': vac_symbol+str(nb_per_elts[vac_specie])+ \
                                 "_subst_"+subspecie_symbol,
                         'unique_site': vac_site,
                         'supercell':{'size':sc_scale,'structure':sub_sc},
-                        'charges':[c-oxid_states[vac_symbol] for c in range(
-                            max_min_oxid[subspecie_symbol][0],
-                            max_min_oxid[subspecie_symbol][1]+1)]})
+                        'charges':[c-oxi_states[vac_symbol] for c in range(
+                            max_min_oxi[subspecie_symbol][0],
+                            max_min_oxi[subspecie_symbol][1]+1)]})
 
         self.defects['vacancies'] = vacancies 
-        self.defects['substitutions'] = substitutions
+        self.defects['substitutions'] = sub_defs
 
         #interstitials
         interstitials = []

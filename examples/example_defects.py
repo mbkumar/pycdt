@@ -9,8 +9,6 @@ import json
 
 def example_maker():
         struct=Structure.from_dict(json.loads(open("PbTiO3.json",'r').read()))
-        print struct.formula
-        print dir(struct.composition)
         #print struct
         make_vasp_defect_files(ChargedDefectsStructures(struct,
             max_min_oxi={'Pb':(0,2),'Ti':(0,4),'O':(-2,0),'Al':(3,4),'V':(3,4),
