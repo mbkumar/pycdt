@@ -38,7 +38,7 @@ def make_vasp_defect_files(defects, path_base, user_settings=None,
         hse:
             hse run or not
     """
-    bulk_sys = defects['bulk']
+    bulk_sys = defects['bulk']['supercell']
     comb_defs = reduce(lambda x,y: x+y, [
         defects[key] for key in defects if key != 'bulk'])
 
@@ -84,7 +84,7 @@ def make_vasp_defect_files(defects, path_base, user_settings=None,
     s = bulk_sys
     dict_transf={
             'defect_type': 'bulk', 
-            'supercell': s['supercell']['size']}
+            'supercell': s['size']}
 
     dict_params=MPVaspInputSet().get_all_vasp_input(s['structure'])
     incar=dict_params['INCAR']
@@ -120,7 +120,7 @@ def make_vasp_dielectric_files(struct, user_settings=None, hse=False):
 
     # Generate vasp inputs for dielectric constant
 
-    dict_params=MPVaspInputSet().get_all_vasp_input(s['structure'])
+    dict_params=MPVaspInputSet().get_all_vasp_input(struct)
     incar=dict_params['INCAR']
     incar.update({"NSW":0,'ISPIN':2,'LWAVE':False,'EDIFF':1e-5,
         'ISMEAR':0,'SIGMA':0.05,'ALGO':'Fast'})
@@ -132,7 +132,6 @@ def make_vasp_dielectric_files(struct, user_settings=None, hse=False):
     path=os.path.join(path_base,'dielectric')
     os.makedirs(path)
     incar.write_file(os.path.join(path,"INCAR"))
-    kpoint.write_file(os.path.join(path,"KPOINTS"))
     dict_params['KPOINTS'].write_file(os.path.join(path,"KPOINTS"))
     dict_params['POSCAR'].write_file(os.path.join(path,"POSCAR"))
     dict_params['POTCAR'].write_file(os.path.join(path,"POTCAR"))
