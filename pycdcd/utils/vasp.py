@@ -54,7 +54,7 @@ def make_vasp_defect_files(defects, path_base, user_settings=None,
             incar=dict_params['INCAR']
             incar.update({'IBRION':2,'ISIF':2,'ISPIN':2,'LWAVE':False,
                 'EDIFF':1e-5,'EDIFFG':-1e-2,'ISMEAR':0,'SIGMA':0.05, 
-                'LVTOT':True,'LVHAR':True,'LORBIT':11,'ALGO':"Fast"})
+                'LVTOT':True,'LVHAR':True,'LORBIT':11,'ALGO':"Fast",'ISYM':0})
             if hse == True:
                 incar.update({'LHFCALC':True,"ALGO":"All","HFSCREEN":0.2,
                     "PRECFOCK":"Fast","AEXX":0.45})
@@ -89,7 +89,8 @@ def make_vasp_defect_files(defects, path_base, user_settings=None,
     dict_params=MPVaspInputSet().get_all_vasp_input(s['structure'])
     incar=dict_params['INCAR']
     incar.update({'IBRION':-1,"NSW":0,'ISPIN':2,'LWAVE':False,'EDIFF':1e-5,
-        'ISMEAR':0,'SIGMA':0.05,'LVTOT':True,'LVHAR':True,'ALGO':'Fast'})
+        'ISMEAR':0,'SIGMA':0.05,'LVTOT':True,'LVHAR':True,'ALGO':'Fast',
+        'ISYM':0})
     if hse == True:
         incar.update({'LHFCALC':True,"ALGO":"All","HFSCREEN":0.2,
             "PRECFOCK":"Fast","AEXX":0.45})
@@ -122,9 +123,9 @@ def make_vasp_dielectric_files(struct, user_settings=None, hse=False):
 
     dict_params=MPVaspInputSet().get_all_vasp_input(struct)
     incar=dict_params['INCAR']
-    incar.update({"NSW":0,'ISPIN':2,'LWAVE':False,'EDIFF':1e-5,
-        'ISMEAR':0,'SIGMA':0.05,'ALGO':'Fast'})
-    incar.update({'IBRION':8,'LEPSILON':True,'LEPAD':True})
+    incar.update({"NSW":1,'ISPIN':1,'LWAVE':False,'EDIFF':1e-5,
+        'ISMEAR':0,'SIGMA':0.05,'ALGO':'Fast','ISIF':2})
+    incar.update({'IBRION':8,'LEPSILON':True,'LPEAD':True})
     if hse == True:
         incar.update({'LHFCALC':True,"ALGO":"All","HFSCREEN":0.2,
             "PRECFOCK":"Fast","AEXX":0.45})
