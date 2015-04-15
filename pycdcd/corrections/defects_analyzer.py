@@ -14,7 +14,7 @@ from pymatgen.core.periodic_table import Element
 import math
 from pymatgen.entries.computed_entries import ComputedStructureEntry
 from pymatgen.util.io_utils import clean_json
-from mpcollab.defects.core import Defect
+from pycdcd.core.defect import Defect
 
 #some constants
 kb = 8.6173324e-5
@@ -45,20 +45,21 @@ class DefectsAnalyzer(object):
         self._defects = []
         self._formation_energies = []
 
-    @property
-    def to_dict(self):
-        dictio = {}
-        dictio['entry_bulk'] = self._entry_bulk.to_dict
-        dictio['e_vbm'] = self._e_vbm
-        dictio['mu_elts'] = self._mu_elts
-        dictio['band_gap'] = self._band_gap
-        dictio['defects'] = [d.to_dict for d in self._defects]
-        dictio['formation_energies'] = self._formation_energies
-        return clean_json(dictio)
+    def as_dict(self):
+        d = {'entry_bulk':self._entry_bulk.as_dict(),
+             'e_vbm':self._e_vbm,
+             'mu_elts':self._mu_elts,
+             'band_gap':self._band_gap,
+             'defects':[d.as_dict() for d in self._defects],
+             'formation_energies':self._formation_energies,
+             "@module":self.__class__.__module__,
+             "@class":self.__class__.__name__}
+        return d
 
     @staticmethod
-    def from_dict(dictio):
-        analyzer = DefectsAnalyzer(ComputedStructureEntry.from_dict(dictio['entry_bulk']), dictio['e_vbm'], {Element(e):dictio['mu_elts'][e] for e in dictio['mu_elts']}, dictio['band_gap'])
+    def from_dict(d):
+        entry_bulk = ComputedStructureEntry.from_dict(dictio['entry_bulk'])
+        analyzer = DefectsAnalyzer(entry_bulk, d['e_vbm'], {Element(e):dictio['mu_elts'][e] for e in dictio['mu_elts']}, dictio['band_gap'])
         for d in dictio['defects']:
             analyzer.add_defect(Defect.from_dict(d))
         return analyzer
