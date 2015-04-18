@@ -292,20 +292,17 @@ class DefectCorrectionFreysoldt(object):
         """
         #correction from output (should include alignment once alignment 
         # has been done)
-        result=[]   
-        platy=[]    #alignment term
+        result = []   
+        platy = []    #alignment term
         # if want to plot right here, then build dictionary for storing 
         # planar average values of each axis
-        if print_pot_flag=='plotfull':  
-            plotvals={}
-            plotvals['0']={}
-            plotvals['1']={}
-            plotvals['2']={}
+        if print_pot_flag == 'plotfull':  
+            plotvals = {'0':{},'1':{},'2':{}}
         for axis in [0,1,2]:
             print 'do axis '+str(axis+1)
-            relpos=(str(self._frac_coords)[1:])[:-1]
-            relpos=relpos.replace(" ","")
-            command=['~/sxdefectalign', '--vasp', '-a'+str(axis+1), 
+            relpos = (str(self._frac_coords)[1:])[:-1]
+            relpos = relpos.replace(" ","")
+            command = ['~/sxdefectalign', '--vasp', '-a'+str(axis+1), 
                     '--relative', '--pos', relpos, 
                     '--charge', str(-self._charge), 
                     '--ecut', str(self._encut/13.6057), #eV to Ry for sxdefect 
@@ -315,10 +312,13 @@ class DefectCorrectionFreysoldt(object):
                     '--vdef', 'LOCPOT_vdef']
             print command
 
+            #Note to Danny: I moved back to standard way of running commands.
+            #in case it is still not working on NERSC, we can revert back to
+            #Geoffroy's hack below
             p = subprocess.Popen(command, stdout=subprocess.PIPE, 
                     stdin=subprocess.PIPE, stderr=subprocess.PIPE)
             output, err = p.communicate()
-            out= out.decode('utf-8')
+            out = out.decode('utf-8')
             err = err.decode('utf-8')
             print 'output from sxdefectalign = ', str(out)
             result.append(float(out[0].split("\n")[12].split()[3]))
@@ -343,27 +343,22 @@ class DefectCorrectionFreysoldt(object):
             #print "chg correction is "+str(result[-1])
             #os.remove('tmpoutput')
 
-
-            x_lr=[]
-            y_lr=[]
-            x=[]
-            y=[]
-            x_diff=[]
-            y_diff=[]
+            x_lr, y_lr = [], []
+            x, y = [], []
+            x_diff, y_diff = [], []
             with open("vline-eV.dat",'r') as f_sr: #read in potential 
                 for r in f_sr.readlines(): 
-                    #print r
-                    tmp=r.split("\t")
+                    tmp = r.split("\t")
                     if(len(tmp)<3 and not r.startswith("&")):
                        x_lr.append(float(tmp[0])/1.889725989)   # to Angstrom
                        y_lr.append(float(tmp[1])) 
-                    if len(tmp)>2:
+                    if len(tmp) > 2:
                         x.append(float(tmp[0])/1.889725989)     # to Angstrom
                         x_diff.append(float(tmp[0])/1.889725989)# to Angstrom
                         y.append(float(tmp[2].rstrip("\n")))
                         y_diff.append(float(tmp[1]))
 
-            if print_pot_flag=='none':
+            if print_pot_flag == 'none':
                 if os.path.exists("vline-eV.dat"):
                     os.rename("vline-eV.dat","axis"+str(axis)+"vline-eV.dat")
             else:
@@ -400,14 +395,17 @@ class DefectCorrectionFreysoldt(object):
 
             print 'alignment is ', -np.mean(tmpalign)
             platy.append(-np.mean(tmpalign))
-            flag=0
+            flag = 0
             for i in tmpalign:
                 if np.abs(i-platy[-1])>0.2:
-                    flag=1
+                    flag = 1
                 else:
                     continue
-            if flag!=0:
-                    print 'Warning: potential aligned region varied by more than 0.2eV (in range of halfway between defects +/-1 Angstrom). Might have issues with Freidel oscilattions or atomic relaxation'
+            if flag != 0:
+                print 'Warning: potential aligned region varied by more ' + \
+                      'than 0.2eV (in range of halfway between defects ' + \
+                      '+/-1 \Angstrom). Might have issues with Freidel ' + \
+                      'oscilattions or atomic relaxation'
 
             if print_pot_flag == 'written': #is correct folder is used?
                 with open("xylong"+str(axis)+".dat",'w') as f:
@@ -420,12 +418,11 @@ class DefectCorrectionFreysoldt(object):
                     for i in range(len(x_diff)):
                         f.write(str(x_diff[i])+" "+str(y_diff[i])+"\n")
 
-            elif print_pot_flag == 'plotfull': #store data for end of all three calcs
-                plotvals[str(axis)]['xylong']=[x_lr,y_lr]
-                plotvals[str(axis)]['xy']=[x,y]
-                plotvals[str(axis)]['xydiff']=[x_diff,y_diff]
+            elif print_pot_flag == 'plotfull': #store data for end of all calcs
+                plotvals[str(axis)]['xylong'] = [x_lr,y_lr]
+                plotvals[str(axis)]['xy'] = [x,y]
+                plotvals[str(axis)]['xydiff'] = [x_diff,y_diff]
 
-        # Note to Bharat: Cleanup the plotting code
         if print_pot_flag == 'plotfull':  #plot all three
             import matplotlib.pyplot as plt
             import pylab
@@ -434,19 +431,24 @@ class DefectCorrectionFreysoldt(object):
             for axis in [0,1,2]:
                 print axis+1
                 ax=fig.add_subplot(3,1,axis+1)
-                plt.ylabel('axis '+str(axis+1))
-                pylab.hold(True)
-                ax.plot(plotvals[str(axis)]['xy'][0],plotvals[str(axis)]['xy'][1])
-                ax.plot(plotvals[str(axis)]['xydiff'][0],plotvals[str(axis)]['xydiff'][1],'r')
-                ax.plot(plotvals[str(axis)]['xylong'][0],plotvals[str(axis)]['xylong'][1],'g')
+                ax.set_ylabel('axis '+str(axis+1))
+                #pylab.hold(True)
+                vals_plot = plotvasl[str(axis)]
+                ax.plot(vals_plot['xy'][0],vals_plot['xy'][1])
+                ax.plot(vals_plot['xydiff'][0],vals_plot['xydiff'][1],'r')
+                ax.plot(vals_plot['xylong'][0],vals_plot['xylong'][1],'g')
+
                 if axis==0:
                     ax.set_title("Electrostatic planar averaged potential")
                     ax.legend(['V_defect-V_ref-V_lr','V_defect-V_ref','V_lr'])
-                ax.plot([self._frac_coords[axis]*self._locpot_defect.structure.lattice._lengths[axis]],[0],'or',markersize=4.0)
-                if self._frac_coords[axis]>=0.5:
-                        ax.plot([(self._frac_coords[axis]-0.5)*self._locpot_defect.structure.lattice._lengths[axis]],[0],'og',markersize=4.0)
+
+                latt_len = self._locpot_defect.structure.lattice._lengths[axis]
+                fcoords = self._frac_coords[axis]
+                ax.plot([fcoords*latt_len], [0], 'or', markersize=4.0)
+                if fcoords >= 0.5:
+                    ax.plot([(fcoords-0.5)*latt_len],[0],'og',markersize=4.0)
                 else:
-                        ax.plot([(self._frac_coords[axis]+0.5)*self._locpot_defect.structure.lattice._lengths[axis]],[0],'og',markersize=4.0)
+                    ax.plot([(fcoords+0.5)*latt_len],[0],'og',markersize=4.0)
                 plt.axhline(y=0.0,linewidth=0.8, color='black')
             plt.savefig(os.path.join('..',"locpotgraph.png"))
 
@@ -459,16 +461,16 @@ class DefectCorrectionFreysoldt(object):
         """
         with ScratchDir('.'):
             self.prepare_files()
-            s=self.plot_pot_diff(align=[0.0,0.0,0.0],print_pot_flag='none')
+            s=self.plot_pot_diff(align=[0.0,0.0,0.0], print_pot_flag='none')
             print '--'
             print 'alignments determined to be: '+str(s[1])
             print 'get final correction terms'
             print '--'
             #To get locpot plots use print_pot_flag = 'written' or 'plotfull'
-            vals = self.plot_pot_diff(align=s[1],print_pot_flag='none')   
+            vals = self.plot_pot_diff(align=s[1], print_pot_flag='none')   
             print 'vals is '+str(vals)
             for i in range(3):
-                if np.abs(vals[1][i])>0.0001:
+                if np.abs(vals[1][i]) > 0.0001:
                     print 'PROBLEM! planar averaging didnt work. Issue with ' + \
                             'axis', str(i+1)
             print '--'
