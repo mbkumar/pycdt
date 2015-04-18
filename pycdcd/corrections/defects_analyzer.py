@@ -9,9 +9,10 @@ __email__ = "geoffroy@uclouvain.be"
 __status__ = "Development"
 __date__ = "November 4, 2012"
 
-from pymatgen.symmetry.finder import SymmetryFinder
-from pymatgen.core.periodic_table import Element
 import math
+
+from pymatgen.symmetry.analyzer import SpagegroupAnalyzer
+from pymatgen.core.periodic_table import Element
 from pymatgen.entries.computed_entries import ComputedStructureEntry
 from pymatgen.util.io_utils import clean_json
 from pycdcd.core.defect import Defect
@@ -59,9 +60,10 @@ class DefectsAnalyzer(object):
     @staticmethod
     def from_dict(d):
         entry_bulk = ComputedStructureEntry.from_dict(dictio['entry_bulk'])
-        analyzer = DefectsAnalyzer(entry_bulk, d['e_vbm'], {Element(e):dictio['mu_elts'][e] for e in dictio['mu_elts']}, dictio['band_gap'])
-        for d in dictio['defects']:
-            analyzer.add_defect(Defect.from_dict(d))
+        analyzer = DefectsAnalyzer(entry_bulk, d['e_vbm'], 
+                {el:d['mu_elts'][el] for el in d['mu_elts']}, d['band_gap'])
+        for ddict in d['defects']:
+            analyzer.add_defect(Defect.from_dict(ddict))
         return analyzer
 
     def add_defect(self, defect):
@@ -87,29 +89,30 @@ class DefectsAnalyzer(object):
         self._formation_energies = []
         for d in self._defects:
             multiplier = None
-            if math.floor((d._entry.composition.num_atoms + 1) / self._entry_bulk.composition.num_atoms) \
-                    == (d._entry.composition.num_atoms+1) / self._entry_bulk.composition.num_atoms:
-                multiplier = (d._entry.composition.num_atoms+1)/self._entry_bulk.composition.num_atoms
-            elif math.floor((d._entry.composition.num_atoms-1)/self._entry_bulk.composition.num_atoms) \
-                    == (d._entry.composition.num_atoms-1)/self._entry_bulk.composition.num_atoms:
-                multiplier = (d._entry.composition.num_atoms-1)/self._entry_bulk.composition.num_atoms
-            elif math.floor(d._entry.composition.num_atoms/self._entry_bulk.composition.num_atoms) \
-                    == d._entry.composition.num_atoms/self._entry_bulk.composition.num_atoms:
-                multiplier = d._entry.composition.num_atoms/self._entry_bulk.composition.num_atoms
-            #go through each element in the defect and see how to "compensate" it with the chemical potentials
+            atm_blk = self._entry_bulk.composition.num_atoms
+            atm_def = d._entry.composition.num_atoms 
+            for i in [1,-1,0]:
+                if math.floor((atm_def+i) / atm_blk) == (atm_def+i)/atm_blk:
+                    multiplier = (atm_def+i)/atm_blk
+                    break
+
+            #compensate each element in defect with the chemical potential
             mu_needed_coeffs = {}
             for elt in d._entry.composition.elements:
-                if d._entry.composition[elt] > multiplier * self._entry_bulk.composition[elt]:
+                el_def_comp = d._entry.composition[elt] 
+                el_blk_comp = self._entry_bulk.composition[elt]
+                if el_def_comp > multiplier * el_blk_comp:
                     mu_needed_coeffs[elt] = -1.0
-                if d._entry.composition[elt] < multiplier * self._entry_bulk.composition[elt]:
+                if el_def_comp < multiplier * el_blk_comp:
                     mu_needed_coeffs[elt] = 1.0
 
             sum_mus = 0.0
             for elt in mu_needed_coeffs:
                 sum_mus = sum_mus + mu_needed_coeffs[elt] * self._mu_elts[elt]
 
-            self._formation_energies.append(d._entry.energy - multiplier * self._entry_bulk.energy + sum_mus
-                                            + d._charge * self._e_vbm + d._charge_correction)
+            self._formation_energies.append(d._entry.energy - multiplier * \
+                    self._entry_bulk.energy + sum_mus + d._charge * \
+                    self._e_vbm + d._charge_correction)
 
     def correct_bg_simple(self, vbm_correct, cbm_correct):
         """
@@ -147,15 +150,16 @@ class DefectsAnalyzer(object):
         self._e_vbm = self._e_vbm - vbm_correct
         self._compute_form_en()
         for i in range(len(self._defects)):
-            if not self._defects[i]._name in dict_levels:
+            name = self._defects[i]._name
+            if not name in dict_levels:
                 continue
 
-            if dict_levels[self._defects[i]._name]['type'] == 'vbm_like':
-                z = self._defects[i]._charge-dict_levels[self._defects[i]._name]['q*']
-                self._formation_energies[i] = self._formation_energies[i] + z * vbm_correct
-            if dict_levels[self._defects[i]._name]['type'] == 'cbm_like':
-                z = dict_levels[self._defects[i]._name]['q*']-self._defects[i]._charge
-                self._formation_energies[i] = self._formation_energies[i] + z * cbm_correct
+            if dict_levels[name]['type'] == 'vbm_like':
+                z = self._defects[i]._charge - dict_levels[name]['q*']
+                self._formation_energies[i] += z * vbm_correct
+            if dict_levels[name]['type'] == 'cbm_like':
+                z = dict_levels[name]['q*'] - self._defects[i]._charge
+                self._formation_energies[i] +=  z * cbm_correct
 
     def _get_form_energy(self, ef, i):
         return self._formation_energies[i] + self._defects[i]._charge * ef
