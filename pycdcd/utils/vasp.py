@@ -43,6 +43,8 @@ def make_vasp_defect_files(defects, path_base, user_settings=None,
         defects[key] for key in defects if key != 'bulk'])
 
     for defect in comb_defs:
+        print type(defect)
+        print defect['charges']
         for charge in defect['charges']:
             s = defect['supercell']
             dict_transf={
@@ -104,7 +106,8 @@ def make_vasp_defect_files(defects, path_base, user_settings=None,
     dumpfn(dict_transf,os.path.join(path,'transformations.json'),
             cls=MontyEncoder)
 
-def make_vasp_dielectric_files(struct, user_settings=None, hse=False):
+def make_vasp_dielectric_files(struct, path=None, user_settings=None, 
+        hse=False):
     """
     Generates VASP files for dielectric constant computations
     Args:
@@ -129,8 +132,9 @@ def make_vasp_dielectric_files(struct, user_settings=None, hse=False):
     if hse == True:
         incar.update({'LHFCALC':True,"ALGO":"All","HFSCREEN":0.2,
             "PRECFOCK":"Fast","AEXX":0.45})
-    path_base = struct.composition.reduced_formula
-    path=os.path.join(path_base,'dielectric')
+    if not path:
+        path_base = struct.composition.reduced_formula
+        path=os.path.join(path_base,'dielectric')
     os.makedirs(path)
     incar.write_file(os.path.join(path,"INCAR"))
     dict_params['KPOINTS'].write_file(os.path.join(path,"KPOINTS"))
