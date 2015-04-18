@@ -66,7 +66,7 @@ def make_vasp_defect_files(defects, path_base, user_settings=None,
             elts=set()
             for p in dict_params['POTCAR']:
                 if p.element not in elts:
-                    sum_elec+=comp.to_dict[p.element]*p.nelectrons
+                    sum_elec+=comp.as_dict[p.element]*p.nelectrons
                     elts.add(p.element)
             if charge != 0:
                 incar['NELECT']=sum_elec-charge
