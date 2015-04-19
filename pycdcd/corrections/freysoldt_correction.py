@@ -385,8 +385,8 @@ class DefectCorrectionFreysoldt(object):
             print 'vals is '+str(vals)
             for i in range(3):
                 if np.abs(vals[1][i]) > 0.0001:
-                    print 'PROBLEM! planar averaging didnt work. Issue with ' + \
-                            'axis', str(i+1)
+                    print 'PROBLEM! planar averaging didnt work. Issue ' +\
+                            'with axis', str(i+1)
             print '--'
             print 'Final Freysoldt sxdefectalign correction values are: ', \
                     str(vals[0])
