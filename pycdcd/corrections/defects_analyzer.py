@@ -59,7 +59,7 @@ class DefectsAnalyzer(object):
 
     @staticmethod
     def from_dict(d):
-        entry_bulk = ComputedStructureEntry.from_dict(dictio['entry_bulk'])
+        entry_bulk = ComputedStructureEntry.from_dict(d['entry_bulk'])
         analyzer = DefectsAnalyzer(entry_bulk, d['e_vbm'], 
                 {el:d['mu_elts'][el] for el in d['mu_elts']}, d['band_gap'])
         for ddict in d['defects']:
@@ -108,7 +108,7 @@ class DefectsAnalyzer(object):
 
             sum_mus = 0.0
             for elt in mu_needed_coeffs:
-                sum_mus = sum_mus + mu_needed_coeffs[elt] * self._mu_elts[elt]
+                sum_mus += mu_needed_coeffs[elt] * self._mu_elts[elt]
 
             self._formation_energies.append(d._entry.energy - multiplier * \
                     self._entry_bulk.energy + sum_mus + d._charge * \
@@ -117,14 +117,15 @@ class DefectsAnalyzer(object):
     def correct_bg_simple(self, vbm_correct, cbm_correct):
         """
         correct the band gap in the analyzer.
-        We assume the defects level remain the same when moving the band edges
+        We assume the defects level remain the same when moving the 
+        band edges
         Args:
             vbm_correct:
-                The correction on the vbm as a positive number. e.g., if the VBM
-                goes 0.1 eV down vbm_correct=0.1
+                The correction on the vbm as a positive number. e.g., 
+                if the VBM goes 0.1 eV down vbm_correct=0.1
             cbm_correct:
-                The correction on the cbm as a positive number. e.g., if the CBM
-                goes 0.1 eV up cbm_correct=0.1
+                The correction on the cbm as a positive number. e.g., 
+                if the CBM goes 0.1 eV up cbm_correct=0.1
 
         """
         self._band_gap = self._band_gap + cbm_correct + vbm_correct
@@ -173,108 +174,136 @@ class DefectsAnalyzer(object):
             Ef:
                 the fermi level in eV (with respect to the VBM)
         Returns:
-            a list of dictionary of {'name':name of defect, 'charge':charge of defect
-                                    'conc': concentration of defects in m-3}
+            a list of dict of {'name': defect name, 'charge': defect charge 
+                               'conc': defects concentration in m-3}
         """
         conc=[]
-        struct = SymmetryFinder(self._entry_bulk.structure,symprec=1e-1).get_symmetrized_structure()
+        spga = SpacegroupAnalyzer(self._entry_bulk.structure,symprec=1e-1)
+        struct = spga.get_symmetrized_structure()
         i = 0
         for d in self._defects:
+            df_coords = d._site.frac_coords
             target_site=None
             #TODO make a better check this large tol. is weird
             for s in struct.sites:
-                if abs(s.frac_coords[0]-d._site.frac_coords[0]) < 0.1 \
-                    and abs(s.frac_coords[1]-d._site.frac_coords[1]) < 0.1 \
-                    and abs(s.frac_coords[2]-d._site.frac_coords[2]) < 0.1:
+                sf_coords = s.frac_coords
+                if abs(s.frac_coords[0]-df_coords[0]) < 0.1 \
+                    and abs(s.frac_coords[1]-df_coords[1]) < 0.1 \
+                    and abs(s.frac_coords[2]-df_coords[2]) < 0.1:
                     target_site=s
-            n = len(struct.find_equivalent_sites(target_site))*1e30/(struct.volume)
+                    break
+            equiv_site_no = len(struct.find_equivalent_sites(target_site))
+            n = equiv_site_no*1e30/struct.volume
             conc.append({'name': d._name, 'charge': d._charge,
-                         'conc': n*math.exp(-self._get_form_energy(ef, i)/(kb*temp))})
+                         'conc': n*math.exp(
+                             -self._get_form_energy(ef, i)/(kb*temp))})
             i += 1
         return conc
 
     def _get_dos(self, e, m1, m2, m3, e_ext):
-        return math.sqrt(2)/(math.pi**2*hbar**3)*math.sqrt(m1*m2*m3)*math.sqrt(e-e_ext)
+        return math.sqrt(2) / (math.pi**2*hbar**3) * math.sqrt(m1*m2*m3) * \
+               math.sqrt(e-e_ext)
 
     def _get_dos_fd_elec(self, e, ef, t, m1, m2, m3):
-        return conv*(2.0/(math.exp((e-ef)/(kb*t))+1))*(math.sqrt(2)/(math.pi**2)) \
-            * math.sqrt(m1 * m2 * m3)*math.sqrt(e - self._band_gap)
+        return conv * (2.0/(math.exp((e-ef)/(kb*t))+1)) * \
+               (math.sqrt(2)/(math.pi**2)) * math.sqrt(m1*m2*m3) * \
+               math.sqrt(e-self._band_gap)
 
     def _get_dos_fd_hole(self, e, ef, t, m1, m2, m3):
-        return conv*((math.exp((e-ef)/(kb*t))/(math.exp((e-ef)/(kb*t))+1))) * \
-            (2.0 * math.sqrt(2)/(math.pi ** 2)) * math.sqrt(m1 * m2 * m3)*math.sqrt(-e)
+        return conv * (math.exp((e-ef)/(kb*t))/(math.exp((e-ef)/(kb*t))+1)) * \
+               (2.0 * math.sqrt(2)/(math.pi**2)) * math.sqrt(m1*m2*m3) * \
+               math.sqrt(-e)
 
-    def _get_qd(self,ef,t):
+    def _get_qd(self, ef, t):
         summation = 0.0
         for d in self.get_defects_concentration(t, ef):
-            summation = summation + d['charge'] * d['conc']
+            summation += d['charge'] * d['conc']
         return summation
 
     def _get_qi(self, ef, t, m_elec, m_hole):
-        from scipy import integrate
-        return -integrate.quad(lambda e: self._get_dos_fd_elec(e, ef, t, m_elec[0], m_elec[1], m_elec[2]),
-                               self._band_gap, 5+self._band_gap)[0] +\
-                               integrate.quad(lambda e: self._get_dos_fd_hole(e, ef, t, m_hole[0], m_hole[1],
-                                                                              m_hole[2]), -5, 0.0)[0]
+        from scipy import integrate as intgrl
+
+        elec_den_fn = lambda e: self._get_dos_fd_elec(
+                e, ef, t, m_elec[0], m_elec[1], m_elec[2])
+        hole_den_fn = lambda e: self._get_dos_fd_hole(
+                e, ef, t, m_hole[0], m_hole[1], m_hole[2])
+
+        bg = self._band_gap
+        elec_count = -intgrl.quad(elec_den_fn, bg, bg+5)[0]
+        hole_count = intgrl.quad(hole_den_fn, -5, 0.0)[0]
+
+        return el_cnt + hl_cnt
+
 
     def _get_qtot(self, ef, t, m_elec, m_hole):
         return self._get_qd(ef, t) + self._get_qi(ef, t, m_elec, m_hole)
 
     def get_eq_ef(self, t, m_elec, m_hole):
         """
-        access to equilibrium values of Fermi level and concentrations in defects and carriers
-        obtained by self-consistent solution of charge balance + defect and carriers concentrations
+        access to equilibrium values of Fermi level and concentrations 
+        in defects and carriers obtained by self-consistent solution of 
+        charge balance + defect and carriers concentrations
         Args:
-            t:
-                temperature in K
-            m_elec:
-                electron effective mass as a list of 3 values (3 eigenvalues for the tensor)
-            m_hole::
-                hole effective mass as a list of 3 values (3 eigenvalues for the tensor)
+            t: temperature in K
+            m_elec: electron effective mass as a 3 value list 
+                    (3 eigenvalues for the tensor)
+            m_hole:: hole effective mass as a 3 value list 
+                    (3 eigenvalues for the tensor)
         Returns:
-            a dictionary with {'ef':eq fermi level,'Qi': the concentration of carriers
-            (positive for holes, negative for e-) in m^-3,'conc': the concentration of defects
-             as a list of dictionary
+            a dict with {
+                'ef':eq fermi level,
+                'Qi': the concentration of carriers
+                      (positive for holes, negative for e-) in m^-3,
+                'conc': the concentration of defects as a list of dicts
+                }
         """
         from scipy.optimize import bisect
         e_vbm = self._e_vbm
         e_cbm = self._e_vbm+self._band_gap
-        ef = bisect(lambda e:self._get_qtot(e,t,m_elec,m_hole), 0, self._band_gap)
+        ef = bisect(lambda e:self._get_qtot(e,t,m_elec,m_hole), 0, 
+                self._band_gap)
         return {'ef': ef, 'Qi': self._get_qi(ef, t, m_elec, m_hole),
-                'QD': self._get_qd(ef,t), 'conc': self.get_defects_concentration(t, ef)}
+                'QD': self._get_qd(ef,t), 
+                'conc': self.get_defects_concentration(t, ef)}
 
     def get_non_eq_ef(self, tsyn, teq, m_elec, m_hole):
         """
-        access to the non-equilibrium values of Fermi level and concentrations in defects and carriers
-        obtained by self-consistent solution of charge balance + defect and carriers concentrations
+        access to the non-equilibrium values of Fermi level and 
+        concentrations in defects and carriers obtained by 
+        self-consistent solution of charge balance + defect and 
+        carriers concentrations
 
-        Implemented following Sun, R., Chan, M. K. Y., Kang, S., and Ceder, G. (2011). doi:10.1103/PhysRevB.84.035212
+        Implemented following Sun, R., Chan, M. K. Y., Kang, S., 
+        and Ceder, G. (2011). doi:10.1103/PhysRevB.84.035212
 
         Args:
-            tsyn:
-                the synthesis temperature in K
-            teq:
-                the temperature of use in K
-            m_elec:
-                electron effective mass as a list of 3 values (3 eigenvalues for the tensor)
-            m_hole:
-                hole effective mass as a list of 3 values (3 eigenvalues for the tensor)
+            tsyn: the synthesis temperature in K
+            teq: the temperature of use in K
+            m_elec: electron effective mass as a 3 value list 
+                    (3 eigenvalues for the tensor)
+            m_hole: hole effective mass as a 3 value list 
+                    (3 eigenvalues for the tensor)
         Returns:
-            a dictionary with {'ef':eq fermi level,'Qi': the concentration of carriers
-            (positive for holes, negative for e-) in m^-3,'conc': the concentration of defects
-             as a list of dictionary
+            a dict with {
+                'ef':eq fermi level,
+                'Qi': the concentration of carriers
+                      (positive for holes, negative for e-) in m^-3,
+                'conc': the concentration of defects as a list of dict
+                }
         """
         from scipy.optimize import bisect
         eqsyn = self.get_eq_ef(tsyn, m_elec, m_hole)
         cd = {}
         for c in eqsyn['conc']:
             if c['name'] in cd:
-                cd[c['name']]=cd[c['name']]+c['conc']
+                cd[c['name']] += c['conc']
             else:
-                cd[c['name']]=c['conc']
-        ef = bisect(lambda e:self._get_non_eq_qtot(cd, e, teq, m_elec, m_hole), -1.0, self._band_gap+1.0)
-        return {'ef':ef, 'Qi':self._get_qi(ef, teq, m_elec, m_hole),'conc_syn': eqsyn['conc'],
-                'conc':self._get_non_eq_conc(cd,ef,teq)}
+                cd[c['name']] = c['conc']
+        ef = bisect(lambda e:self._get_non_eq_qtot(cd, e, teq, m_elec, m_hole),
+                -1.0, self._band_gap+1.0)
+        return {'ef':ef, 'Qi':self._get_qi(ef, teq, m_elec, m_hole),
+                'conc_syn': eqsyn['conc'],
+                'conc':self._get_non_eq_conc(cd, ef, teq)}
 
     def _get_non_eq_qd(self, cd, ef, t):
         sum_tot = 0.0
@@ -284,13 +313,14 @@ class DefectsAnalyzer(object):
             i = 0
             for d in self._defects:
                 if d._name == n:
-                    sum_d += math.exp(-self._get_form_energy(ef, i) / (kb * t))
-                    sum_q += d._charge * math.exp(-self._get_form_energy(ef, i) / (kb * t))
+                    sum_d += math.exp(-self._get_form_energy(ef, i)/(kb*t))
+                    sum_q += d._charge * math.exp(
+                            -self._get_form_energy(ef, i)/(kb*t))
                 i += 1
             sum_tot += cd[n] * sum_q / sum_d
         return sum_tot
 
-    def _get_non_eq_conc(self,cd,ef,t):
+    def _get_non_eq_conc(self, cd, ef, t):
         sum_tot = 0.0
         res=[]
         for n in cd:
@@ -304,9 +334,11 @@ class DefectsAnalyzer(object):
             for d in self._defects:
                 if d._name == n:
                     res.append({'name':d._name,'charge':d._charge,
-                                'conc':cd[n]*math.exp(-self._get_form_energy(ef,i)/(kb*t))/sum_tot})
+                                'conc':cd[n]*math.exp(-self._get_form_energy(
+                                    ef,i)/(kb*t))/sum_tot})
                 i += 1
         return res
 
-    def _get_non_eq_qtot(self,cd,ef,t, m_elec, m_hole):
-        return self._get_non_eq_qd(cd, ef, t)+self._get_qi(ef, t, m_elec, m_hole)
+    def _get_non_eq_qtot(self, cd, ef, t, m_elec, m_hole):
+        return self._get_non_eq_qd(cd, ef, t) + \
+               self._get_qi(ef, t, m_elec, m_hole)
