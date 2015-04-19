@@ -41,7 +41,6 @@ class DefectCorrectionFreysoldt(object):
         self._frac_coords=frac_coords   #in form [0,0,0]
         self._encut=encut #encut value in eV from Vasp
         
-        
     def prepare_files(self):
         if os.path.exists("LOCPOT_vdef") and os.path.exists("LOCPOT_vref"):
             print 'locpot already written, good!'
@@ -58,9 +57,15 @@ class DefectCorrectionFreysoldt(object):
         ax.set_title('Locpot planar averaged potentials')
         for axis in [0,1,2]:
             ax = fig.add_subplot(3, 1, axis+1)
-            ax.plot(self._locpot_bulk.get_axis_grid(axis),self._locpot_bulk.get_average_along_axis(axis),'r',label="Bulk potential")
-            ax.plot(self._locpot_defect.get_axis_grid(axis),self._locpot_defect.get_average_along_axis(axis),'b',label="Defect potential")
-            ax.plot([self._frac_coords[axis]*self._locpot_defect.structure.lattice._lengths[axis]],[0],'or',markersize=4.0,label="Defect site")
+            get_agrid = self._locpot_bulk.get_axis_grid
+            get_aavg = self._locpot_bulk.get_average_along_axis(axis)
+            latt_len = self._locpot_defect.structure.lattice._lengths[axis]
+            ax.plot(get_agrid(axis),get_aavg(axis),'r',
+                    label="Bulk potential")
+            ax.plot(get_agrid(axis), get_aavg(axis),'b',
+                    label="Defect potential")
+            ax.plot([self._frac_coords[axis]*latt_len], [0], 'or', 
+                    markersize=4.0, label="Defect site")
             ax.set_ylabel("axis "+str(axis+1))
             if axis==0:
                 ax.legend()
@@ -77,8 +82,11 @@ class DefectCorrectionFreysoldt(object):
             defect_axis=self._locpot_defect.get_axis_grid(axis)
             defect_pot=self._locpot_defect.get_average_along_axis(axis)
             pure_pot=self._locpot_bulk.get_average_along_axis(axis)
-            ax.plot(defect_axis,defect_pot-pure_pot,'b',label='Defect-Bulk difference')
-            ax.plot([self._frac_coords[axis]*self._locpot_defect.structure.lattice._lengths[axis]],[0],'or',markersize=4.0,label='Defect site')
+            latt_len = self._locpot_defect.structure.lattice._lengths[axis]
+            ax.plot(defect_axis,defect_pot-pure_pot,'b',
+                    label='Defect-Bulk difference')
+            ax.plot([self._frac_coords[axis] * latt_len], [0], 'or',
+                    markersize=4.0, label='Defect site')
             ax.set_ylabel("axis "+str(axis+1))
             if axis==0:
                 ax.legend()
@@ -97,178 +105,84 @@ class DefectCorrectionFreysoldt(object):
             pure_pot=self._locpot_bulk.get_average_along_axis(axis)
             ax.plot(defect_axis,pure_pot,'r',label="Bulk potential")
             ax.plot(defect_axis,defect_pot,'b',label="Defect potential")
-            ax.plot(defect_axis,defect_pot-pure_pot,'k',label='Defect-Bulk difference')
-            ax.plot([self._frac_coords[axis]*self._locpot_defect.structure.lattice._lengths[axis]],[0],'or',markersize=4.0,label='Defect site')
+            ax.plot(defect_axis,defect_pot-pure_pot,'k',
+                    label='Defect-Bulk difference')
+            ax.plot([self._frac_coords[axis] * \
+                    self._locpot_defect.structure.lattice._lengths[axis]],\
+                    [0],'or',markersize=4.0,label='Defect site')
             ax.set_ylabel("axis "+str(axis+1))
-            if axis==0:
+            if not axis:
                 ax.legend()
-        ax.set_xlabel("distance (Angstrom)")
-        pylab.show()
-
-    def GEOFFplot_hartree_pot(self):
-        """
-        I really don't understand why we can't use the more simplified version I have done above...seems like the multiple stuff is all unnecessary
-        """
-        import matplotlib.pyplot as plt
-        fig=plt.figure()
-        ax=fig.add_subplot(3,1,1)
-        ax.set_title('Locpot planar averaged potentials')
-        for axis in [0,1,2]:
-
-            multiple = int(round(max(self._locpot_defect.get_axis_grid(axis))/max(self._locpot_bulk.get_axis_grid(axis))))
-            supercell_axis = [self._locpot_bulk.get_axis_grid(axis)[j] 
-                              + i * self._locpot_bulk.structure.lattice.abc[axis]
-                            for i in range(0, multiple)
-                            for j in range(0, len(self._locpot_bulk.get_axis_grid(axis)))]
-            tmp_av=self._locpot_bulk.get_average_along_axis(axis)
-            supercell_pot = [tmp_av[j]
-                            for i in range(0, multiple)
-                            for j in range(0, len(tmp_av))]
-            print axis, min(self._locpot_bulk.get_axis_grid(axis)), max(self._locpot_bulk.get_axis_grid(axis))
-            print axis, min(supercell_axis), max(supercell_axis)
-            print axis, min(self._locpot_defect.get_axis_grid(axis)), max(self._locpot_defect.get_axis_grid(axis))
-
-            ax = fig.add_subplot(3, 1, axis+1)
-            ax.plot(supercell_axis,
-                       supercell_pot,'r',label="Bulk potential")
-            ax.plot(self._locpot_defect.get_axis_grid(axis),self._locpot_defect.get_average_along_axis(axis),'b',label="Defect potential")
-            ax.plot([self._frac_coords[axis]*self._locpot_defect.structure.lattice._lengths[axis]],[0],'or',markersize=4.0,label="Defect site")
-            ax.set_ylabel("axis "+str(axis+1))
-            if axis==0:
-                ax.legend()
-        ax.set_xlabel("distance (Angstrom)")
-        pylab.show()
-    
-    def GEOFFplot_hartree_pot_diff(self):
-        """
-        Again...multiple stuff seems unnecessarily complicated
-        """
-        import matplotlib.pyplot as plt
-        fig=plt.figure()
-        ax=fig.add_subplot(3,1,1)
-        ax.set_title('Locpot planar averaged potential difference')
-        for axis in [0,1,2]:
-            multiple = int(round(max(self._locpot_defect.get_axis_grid(axis))/max(self._locpot_bulk.get_axis_grid(axis))))
-            supercell_axis = [self._locpot_bulk.get_axis_grid(axis)[j] 
-                              + i * self._locpot_bulk.structure.lattice.abc[axis]
-                            for i in range(0, multiple)
-                            for j in range(0, len(self._locpot_bulk.get_axis_grid(axis)))]
-            tmp_av=self._locpot_bulk.get_average_along_axis(axis)
-            supercell_pot = [tmp_av[j]
-                            for i in range(0, multiple)
-                            for j in range(0, len(tmp_av))]
-            ax = fig.add_subplot(3, 1, axis+1)
-            defect_axis=self._locpot_defect.get_axis_grid(axis)
-            defect_pot=self._locpot_defect.get_average_along_axis(axis)
-            ax.plot(supercell_axis,[defect_pot[i]-supercell_pot[i] for i in range(0,len(defect_pot))],'b')
-            ax.plot([self._frac_coords[axis]*self._locpot_defect.structure.lattice._lengths[axis]],[0],'or',markersize=4.0)
-            ax.set_ylabel("axis "+str(axis+1))
         ax.set_xlabel("distance (Angstrom)")
         pylab.show()
     
     def NEEDSFIXINGtest_rho(self,axis=2,alignment_sr=0.0):
         """
-        This is supposed to be for testing if different values of rho produce different values for the freysoldt correction
-        NEEDS TO BE CLEANED UP AT SOME POINT...Are we looking for differences to plot or numerical differences?
+        This is supposed to be for testing if different values 
+        of rho produce different values for the freysoldt correction
+        NEEDS TO BE CLEANED UP AT SOME POINT...
+        Are we looking for differences to plot or numerical differences?
         """
         for expnorm in [0.0,0.25,0.5,0.75,1.0]:
-            command=['~/sxdefectalign']
-            #./sxdefectalign -C 1.6 --vasp --charge -2 --ecut 6 --vref LOCPOT_SnO --vdef LOCPOT_SnO_Vac_O_2
-            command.append("--vasp")
-            command.append("-a"+str(axis+1))
-            command.append("--relative")
-            command.append("--pos")
             relpos=(str(self._frac_coords)[1:])[:-1]
             relpos=relpos.replace(" ","")
-            command.append(relpos)
-            command.append("--expnorm")
-            command.append(str(expnorm))
-            command.append("--charge")
-            command.append(str(self._charge))
-            command.append("--ecut")
-            command.append("6")
-            command.append("--eps")
-            command.append(str(self._epsilon))
-            command.append("-C")
-            command.append(str(alignment_sr))
-            command.append("--vref")
-            command.append("tmp/LOCPOT_vref")
-            command.append("--vdef")
-            command.append("tmp/LOCPOT_vdef")
-            print command
+            command=['~/sxdefectalign', "--vasp", "-a"+str(axis+1), 
+                    "--relative", "--pos", relpos, "--expnorm", str(expnorm), 
+                    "--charge", str(self._charge), "--ecut", "6", 
+                    "--eps", str(self._epsilon), "-C", str(alignment_sr), 
+                    "--vref", "LOCPOT_vref", "--vdef", "LOCPOT_vdef"]
+
             p = subprocess.call(command, stdout=subprocess.PIPE, close_fds=True)
             output=p.communicate()
             print output
-            f_sr=open("vline-eV.dat",'r')
-            x=[]
-            y=[]
-            for r in f_sr.readlines():
-                tmp=r.split("\t")
-                if len(tmp)>2:
-                    x.append(float(tmp[0]))
-                    y.append(float(tmp[2].rstrip("\n")))
+
+            x,y = [],[]
+            with open("vline-eV.dat") as fp:
+                for r in f_sr.readlines():
+                    tmp=r.split("\t")
+                    if len(tmp)>2:
+                        x.append(float(tmp[0]))
+                        y.append(float(tmp[2].rstrip("\n")))
             
-            print x
-            print y
-            pylab.plot(x,y)
-            f_sr.close()
+                pylab.plot(x,y)
             os.remove("vline-eV.dat")
         pylab.figure()
         pylab.show()
     
-    def NEEDSFIXINGcompute_correction_rho(self,axis=2,alignment_sr=0.0,plot=False,expnorm=0.25):
+    def NEEDSFIXINGcompute_correction_rho(self, axis=2, alignment_sr=0.0,
+            plot=False, expnorm=0.25):
         """
-        Supposed to be for calculating correction with rho...should fix once I have regular calculation down...what is goal form this?
+        Supposed to be for calculating correction with rho...
+        should fix once I have regular calculation down...
+        what is goal form this?
         """
-        command=['~/sxdefectalign']
-        #./sxdefectalign -C 1.6 --vasp --charge -2 --ecut 6 --vref LOCPOT_SnO --vdef LOCPOT_SnO_Vac_O_2
-        command.append("--vasp")
-        command.append("-a"+str(axis+1))
-        command.append("--relative")
-        command.append("--pos")
-        command.append(str(self._frac_coords))
-        #command.append("[0,0,0]")
-        command.append("--expnorm")
-        command.append("0.5")
-        command.append("--charge")
-        command.append(str(self._charge))
-        command.append("--ecut")
-        command.append("20")
-        command.append("--eps")
-        command.append(str(self._epsilon))
-        command.append("-C")
-        command.append(str(alignment_sr))
-        command.append("--vref")
-        command.append("/home/geoffroy/tmp/LOCPOT_vref")
-        command.append("--vdef")
-        command.append("/home/geoffroy/tmp/LOCPOT_vdef")
-        print command
+        command=['~/sxdefectalign', "--vasp", "-a"+str(axis+1), "--relative",
+                "--pos", str(self._frac_coords), "--expnorm", "0.5", 
+                "--charge", str(self._charge), "--ecut", "20", "--eps", 
+                str(self._epsilon), "-C", str(alignment_sr), "--vref", 
+                "LOCPOT_vref", "--vdef", "LOCPOT_vdef"]
+
         p = subprocess.Popen(command, stdout=subprocess.PIPE, close_fds=True)
-        output=p.communicate()
-        f_sr=open("vline-eV.dat",'r')
-        x_lr=[]
-        y_lr=[]
-        x=[]
-        y=[]
-        if plot==True:
-            for r in f_sr.readlines():
-                tmp=r.split("\t")
-                if(len(tmp)<3 and not r.startswith("&")):
-                   x_lr.append(float(tmp[0]))
-                   y_lr.append(float(tmp[1])) 
-                if len(tmp)>2:
-                    x.append(float(tmp[0]))
-                    y.append(float(tmp[2].rstrip("\n")))
+        output = p.communicate()
+        if plot:
+            x_lr, y_lr = [], []
+            x, y = [], []
+            with open("vline-eV.dat",'r') as f_sr:
+                for r in f_sr.readlines():
+                    tmp=r.split("\t")
+                    if(len(tmp)<3 and not r.startswith("&")):
+                       x_lr.append(float(tmp[0]))
+                       y_lr.append(float(tmp[1])) 
+                    if len(tmp)>2:
+                        x.append(float(tmp[0]))
+                        y.append(float(tmp[2].rstrip("\n")))
             pylab.figure()
             pylab.plot(x,y)
-            #print [min(x),max(y)]
-            #print [y[int(math.floor(len(y)/2))],y[int(math.floor(len(y)/2))]]
-            #pylab.plot([min(x),max(y)],[y[int(math.floor(len(y)/2))],y[int(math.floor(len(y)/2))]],'k-')
-            #print self._frac_coords[axis]*self._locpot_defect.structure.lattice._lengths[axis]*1.889725989
-            pylab.plot([self._frac_coords[axis]*self._locpot_defect.structure.lattice._lengths[axis]*1.889725989],[0],'or',markersize=4.0)
-            #pylab.plot(x_lr,y_lr)
+            pylab.plot([self._frac_coords[axis] * \
+                    self._locpot_defect.structure.lattice._lengths[axis] * \
+                    1.889725989],[0],'or',markersize=4.0)
             pylab.show()
-            pylab.show()
+
         print output[0]
         print output[0].split("\n")[12].split()[3]
         return float(output[0].split("\n")[12].split()[3])
@@ -479,145 +393,17 @@ class DefectCorrectionFreysoldt(object):
 
         return vals[0]
 
-    def GEOFFplot_pot_diff(self, align=0.0):
-        import matplotlib.pyplot as plt
 
-        fig=plt.figure()
-        #./sxdefectalign -C 1.6 --vasp --charge -2 --ecut 6 --vref LOCPOT_SnO --vdef LOCPOT_SnO_Vac_O_2
-        for axis in [0,1,2]:
-            print axis
-            command=['/home/geoffroy/research/TCO/defects/sxdefectalign']
-            command.append("--vasp")
-            command.append("-a"+str(axis+1))
-            command.append("--relative")
-            command.append("--pos")
-            command.append(str(self._frac_coords))
-            #command.append("[0.0,0.026,0.14]")
-            command.append("--expnorm")
-            command.append("0.0")
-            command.append("--gamma")
-            command.append("5.0")
-            command.append("--average")
-            command.append("4.0")
-            command.append("--charge")
-            command.append(str(-self._charge))
-            command.append("--ecut")
-            command.append("20")
-            command.append("--eps")
-            command.append(str(self._epsilon))
-            command.append("-C")
-            command.append(str(align))
-            command.append("--vref")
-            command.append("/home/geoffroy/tmp/LOCPOT_vref")
-            command.append("--vdef")
-            command.append("/home/geoffroy/tmp/LOCPOT_vdef")
-            print command
-            p = subprocess.Popen(command, stdout=subprocess.PIPE, close_fds=True)
-            output=p.communicate()
-            f_sr=open("vline-eV.dat",'r')
-            x_lr=[]
-            y_lr=[]
-            x=[]
-            y=[]
-            x_diff=[]
-            y_diff=[]
+if __name__ == '__main__':
 
-            for r in f_sr.readlines():
-                #print r
-                tmp=r.split("\t")
-                if(len(tmp)<3 and not r.startswith("&")):
-                   x_lr.append(float(tmp[0])/1.889725989)
-                   y_lr.append(float(tmp[1]))
-                if len(tmp)>2:
-                    x.append(float(tmp[0])/1.889725989)
-                    x_diff.append(float(tmp[0])/1.889725989)
-                    y.append(float(tmp[2].rstrip("\n")))
-                    y_diff.append(float(tmp[1]))
-            f_sr.close()
-            if os.path.exists("vline-eV.dat"):
-                os.remove("vline-eV.dat")
-            #pylab.figure()
-            #pylab.plot(x,y)
-            ax = fig.add_subplot(3, 1, axis + 1)
-            #align in blue!
-            pylab.hold(True)
-            ax.plot(x,y)
-            ax.plot(x_diff,y_diff,'r')
-            ax.plot(x_lr,y_lr,'g')
-            ax.legend(['V_defect-V_ref-V_lr','V_defect-V_ref','V_lr'])
-            #print [min(x),max(y)]
-            #print [y[int(math.floor(len(y)/2))],y[int(math.floor(len(y)/2))]]
-            #pylab.plot([min(x),max(y)],[y[int(math.floor(len(y)/2))],y[int(math.floor(len(y)/2))]],'k-')
-            #print self._frac_coords[axis]*self._locpot_defect.structure.lattice._lengths[axis]*1.889725989
-            ax.plot([self._frac_coords[axis]*self._locpot_defect.structure.lattice._lengths[axis]],[0],'or',markersize=4.0)
-            if self._frac_coords[axis]>=0.5:
-                ax.plot([(self._frac_coords[axis]-0.5)*self._locpot_defect.structure.lattice._lengths[axis]],[0],'og',markersize=4.0)
-            else:
-                ax.plot([(self._frac_coords[axis]+0.5)*self._locpot_defect.structure.lattice._lengths[axis]],[0],'og',markersize=4.0)
-            #pylab.plot(x_lr,y_lr)
-        return plt
+    #fortesting
+    #from pymatgen.io.vaspio.vasp_output import Locpot
+    #print 'load locpots'
+    #sdef=Locpot.from_file("LOCPOT")
+    #spure=Locpot.from_file("../pure/LOCPOT")
+    #s1=DefectCorrectionFreysoldt(spure,sdef,1,47.852, #this is for Se_sn+1
+    #        [0.0833330000000032,0.0307343554185392,0.3830636916206969],520)   
+    #s1.run_correction()
 
-    def GEOFFcompute_correction(self,axis=2,alignment_sr=0.0,plot=False, beta=None):
-        command=['/home/geoffroy/research/TCO/defects/sxdefectalign']
-        #./sxdefectalign -C 1.6 --vasp --charge -2 --ecut 6 --vref LOCPOT_SnO --vdef LOCPOT_SnO_Vac_O_2
-        command.append("--vasp")
-        command.append("-a"+str(axis+1))
-        command.append("--relative")
-        command.append("--pos")
-        command.append(str(self._frac_coords))
-        #command.append("[0,0,0]")
-        command.append("--expnorm")
-        command.append("0.0")
-        command.append("--gamma")
-        command.append("10.0")
-        command.append("--average")
-        command.append("4.0")
-        command.append("--charge")
-        command.append(str(-self._charge))
-        command.append("--ecut")
-        command.append("20")
-        command.append("--eps")
-        command.append(str(self._epsilon))
-        command.append("-C")
-        command.append(str(alignment_sr))
-        command.append("--vref")
-        command.append("/home/geoffroy/tmp/LOCPOT_vref")
-        command.append("--vdef")
-        command.append("/home/geoffroy/tmp/LOCPOT_vdef")
-        print command
-        p = subprocess.Popen(command, stdout=subprocess.PIPE, close_fds=True)
-        output=p.communicate()
-        f_sr=open("vline-eV.dat",'r')
-        x_lr=[]
-        y_lr=[]
-        x=[]
-        y=[]
-        x_diff=[]
-        y_diff=[]
-        #if plot==True:
-        for r in f_sr.readlines():
-            #print r
-            tmp=r.split("\t")
-            if(len(tmp)<3 and not r.startswith("&")):
-               x_lr.append(float(tmp[0]))
-               y_lr.append(float(tmp[1]))
-            if len(tmp)>2:
-                x.append(float(tmp[0]))
-                x_diff.append(tmp[0])
-                y.append(float(tmp[2].rstrip("\n")))
-                y_diff.append(float(tmp[1]))
-        return (float(output[0].split("\n")[13].split()[3]),[x_lr,y_lr],[x_diff,y_diff],[x,y])
-
-
-
-##fortesting
-#from pymatgen.io.vaspio.vasp_output import Locpot
-#print 'load locpots'
-#sdef=Locpot.from_file("LOCPOT")
-#spure=Locpot.from_file("../pure/LOCPOT")
-#print 'good, now run code'
-#s1=DefectCorrectionFreysoldt(spure,sdef,1,47.852,[0.0833330000000032,0.0307343554185392,0.3830636916206969],520)   #this is for Se_sn+1
-#s1.run_correction()
-
-#test=s1.plot_pot_diff(align=[0.0,0.0,0.0],print_pot_flag='none')
-#print 'output of plotting code is:'+str(test)
+    #test=s1.plot_pot_diff(align=[0.0,0.0,0.0],print_pot_flag='none')
+    #print 'output of plotting code is:'+str(test)
