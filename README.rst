@@ -4,9 +4,9 @@ pycdcd
 
 Corrections to DFT calculation for point defects in solids
 
-Installation
+Requirements
 ------------
-pycdcd requires pymatgen package.
+pycdcd requires pymatgen and sxdefectalign packages.
 
 Source Code
 ------------
