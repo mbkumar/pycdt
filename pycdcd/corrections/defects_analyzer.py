@@ -1,26 +1,68 @@
 #!/usr/bin/env python
 
 
-__author__ = "Geoffroy Hautier"
+__author__ = "Geoffroy Hautier, Bharat Medasani"
 __copyright__ = "Copyright 2014, The Materials Project"
 __version__ = "1.0"
-__maintainer__ = "Geoffroy Hautier"
-__email__ = "geoffroy@uclouvain.be"
+__maintainer__ = "Geoffroy Hautier, Bharat Medasani"
+__email__ = "geoffroy@uclouvain.be, mbkumar@gmail.com"
 __status__ = "Development"
 __date__ = "November 4, 2012"
 
 import math
 
-from pymatgen.symmetry.analyzer import SpagegroupAnalyzer
 from pymatgen.core.periodic_table import Element
-from pymatgen.entries.computed_entries import ComputedStructureEntry
-from pymatgen.util.io_utils import clean_json
-from pycdcd.core.defect import Defect
+from pymatgen.core.structure import PeriodicSite
+from pymatgen.entries.computed_entries import ComputedEntry, \
+        ComputedStructureEntry
+from pymatgen.symmetry.analyzer import SpagegroupAnalyzer
 
 #some constants
 kb = 8.6173324e-5
 hbar = 6.58211928e-16
 conv = (math.sqrt((9.1*1e-31)**3)*math.sqrt((1.6*1e-19)**3))/((1.05*1e-34)**3)
+
+class Defect(object):
+
+    """
+    Holds all the info concerning a defect computation: 
+    composition+structure, energy, correction on energy and name
+    """
+    def __init__(self, entry_defect, site_in_bulk, charge=0.0,
+                 charge_correction=0.0, name=None):
+        """
+        Args:
+            entry_defect: an Entry object corresponding to the defect
+            charge: the charge of the defect
+            charge_correction: some correction to the energy due to charge
+            name: the name of the defect
+        """
+
+        self._entry = entry_defect
+        self._site = site_in_bulk
+        self._charge = charge
+        self._charge_correction = charge_correction
+        self._name = name
+        self._full_name = self._name + "_" + str(charge)
+
+    def as_dict(self):
+        return {'entry': self._entry.as_dict(),
+                'site': self._site.as_dict(),
+                'charge': self._charge,
+                'charge_correction': self._charge_correction,
+                'name': self._name,
+                'full_name': self._full_name,
+                '@module': self.__class__.__module__,
+                '@class': self.__class__.__name__}
+
+    @staticmethod
+    def from_dict(cls, d):
+        return Defect(ComputedEntry.from_dict(d['entry']), 
+                      PeriodicSite.from_dict(d['site']),
+                      charge=d.get('charge',0.0),
+                      charge_correction=d.get('charge_correction',0.0),
+                      name=d.get('name',None))
+
 
 class DefectsAnalyzer(object):
     """
@@ -233,7 +275,6 @@ class DefectsAnalyzer(object):
         hole_count = intgrl.quad(hole_den_fn, -5, 0.0)[0]
 
         return el_cnt + hl_cnt
-
 
     def _get_qtot(self, ef, t, m_elec, m_hole):
         return self._get_qd(ef, t) + self._get_qi(ef, t, m_elec, m_hole)
