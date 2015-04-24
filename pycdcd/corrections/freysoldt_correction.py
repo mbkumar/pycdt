@@ -40,6 +40,9 @@ class DefectCorrectionFreysoldt(object):
         
         
     def prepare_files(self):
+        if self._charge==0:
+            print 'defect has charge 0! dont need freysoldt'
+            return
         if not os.path.exists("tmp"):
             os.makedirs("tmp")
         if (os.path.exists("tmp/LOCPOT_vdef")==True and os.path.exists("tmp/LOCPOT_vref")==True):
@@ -168,7 +171,7 @@ class DefectCorrectionFreysoldt(object):
     def NEEDSFIXINGtest_rho(self,axis=2,alignment_sr=0.0):
         """
         This is supposed to be for testing if different values of rho produce different values for the freysoldt correction
-        NEEDS TO BE CLEANED UP AT SOME POINT...Are we looking for differences to plot or numerical differences?
+        COULDBE CLEANED UP AT SOME POINT...Are we looking for differences to plot or numerical differences in energy corrections?
         """
         for expnorm in [0.0,0.25,0.5,0.75,1.0]:
             command=['~/sxdefectalign']
@@ -217,7 +220,7 @@ class DefectCorrectionFreysoldt(object):
     
     def NEEDSFIXINGcompute_correction_rho(self,axis=2,alignment_sr=0.0,plot=False,expnorm=0.25):
         """
-        Supposed to be for calculating correction with rho...should fix once I have regular calculation down...what is goal form this?
+        Needs to be fixed like the 'plot_pot_diff' attribute, but not sure what is added from this? information about expnorm and rho...
         """
         command=['~/sxdefectalign']
         #./sxdefectalign -C 1.6 --vasp --charge -2 --ecut 6 --vref LOCPOT_SnO --vdef LOCPOT_SnO_Vac_O_2
@@ -281,10 +284,13 @@ class DefectCorrectionFreysoldt(object):
             or if print flag=plotfull then show the full matplotlib plot for all three axes at end of calculation
         encut is eV cutoff from VASP
 
-        Would like final workflow to include the flag that I have put here for when planar average varies by more than 0.2 eV around far region
+        The planar alignment is obtained by looking at the average in  window of +/- 1 Angstrom around the furthest point from a defet (which is neccessary in ionic relaxation planar averages)
+        Would like final workflow to include the flag that I have put here for when planar average varies by more than 0.2 eV around far region as possible flag for defect delocalization
         """
-        result=[]   #correction from output (should include alignment once alignment has been done)
-        platy=[]    #alignment term
+        if self._charge==0:
+            return [[0,0,0],[0,0,0]]
+        result=[]   #correction from output (will include alignment correction once alignment has been done)
+        platy=[]    #alignment terms
         if print_pot_flag=='plotfull':  #if want to plot right here, then build dictionary for storing planar average values of each axis
             plotvals={}
             plotvals['0']={}
@@ -303,7 +309,7 @@ class DefectCorrectionFreysoldt(object):
             command.append("--charge")
             command.append(str(-self._charge))
             command.append("--ecut")
-            command.append(str(self._encut/13.6057))  #converts eV to Ry for sxdefect align
+            command.append(str(self._encut/13.6057))  #converts eV to Ry for sxdefectalign
             command.append("--eps")
             command.append(str(self._epsilon))
             command.append("-C")
@@ -314,7 +320,7 @@ class DefectCorrectionFreysoldt(object):
             command.append("tmp/LOCPOT_vdef")
             print command
 
-            #for some reason subprocess command is having issues on NERSC...doing quick wrap around
+            #for some reason subprocess command is having issues on NERSC/hopper due to python upgrades
             #p = subprocess.Popen(command, stdout=subprocess.PIPE, close_fds=True)
             #output=p.communicate()
             #print 'output from sxdefectalign = '+str(output)
@@ -322,7 +328,7 @@ class DefectCorrectionFreysoldt(object):
             #print "chg correction is "+str(result[-1])
 
             #this is rediculous wraparound to deal with subprocess not working...
-            print 'running janky wrap around to subprocess command'
+            print 'running wrap around to subprocess command due to NERSC python issues'
             cmd=''
             for i in range(len(command)):
                 cmd+=command[i]+' '
@@ -371,8 +377,6 @@ class DefectCorrectionFreysoldt(object):
                  platx=float(self._frac_coords[axis]-0.5)*float(self._locpot_defect.structure.lattice._lengths[axis])
             else:
                  platx=float(self._frac_coords[axis]+0.5)*float(self._locpot_defect.structure.lattice._lengths[axis])
-
-
             print "half way between defects is: "+str(platx)
             if platx<1:
                 xmin=float(self._locpot_defect.structure.lattice._lengths[axis])-(1-platx)
@@ -462,7 +466,7 @@ class DefectCorrectionFreysoldt(object):
         This runs all neccessary parts to get freysoldt correction out with planar averaged potential
         """
         self.prepare_files()
-        s=self.plot_pot_diff(align=[0.0,0.0,0.0],print_pot_flag='none')
+        s=self.plot_pot_diff(align=[0.0,0.0,0.0],print_pot_flag='none') #first run sxdefect align on each axis to get alignment corrections for next step
         print '--'
         print 'alignments determined to be: '+str(s[1])
         print 'get final correction terms'
@@ -478,6 +482,9 @@ class DefectCorrectionFreysoldt(object):
         return vals[0]
 
     def GEOFFplot_pot_diff(self, align=0.0):
+        """
+        I don't think I need to keep this
+        """
         import matplotlib.pyplot as plt
 
         fig=plt.figure()
@@ -556,6 +563,9 @@ class DefectCorrectionFreysoldt(object):
         return plt
 
     def GEOFFcompute_correction(self,axis=2,alignment_sr=0.0,plot=False, beta=None):
+        """
+        I don't think I need to keep this
+        """
         command=['/home/geoffroy/research/TCO/defects/sxdefectalign']
         #./sxdefectalign -C 1.6 --vasp --charge -2 --ecut 6 --vref LOCPOT_SnO --vdef LOCPOT_SnO_Vac_O_2
         command.append("--vasp")
@@ -608,7 +618,7 @@ class DefectCorrectionFreysoldt(object):
 
 
 
-##fortesting
+##below is example code to run for getting correction term out of Se_sn+1 defect
 #from pymatgen.io.vaspio.vasp_output import Locpot
 #print 'load locpots'
 #sdef=Locpot.from_file("LOCPOT")
@@ -616,6 +626,3 @@ class DefectCorrectionFreysoldt(object):
 #print 'good, now run code'
 #s1=DefectCorrectionFreysoldt(spure,sdef,1,47.852,[0.0833330000000032,0.0307343554185392,0.3830636916206969],520)   #this is for Se_sn+1
 #s1.run_correction()
-
-#test=s1.plot_pot_diff(align=[0.0,0.0,0.0],print_pot_flag='none')
-#print 'output of plotting code is:'+str(test)
