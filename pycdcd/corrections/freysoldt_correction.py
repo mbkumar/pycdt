@@ -45,16 +45,10 @@ class DefectCorrectionFreysoldt(object):
         if  self._charge==0:
             print 'defect has charge 0, so freysoldt correction is 0'
             return
-        if os.path.exists("LOCPOT_vdef") and os.path.exists("LOCPOT_vref"):
-            #FLAG from Danny for Bharat: I originally had this to speed up calculation
-            # since copying LOCPOT takes a while, but it seems like using monty.tempfile
-            #means this won't stay locally...so should we delete this? Or keep these files locally?
-            print 'locpot already written, good!'
-        else:
-            print 'Need to prep Locpots'
-            self._locpot_bulk.write_file("LOCPOT_vref",True)
-            self._locpot_defect.write_file("LOCPOT_vdef",True)
-            print 'locpots prepared for sxdefectalign'
+        print 'Need to prep Locpots'
+        self._locpot_bulk.write_file("LOCPOT_vref",True)
+        self._locpot_defect.write_file("LOCPOT_vdef",True)
+        print 'locpots prepared for sxdefectalign'
 
     def plot_hartree_pot(self):
         import matplotlib.pyplot as plt
@@ -225,7 +219,7 @@ class DefectCorrectionFreysoldt(object):
                  platx = (self._frac_coords[axis]+0.5) * latt_len
             print "half way between defects is: ", platx
 
-            xmin = latt_len - abs(1-platx) if platx < 1 else platx-1
+            xmin = latt_len - (1-platx) if platx < 1 else platx-1
             xmax = 1-(latt_len-platx) if platx > latt_len-1 else 1+platx
             print 'means sampling region is (', xmin, ',', xmax, ')'
 
@@ -259,15 +253,13 @@ class DefectCorrectionFreysoldt(object):
                       'oscillations or atomic relaxation'
 
             if print_pot_flag == 'written':
-                #FLAG from Danny for Bharat: will these files be deleted since
-                # we are using the monty.tempfile class? do something with os.path.join to keep them?
-                with open("xylong"+str(axis)+".dat",'w') as f:
+                with open(os.path.join('..',"xylong"+str(axis)+".dat"),'w') as f:
                     for i in range(len(x_lr)):
                         f.write(str(x_lr[i])+" "+str(y_lr[i])+"\n")
-                with open("xy"+str(axis)+".dat",'w') as f:
+                with open(os.path.join('..',"xy"+str(axis)+".dat"),'w') as f:
                     for i in range(len(x)):
                         f.write(str(x[i])+" "+str(y[i])+"\n")
-                with open("xy"+str(axis)+"diff.dat",'w') as f:
+                with open(os.path.join('..',"xy"+str(axis)+"diff.dat"),'w') as f:
                     for i in range(len(x_diff)):
                         f.write(str(x_diff[i])+" "+str(y_diff[i])+"\n")
 
