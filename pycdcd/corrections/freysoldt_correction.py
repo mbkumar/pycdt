@@ -11,7 +11,7 @@ __version__ = "1.1"
 __maintainer__ = "Geoffroy Hautier/Danny Broberg"
 __email__ = "geoffroy@uclouvain.be, dbroberg@berkeley.edu"
 __status__ = "Development"
-__date__ = "April 10, 2015"
+__date__ = "April 24, 2015"
 
 import subprocess
 import os
@@ -22,9 +22,9 @@ from monty.tempfile import ScratchDir
 class DefectCorrectionFreysoldt(object):
 
     """
-    This class apply the Freysoldt correction to remove electrostatic defect 
-    interaction and apply electostatic alignemnt. 
-    Ideally this wrapper around sxdefectalign should be replaced by a python 
+    This class applies the Freysoldt correction to remove electrostatic defect
+    interaction contribution to energy and apply potential alignment.
+    Ideally this sxdefectalign wrapper class should be replaced by a python
     code implementing a generalized anisotropic Freysoldt correction
     """
     
@@ -36,13 +36,19 @@ class DefectCorrectionFreysoldt(object):
         """
         self._locpot_bulk=locpot_bulk
         self._locpot_defect=locpot_defect
-        self._charge=charge
-        self._epsilon=epsilon
+        self._charge=charge #relative to neutral defect (not relative to bulk)
+        self._epsilon=epsilon #this should include ionic relaxation effects
         self._frac_coords=frac_coords   #in form [0,0,0]
         self._encut=encut #encut value in eV from Vasp
         
     def prepare_files(self):
+        if  self._charge==0:
+            print 'defect has charge 0, so freysoldt correction is 0'
+            return
         if os.path.exists("LOCPOT_vdef") and os.path.exists("LOCPOT_vref"):
+            #FLAG from Danny for Bharat: I originally had this to speed up calculation
+            # since copying LOCPOT takes a while, but it seems like using monty.tempfile
+            #means this won't stay locally...so should we delete this? Or keep these files locally?
             print 'locpot already written, good!'
         else:
             print 'Need to prep Locpots'
@@ -55,10 +61,10 @@ class DefectCorrectionFreysoldt(object):
         fig=plt.figure()
         ax=fig.add_subplot(3,1,1)
         ax.set_title('Locpot planar averaged potentials')
+        get_agrid = self._locpot_bulk.get_axis_grid
+        get_aavg = self._locpot_bulk.get_average_along_axis
         for axis in [0,1,2]:
             ax = fig.add_subplot(3, 1, axis+1)
-            get_agrid = self._locpot_bulk.get_axis_grid
-            get_aavg = self._locpot_bulk.get_average_along_axis(axis)
             latt_len = self._locpot_defect.structure.lattice._lengths[axis]
             ax.plot(get_agrid(axis),get_aavg(axis),'r',
                     label="Bulk potential")
@@ -70,7 +76,8 @@ class DefectCorrectionFreysoldt(object):
             if axis==0:
                 ax.legend()
         ax.set_xlabel("distance (Angstrom)")
-        pylab.show()
+        #plt.savefig('locpotavgplot.png')
+        plt.show()
 
     def plot_hartree_pot_diff(self):
         import matplotlib.pyplot as plt
@@ -91,13 +98,14 @@ class DefectCorrectionFreysoldt(object):
             if axis==0:
                 ax.legend()
         ax.set_xlabel("distance (Angstrom)")
-        pylab.show()
+        #plt.savefig('locpotdiffplot.png')
+        plt.show()
 
     def plot_all_hartree_pot(self):
         import matplotlib.pyplot as plt
         fig=plt.figure()
         ax=fig.add_subplot(3,1,1)
-        ax.set_title('Locpot planar averaged potentials')
+        ax.set_title('Locpot planar averaged potentials and difference')
         for axis in [0,1,2]:
             ax = fig.add_subplot(3, 1, axis+1)
             defect_axis=self._locpot_defect.get_axis_grid(axis)
@@ -111,81 +119,11 @@ class DefectCorrectionFreysoldt(object):
                     self._locpot_defect.structure.lattice._lengths[axis]],\
                     [0],'or',markersize=4.0,label='Defect site')
             ax.set_ylabel("axis "+str(axis+1))
-            if not axis:
+            if axis==0:
                 ax.legend()
         ax.set_xlabel("distance (Angstrom)")
-        pylab.show()
-    
-    def NEEDSFIXINGtest_rho(self,axis=2,alignment_sr=0.0):
-        """
-        This is supposed to be for testing if different values 
-        of rho produce different values for the freysoldt correction
-        NEEDS TO BE CLEANED UP AT SOME POINT...
-        Are we looking for differences to plot or numerical differences?
-        """
-        for expnorm in [0.0,0.25,0.5,0.75,1.0]:
-            relpos=(str(self._frac_coords)[1:])[:-1]
-            relpos=relpos.replace(" ","")
-            command=['~/sxdefectalign', "--vasp", "-a"+str(axis+1), 
-                    "--relative", "--pos", relpos, "--expnorm", str(expnorm), 
-                    "--charge", str(self._charge), "--ecut", "6", 
-                    "--eps", str(self._epsilon), "-C", str(alignment_sr), 
-                    "--vref", "LOCPOT_vref", "--vdef", "LOCPOT_vdef"]
-
-            p = subprocess.call(command, stdout=subprocess.PIPE, close_fds=True)
-            output=p.communicate()
-            print output
-
-            x,y = [],[]
-            with open("vline-eV.dat") as fp:
-                for r in f_sr.readlines():
-                    tmp=r.split("\t")
-                    if len(tmp)>2:
-                        x.append(float(tmp[0]))
-                        y.append(float(tmp[2].rstrip("\n")))
-            
-                pylab.plot(x,y)
-            os.remove("vline-eV.dat")
-        pylab.figure()
-        pylab.show()
-    
-    def NEEDSFIXINGcompute_correction_rho(self, axis=2, alignment_sr=0.0,
-            plot=False, expnorm=0.25):
-        """
-        Supposed to be for calculating correction with rho...
-        should fix once I have regular calculation down...
-        what is goal form this?
-        """
-        command=['~/sxdefectalign', "--vasp", "-a"+str(axis+1), "--relative",
-                "--pos", str(self._frac_coords), "--expnorm", "0.5", 
-                "--charge", str(self._charge), "--ecut", "20", "--eps", 
-                str(self._epsilon), "-C", str(alignment_sr), "--vref", 
-                "LOCPOT_vref", "--vdef", "LOCPOT_vdef"]
-
-        p = subprocess.Popen(command, stdout=subprocess.PIPE, close_fds=True)
-        output = p.communicate()
-        if plot:
-            x_lr, y_lr = [], []
-            x, y = [], []
-            with open("vline-eV.dat",'r') as f_sr:
-                for r in f_sr.readlines():
-                    tmp=r.split("\t")
-                    if(len(tmp)<3 and not r.startswith("&")):
-                       x_lr.append(float(tmp[0]))
-                       y_lr.append(float(tmp[1])) 
-                    if len(tmp)>2:
-                        x.append(float(tmp[0]))
-                        y.append(float(tmp[2].rstrip("\n")))
-            pylab.figure()
-            pylab.plot(x,y)
-            pylab.plot([self._frac_coords[axis] * \
-                    self._locpot_defect.structure.lattice._lengths[axis] * \
-                    1.889725989],[0],'or',markersize=4.0)
-            pylab.show()
-
-        print output[0]
-        print output[0].split("\n")[12].split()[3]
-        return float(output[0].split("\n")[12].split()[3])
+        #plt.savefig('locpotavgdiffplot.png')
+        plt.show()
 
     def plot_pot_diff(self, align=[0.0,0.0,0.0], print_pot_flag='written'):
         """
@@ -204,10 +142,12 @@ class DefectCorrectionFreysoldt(object):
         Would like final workflow to include the flag that I have put here 
         for when planar average varies by more than 0.2 eV around far region
         """
+        if self._charge==0: #don't need charge correction if charge is zero
+            return [[0,0,0],[0,0,0]]
         #correction from output (should include alignment once alignment 
         # has been done)
         result = []   
-        platy = []    #alignment term
+        platy = []    #alignment terms for each axis
         # if want to plot right here, then build dictionary for storing 
         # planar average values of each axis
         if print_pot_flag == 'plotfull':  
@@ -226,9 +166,8 @@ class DefectCorrectionFreysoldt(object):
                     '--vdef', 'LOCPOT_vdef']
             print command
 
-            #Note to Danny: I moved back to standard way of running commands.
-            #in case it is still not working on NERSC, we can revert back to
-            #Geoffroy's hack below
+            #standard way of running NERSC commands.
+            #in case NERSC (Hopper) has issues with python subprocess can use hack
             p = subprocess.Popen(command, stdout=subprocess.PIPE, 
                     stdin=subprocess.PIPE, stderr=subprocess.PIPE)
             output, err = p.communicate()
@@ -238,10 +177,8 @@ class DefectCorrectionFreysoldt(object):
             result.append(float(out[0].split("\n")[12].split()[3]))
             print "chg correction is "+str(result[-1])
 
-            #for some reason subprocess command is having issues on NERSC
-            #...doing quick wrap around
-            #this is rediculous wraparound to deal with subprocess not working.
-            #print 'running janky wrap around to subprocess command'
+            ##this is hack wrap-around for when subprocess doesn't work
+            ##(which is always an issue on hopper now...)
             #cmd=''
             #for i in range(len(command)):
             #    cmd+=command[i]+' '
@@ -288,7 +225,7 @@ class DefectCorrectionFreysoldt(object):
                  platx = (self._frac_coords[axis]+0.5) * latt_len
             print "half way between defects is: ", platx
 
-            xmin = latt_len - abs(1-platx)
+            xmin = latt_len - abs(1-platx) if platx < 1 else platx-1
             xmax = 1-(latt_len-platx) if platx > latt_len-1 else 1+platx
             print 'means sampling region is (', xmin, ',', xmax, ')'
 
@@ -296,7 +233,7 @@ class DefectCorrectionFreysoldt(object):
             if xmax < xmin:
                 print 'wrap around detected, special alignment needed'
                 for i in range(len(x)):
-                    if x[i]<xmax or x[i]>xmin:  # is this correct?
+                    if x[i]<xmax or x[i]>xmin:
                         tmpalign.append(y[i])
                     else:
                         continue
@@ -310,7 +247,7 @@ class DefectCorrectionFreysoldt(object):
             print 'alignment is ', -np.mean(tmpalign)
             platy.append(-np.mean(tmpalign))
             flag = 0
-            for i in tmpalign:
+            for i in tmpalign:  #check to see if alignment region varies too much
                 if np.abs(i-platy[-1])>0.2:
                     flag = 1
                 else:
@@ -319,9 +256,11 @@ class DefectCorrectionFreysoldt(object):
                 print 'Warning: potential aligned region varied by more ' + \
                       'than 0.2eV (in range of halfway between defects ' + \
                       '+/-1 \Angstrom). Might have issues with Freidel ' + \
-                      'oscilattions or atomic relaxation'
+                      'oscillations or atomic relaxation'
 
-            if print_pot_flag == 'written': #is correct folder is used?
+            if print_pot_flag == 'written':
+                #FLAG from Danny for Bharat: will these files be deleted since
+                # we are using the monty.tempfile class? do something with os.path.join to keep them?
                 with open("xylong"+str(axis)+".dat",'w') as f:
                     for i in range(len(x_lr)):
                         f.write(str(x_lr[i])+" "+str(y_lr[i])+"\n")
@@ -332,22 +271,22 @@ class DefectCorrectionFreysoldt(object):
                     for i in range(len(x_diff)):
                         f.write(str(x_diff[i])+" "+str(y_diff[i])+"\n")
 
-            elif print_pot_flag == 'plotfull': #store data for end of all calcs
+            elif print_pot_flag == 'plotfull': #store data for plotting at end of all calcs
                 plotvals[str(axis)]['xylong'] = [x_lr,y_lr]
                 plotvals[str(axis)]['xy'] = [x,y]
                 plotvals[str(axis)]['xydiff'] = [x_diff,y_diff]
 
-        if print_pot_flag == 'plotfull':  #plot all three
+        if print_pot_flag == 'plotfull':  #plot all three planar averaged potentials
             import matplotlib.pyplot as plt
             import pylab
             fig=plt.figure(figsize=(15.0,12.0))
             print 'plot full plot'
             for axis in [0,1,2]:
-                print axis+1
+                print 'plot axis ',axis+1
                 ax=fig.add_subplot(3,1,axis+1)
                 ax.set_ylabel('axis '+str(axis+1))
                 #pylab.hold(True)
-                vals_plot = plotvasl[str(axis)]
+                vals_plot = plotvals[str(axis)]
                 ax.plot(vals_plot['xy'][0],vals_plot['xy'][1])
                 ax.plot(vals_plot['xydiff'][0],vals_plot['xydiff'][1],'r')
                 ax.plot(vals_plot['xylong'][0],vals_plot['xylong'][1],'g')
@@ -370,14 +309,15 @@ class DefectCorrectionFreysoldt(object):
 
     def run_correction(self):
         """
-        Runs all neccessary parts to get freysoldt correction out with 
-        planar averaged potential
+        Runs all neccessary parts to get freysoldt corrections out with
+        planar averaged potentials
+        Change plot_pot_flag if you want plotted planar averages
         """
         with ScratchDir('.'):
             self.prepare_files()
             s=self.plot_pot_diff(align=[0.0,0.0,0.0], print_pot_flag='none')
             print '--'
-            print 'alignments determined to be: '+str(s[1])
+            print 'potential alignments determined to be: '+str(s[1])
             print 'get final correction terms'
             print '--'
             #To get locpot plots use print_pot_flag = 'written' or 'plotfull'
@@ -396,13 +336,12 @@ class DefectCorrectionFreysoldt(object):
 
 if __name__ == '__main__':
 
-    #fortesting
+    #for testing, example given here is Se_sn+1 in 72 atom cell
     #from pymatgen.io.vaspio.vasp_output import Locpot
     #print 'load locpots'
     #sdef=Locpot.from_file("LOCPOT")
     #spure=Locpot.from_file("../pure/LOCPOT")
-    #s1=DefectCorrectionFreysoldt(spure,sdef,1,47.852, #this is for Se_sn+1
-    #        [0.0833330000000032,0.0307343554185392,0.3830636916206969],520)   
+    #s1=DefectCorrectionFreysoldt(spure,sdef,1,47.852,[0.0833330000000032,0.0307343554185392,0.3830636916206969],520)
     #s1.run_correction()
 
     #test=s1.plot_pot_diff(align=[0.0,0.0,0.0],print_pot_flag='none')
