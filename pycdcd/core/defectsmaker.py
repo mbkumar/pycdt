@@ -163,8 +163,8 @@ class ChargedDefectsStructures(object):
                 as_symbol = as_specie.symbol
                 as_sc = vac_sc.copy()
                 as_sc.append(as_symbol, vac_sc_site.frac_coords)
-                oxi_min = min(max_min_oxi[as_symbol][0]-1,max_min_oxi[vac_specie.symbol][0]-1,0)
-                oxi_max = max(max_min_oxi[as_symbol][1]+1,max_min_oxi[vac_specie.symbol][1]+1,1)
+                oxi_min = min(max_min_oxi[as_symbol][0]-1,0)
+                oxi_max = max(max_min_oxi[as_symbol][1]+1,1)
                 as_defs.append({
                     'name': vac_symbol+str(nb_per_elts[vac_specie])+ \
                             "_subst_"+as_symbol,
