@@ -126,9 +126,13 @@ def make_vasp_dielectric_files(struct, path=None, user_settings=None,
 
     dict_params=MPVaspInputSet().get_all_vasp_input(struct)
     incar=dict_params['INCAR']
-    incar.update({"NSW":1,'ISPIN':1,'LWAVE':False,'EDIFF':1e-5,
+    incar.update({'ISPIN':1,'LWAVE':False,'EDIFF':1e-5,
         'ISMEAR':0,'SIGMA':0.05,'ALGO':'Fast','ISIF':2})
     incar.update({'IBRION':8,'LEPSILON':True,'LPEAD':True})
+    if 'NSW' in incar:
+        del incar['NSW']
+    print dict_params['KPOINTS']
+
     if hse == True:
         incar.update({'LHFCALC':True,"ALGO":"All","HFSCREEN":0.2,
             "PRECFOCK":"Fast","AEXX":0.45})
