@@ -66,7 +66,7 @@ def make_vasp_defect_files(defects, path_base, user_settings=None,
             elts=set()
             for p in dict_params['POTCAR']:
                 if p.element not in elts:
-                    sum_elec += comp.as_dict[p.element]*p.nelectrons
+                    sum_elec += comp.as_dict()[p.element]*p.nelectrons
                     elts.add(p.element)
             if charge != 0:
                 incar['NELECT']=sum_elec-charge
@@ -131,16 +131,18 @@ def make_vasp_dielectric_files(struct, path=None, user_settings=None,
     incar.update({'IBRION':8,'LEPSILON':True,'LPEAD':True})
     if 'NSW' in incar:
         del incar['NSW']
-    print dict_params['KPOINTS']
-
     if hse == True:
         incar.update({'LHFCALC':True,"ALGO":"All","HFSCREEN":0.2,
             "PRECFOCK":"Fast","AEXX":0.45})
+
+    kpoints = dict_params['KPOINTS']
+    kpoints.style = 'Gamma'
+
     if not path:
         path_base = struct.composition.reduced_formula
         path=os.path.join(path_base,'dielectric')
     os.makedirs(path)
     incar.write_file(os.path.join(path,"INCAR"))
-    dict_params['KPOINTS'].write_file(os.path.join(path,"KPOINTS"))
+    kpoints.write_file(os.path.join(path,"KPOINTS"))
     dict_params['POSCAR'].write_file(os.path.join(path,"POSCAR"))
     dict_params['POTCAR'].write_file(os.path.join(path,"POTCAR"))
