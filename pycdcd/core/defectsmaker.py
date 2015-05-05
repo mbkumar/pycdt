@@ -148,7 +148,7 @@ class ChargedDefectsStructures(object):
 
             list_charges=[]
             for c in range(max_min_oxi[vac_symbol][0]-1, 
-                    max_min_oxi[vac_symbol][1]+1):
+                    max_min_oxi[vac_symbol][1]+2):
                 list_charges.append(-c)
             nb_per_elts[vac_specie] += 1
 
@@ -163,14 +163,14 @@ class ChargedDefectsStructures(object):
                 as_symbol = as_specie.symbol
                 as_sc = vac_sc.copy()
                 as_sc.append(as_symbol, vac_sc_site.frac_coords)
-                oxi_min = min(max_min_oxi[as_symbol][0]-1,0)
-                oxi_max = max(max_min_oxi[as_symbol][1]+1,1)
+                oxi_min = min(max_min_oxi[as_symbol][0]-1,max_min_oxi[vac_symbol][0]-1,0)
+                oxi_max = max(max_min_oxi[as_symbol][1]+1,max_min_oxi[vac_symbol][1]+1,1)
                 as_defs.append({
                     'name': vac_symbol+str(nb_per_elts[vac_specie])+ \
                             "_subst_"+as_symbol,
                     'unique_site': vac_site,
                     'supercell':{'size':sc_scale,'structure':as_sc},
-                    'charges':[c-oxi_states[vac_symbol] for c in range(oxi_min, oxi_max)]})
+                    'charges':[c for c in range(oxi_min, oxi_max+1)]})
 
             # Substitutional defects generation
             if vac_symbol in substitutions:
@@ -185,7 +185,7 @@ class ChargedDefectsStructures(object):
                         'unique_site': vac_site,
                         'supercell':{'size':sc_scale,'structure':sub_sc},
                         'charges':[c-oxi_states[vac_symbol] for c in range(
-                            oxi_min, oxi_max)]})
+                            oxi_min, oxi_max+1)]})
 
         self.defects['vacancies'] = vacancies 
         self.defects['substitutions'] = sub_defs
