@@ -189,7 +189,7 @@ class ChargedDefectsStructures(object):
                                 elif oxi_min > spec_oxi:
                                     raise ValueError("Unexpected oxidation"
                                                      " state!")
-                    local_max_min_oxi[ele_sym]=(oxi_max, oxi_min)
+                    local_max_min_oxi[ele_sym]=(oxi_min, oxi_max)
         else:
             local_max_min_oxi = max_min_oxi
         if len(local_max_min_oxi) != len(struct_species):
