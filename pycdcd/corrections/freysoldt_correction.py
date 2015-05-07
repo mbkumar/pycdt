@@ -307,7 +307,7 @@ class DefectCorrectionFreysoldt(object):
         """
         with ScratchDir('.'):
             self.prepare_files()
-            s=self.plot_pot_diff(align=[0.0,0.0,0.0], print_pot_flag='none')
+            s = self.plot_pot_diff(print_pot_flag='none')
             print '--'
             print 'potential alignments determined to be: '+str(s[1])
             print 'get final correction terms'
