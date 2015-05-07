@@ -228,7 +228,7 @@ class DefectCorrectionFreysoldt(object):
 
             #Note to Danny: I moved back to standard way of running commands.
             #in case it is still not working on NERSC, we can revert back to
-            #Geoffroy's hack below
+            #your hack below
             p = subprocess.Popen(command, stdout=subprocess.PIPE, 
                     stdin=subprocess.PIPE, stderr=subprocess.PIPE)
             output, err = p.communicate()
@@ -375,7 +375,7 @@ class DefectCorrectionFreysoldt(object):
         """
         with ScratchDir('.'):
             self.prepare_files()
-            s=self.plot_pot_diff(align=[0.0,0.0,0.0], print_pot_flag='none')
+            s = self.plot_pot_diff(print_pot_flag='none')
             print '--'
             print 'alignments determined to be: '+str(s[1])
             print 'get final correction terms'
