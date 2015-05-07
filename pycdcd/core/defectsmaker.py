@@ -92,7 +92,8 @@ class ChargedDefectsStructures(object):
                 the bulk structure
             max_min_oxi:
                 The minimal and maximum oxidation state of each element as a 
-                dict. For instance {"O":(-2,0)}
+                dict. For instance {"O":(-2,0)}. If not given, the oxi-states 
+                of pymatgen are considered.
             substitutions:
                 The allowed substitutions of elements as a dict. If not given, 
                 intrinsic defects are computed. If given, intrinsic (e.g., 
@@ -121,6 +122,7 @@ class ChargedDefectsStructures(object):
             struct = prim_struct
         else:
             struct = structure
+
         conv_prim_rat = int(struct.num_sites/prim_struct.num_sites)
         sc_scale = get_optimized_sc_scale(struct,cellmax)
         self.defects = {}
@@ -140,17 +142,16 @@ class ChargedDefectsStructures(object):
 
         if len(oxi_states) == 0 or len(max_min_oxi) == 0:
             if len(struct_species) == 1:
-                prim_struct_oxi = prim_struct.copy()
-                prim_struct_oxi.add_oxidation_state_by_element(
-                    {prim_struct.types_of_specie[0].symbol: 0})
+                struct_oxi = struct.copy()
+                struct_oxi.add_oxidation_state_by_element(
+                    {struct.types_of_specie[0].symbol: 0})
             else:
                 vba = BVAnalyzer()
-                prim_struct_oxi = vba.get_oxi_state_decorated_structure(
-                    prim_struct)
+                struct_oxi = vba.get_oxi_state_decorated_structure(struct)
 
         if len(oxi_states) == 0:
             local_oxi_states = {}
-            for s in prim_struct_oxi:
+            for s in struct_oxi:
                 ele_sym = s.specie.element.symbol
                 if ele_sym not in local_oxi_states.keys():
                     local_oxi_states[ele_sym]=s.specie.oxi_state
@@ -162,7 +163,7 @@ class ChargedDefectsStructures(object):
 
         if len(max_min_oxi) == 0:
             local_max_min_oxi = {}
-            for s in prim_struct_oxi:
+            for s in struct_oxi:
                 spec = s.specie
                 spec_oxi = spec.oxi_state
                 ele = spec.element
