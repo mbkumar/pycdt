@@ -20,7 +20,7 @@ from pymatgen.core.periodic_table import Specie, Element
 from pymatgen.symmetry.analyzer import SpacegroupAnalyzer
 from pymatgen.analysis.defects.point_defects import Vacancy
 from pymatgen.analysis.bond_valence import BVAnalyzer
-from pymatgen.analysis.defects.point_defect import ValenceIonicRadiusEvaluator
+from pymatgen.analysis.defects.point_defects import ValenceIonicRadiusEvaluator
 
 def get_sc_scale(inp_struct, final_site_no):
     lengths = inp_struct.lattice.abc
