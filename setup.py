@@ -35,8 +35,8 @@ setup(
             ],
         license="MIT",
         #scripts=glob.glob(os.path.join(SETUP_PTH, "scripts", "*")),
-        #test_suite='nose.collector',
-        #tests_require=['nose'],
+        test_suite='nose.collector',
+        tests_require=['nose'],
         #entry_points={
         #    'console_scripts':[
         #        'gen_def_structure=pydii.scripts.gen_def_structure:'
