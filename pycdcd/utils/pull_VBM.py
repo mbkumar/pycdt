@@ -1,15 +1,15 @@
 from pymatgen.matproj.rest import MPRester
 from pymatgen.electronic_structure.bandstructure import BandStructure
 
-def get_vbm_from_mpid(mpid, mapi_key=None):
+def get_vbm(mpid, mapi_key=None):
 
     """
     Returns the valence band maxiumum (float) of the structure with
-    MP ID mpid.
+    MP-ID mpid.
 
     Args:
         mpid (str): MP-ID for which the valence band maximum is to
-            fetched from the Materials Project database
+            be fetched from the Materials Project database
         mapi_key: Materials API key to access database
     """
 
@@ -29,6 +29,4 @@ def get_vbm_from_mpid(mpid, mapi_key=None):
 
     return vbm_dict["energy"]
 
-
-print get_vbm_from_mpid("mp-2534")
 
