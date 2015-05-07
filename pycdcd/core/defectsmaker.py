@@ -149,27 +149,6 @@ class ChargedDefectsStructures(object):
                 vir = ValenceIonicRadiusEvaluator(struct)
                 oxi_states = vir.valences
 
-        #if not oxi_states == 0 or len(max_min_oxi) == 0:
-        #    if len(struct_species) == 1:
-        #        struct_oxi = struct.copy()
-        #        struct_oxi.add_oxidation_state_by_element(
-        #            {struct.types_of_specie[0].symbol: 0})
-        #    else:
-        #        vba = BVAnalyzer()
-        #        struct_oxi = vba.get_oxi_state_decorated_structure(struct)
-
-        #if len(oxi_states) == 0:
-        #    local_oxi_states = {}
-        #    for s in struct_oxi:
-        #        ele_sym = s.specie.element.symbol
-        #        if ele_sym not in local_oxi_states.keys():
-        #            local_oxi_states[ele_sym]=s.specie.oxi_state
-        #else:
-        #    local_oxi_states = oxi_states
-        #if len(local_oxi_states) != len(struct_species):
-        #    raise ValueError("Number of oxidation states does not"
-        #                     " match number of specie types!")
-
         if not max_min_oxi:
             max_min_oxi = {}
             for s in struct_species:
@@ -182,40 +161,6 @@ class ChargedDefectsStructures(object):
                             s.max_oxidation_state)
                 else:
                     continue
-            #local_max_min_oxi = {}
-            #for s in struct_oxi:
-            #    spec = s.specie
-            #    spec_oxi = spec.oxi_state
-            #    ele = spec.element
-            #    ele_sym = ele.symbol
-            #    if ele_sym not in local_max_min_oxi.keys():
-            #        oxi_min = ele.min_oxidation_state
-            #        oxi_max = ele.max_oxidation_state
-            #        n_oxi = len(ele.oxidation_states)
-            #        if len(struct_species) > 1 and n_oxi > 1:
-            #            oxis = list(sorted(ele.oxidation_states))
-            #            if spec_oxi <= 0 and oxi_max > 0:
-            #                for i in range(n_oxi):
-            #                    oxi_max = oxis[n_oxi-1-i]
-            #                    if oxi_max == spec_oxi:
-            #                        break
-            #                    elif oxi_max < spec_oxi:
-            #                        raise ValueError("Unexpected oxidation"
-            #                                         " state!")
-            #            elif spec_oxi >= 0 and oxi_min < 0:
-            #                for i in range(n_oxi):
-            #                    oxi_min = oxis[i]
-            #                    if oxi_min == spec_oxi:
-            #                        break
-            #                    elif oxi_min > spec_oxi:
-            #                        raise ValueError("Unexpected oxidation"
-            #                                         " state!")
-            #        local_max_min_oxi[ele_sym]=(oxi_min, oxi_max)
-        #else:
-            #local_max_min_oxi = max_min_oxi
-        #if len(local_max_min_oxi) != len(struct_species):
-        #    raise ValueError("Number of ranges of oxidation states does"
-        #                     " not match number of specie types!")
 
         for i in range(vac.defectsite_count()):
             vac_site = vac.get_defectsite(i)
@@ -233,7 +178,8 @@ class ChargedDefectsStructures(object):
             nb_per_elts[vac_specie] += 1
 
             vacancies.append({
-                'name': vac_symbol+str(nb_per_elts[vac_specie])+"_vac",
+                'name': "vac_{}_site_specie_{}_site_mult_{}".format(
+                    i+1, vac_symbol, site_mult),
                 'unique_site': vac_site,
                 'supercell':{'size':sc_scale,'structure':vac_sc},
                 'charges':list_charges })
@@ -248,8 +194,8 @@ class ChargedDefectsStructures(object):
                 oxi_max = max(max_min_oxi[as_symbol][1]+1,
                         max_min_oxi[vac_symbol][0]+1,1)
                 as_defs.append({
-                    'name': vac_symbol+str(nb_per_elts[vac_specie])+ \
-                            "_subst_"+as_symbol,
+                    'name': "as_{}_site_specie_{}_site_mult_{}_sub_specie_{}".format(
+                        i+1, vac_symbol, site_mult, as_symbol),
                     'unique_site': vac_site,
                     'supercell':{'size':sc_scale,'structure':as_sc},
                     'charges':[c for c in range(oxi_min, oxi_max+1)]})
@@ -262,8 +208,8 @@ class ChargedDefectsStructures(object):
                     oxi_min = min(max_min_oxi[subspecie_symbol][0]-1,0)
                     oxi_max = max(max_min_oxi[subspecie_symbol][1]+1,1)
                     sub_defs.append({
-                        'name': vac_symbol+str(nb_per_elts[vac_specie])+ \
-                                "_subst_"+subspecie_symbol,
+                        'name': "sub_{}_site_specie_{}_site_mult_{}_sub_specie_{}".format(
+                            i+1, vac_symbol, site_mult, subspecie_symbol),
                         'unique_site': vac_site,
                         'supercell':{'size':sc_scale,'structure':sub_sc},
                         'charges':[c-oxi_states[vac_symbol] for c in range(
