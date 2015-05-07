@@ -16,8 +16,11 @@ __date__ = "November 4, 2012"
 import copy
 
 from pymatgen.core.structure import PeriodicSite
+from pymatgen.core.periodic_table import Specie, Element
 from pymatgen.symmetry.analyzer import SpacegroupAnalyzer
 from pymatgen.analysis.defects.point_defects import Vacancy
+from pymatgen.analysis.bond_valence import BVAnalyzer
+from pymatgen.analysis.defects.point_defect import ValenceIonicRadiusEvaluator
 
 def get_sc_scale(inp_struct, final_site_no):
     lengths = inp_struct.lattice.abc
@@ -82,8 +85,8 @@ class ChargedDefectsStructures(object):
     vacancies are generated.
     TODO: develop a better way to find interstitials
     """
-    def __init__(self, structure, max_min_oxi=None, substitutions=None, 
-                 oxi_states=None, cellmax=128, interstitial_sites=[], 
+    def __init__(self, structure, max_min_oxi={}, substitutions={}, 
+                 oxi_states={}, cellmax=128, interstitial_sites=[], 
                  standardized=False):
         """
         Args:
@@ -91,7 +94,8 @@ class ChargedDefectsStructures(object):
                 the bulk structure
             max_min_oxi:
                 The minimal and maximum oxidation state of each element as a 
-                dict. For instance {"O":(-2,0)}
+                dict. For instance {"O":(-2,0)}. If not given, the oxi-states 
+                of pymatgen are considered.
             substitutions:
                 The allowed substitutions of elements as a dict. If not given, 
                 intrinsic defects are computed. If given, intrinsic (e.g., 
@@ -120,6 +124,7 @@ class ChargedDefectsStructures(object):
             struct = prim_struct
         else:
             struct = structure
+
         conv_prim_rat = int(struct.num_sites/prim_struct.num_sites)
         sc_scale = get_optimized_sc_scale(struct,cellmax)
         self.defects = {}
@@ -137,6 +142,81 @@ class ChargedDefectsStructures(object):
         struct_species = struct.types_of_specie
         nb_per_elts = {e:0 for e in structure.composition.elements}
 
+        if not oxi_states:
+            if len(struct_species) == 1:
+                oxi_states = {struct.types_of_specie[0].symbol: 0}
+            else:
+                vir = ValenceIonicRadiusEvaluator(struct)
+                oxi_states = vir.valences
+
+        #if not oxi_states == 0 or len(max_min_oxi) == 0:
+        #    if len(struct_species) == 1:
+        #        struct_oxi = struct.copy()
+        #        struct_oxi.add_oxidation_state_by_element(
+        #            {struct.types_of_specie[0].symbol: 0})
+        #    else:
+        #        vba = BVAnalyzer()
+        #        struct_oxi = vba.get_oxi_state_decorated_structure(struct)
+
+        #if len(oxi_states) == 0:
+        #    local_oxi_states = {}
+        #    for s in struct_oxi:
+        #        ele_sym = s.specie.element.symbol
+        #        if ele_sym not in local_oxi_states.keys():
+        #            local_oxi_states[ele_sym]=s.specie.oxi_state
+        #else:
+        #    local_oxi_states = oxi_states
+        #if len(local_oxi_states) != len(struct_species):
+        #    raise ValueError("Number of oxidation states does not"
+        #                     " match number of specie types!")
+
+        if not max_min_oxi:
+            max_min_oxi = {}
+            for s in struct_species:
+                if isinstance(s, Specie):
+                    el = s.element
+                    max_min_oxi[el.symbol] = (el.min_oxidation_state, 
+                            el.max_oxidation_state)
+                elif isinstance(s, Element):
+                    max_min_oxi[s.symbol] = (s.min_oxidation_state, 
+                            s.max_oxidation_state)
+                else:
+                    continue
+            #local_max_min_oxi = {}
+            #for s in struct_oxi:
+            #    spec = s.specie
+            #    spec_oxi = spec.oxi_state
+            #    ele = spec.element
+            #    ele_sym = ele.symbol
+            #    if ele_sym not in local_max_min_oxi.keys():
+            #        oxi_min = ele.min_oxidation_state
+            #        oxi_max = ele.max_oxidation_state
+            #        n_oxi = len(ele.oxidation_states)
+            #        if len(struct_species) > 1 and n_oxi > 1:
+            #            oxis = list(sorted(ele.oxidation_states))
+            #            if spec_oxi <= 0 and oxi_max > 0:
+            #                for i in range(n_oxi):
+            #                    oxi_max = oxis[n_oxi-1-i]
+            #                    if oxi_max == spec_oxi:
+            #                        break
+            #                    elif oxi_max < spec_oxi:
+            #                        raise ValueError("Unexpected oxidation"
+            #                                         " state!")
+            #            elif spec_oxi >= 0 and oxi_min < 0:
+            #                for i in range(n_oxi):
+            #                    oxi_min = oxis[i]
+            #                    if oxi_min == spec_oxi:
+            #                        break
+            #                    elif oxi_min > spec_oxi:
+            #                        raise ValueError("Unexpected oxidation"
+            #                                         " state!")
+            #        local_max_min_oxi[ele_sym]=(oxi_min, oxi_max)
+        #else:
+            #local_max_min_oxi = max_min_oxi
+        #if len(local_max_min_oxi) != len(struct_species):
+        #    raise ValueError("Number of ranges of oxidation states does"
+        #                     " not match number of specie types!")
+
         for i in range(vac.defectsite_count()):
             vac_site = vac.get_defectsite(i)
             site_mult = vac.get_defectsite_multiplicity(i)
@@ -147,8 +227,8 @@ class ChargedDefectsStructures(object):
             vac_sc_site = list(set(vac_scs[0].sites) - set(vac_sc.sites))[0]
 
             list_charges=[]
-            for c in range(max_min_oxi[vac_symbol][0], 
-                    max_min_oxi[vac_symbol][1]+1):
+            for c in range(max_min_oxi[vac_symbol][0]-1, 
+                    max_min_oxi[vac_symbol][1]+2):
                 list_charges.append(-c)
             nb_per_elts[vac_specie] += 1
 
@@ -163,28 +243,31 @@ class ChargedDefectsStructures(object):
                 as_symbol = as_specie.symbol
                 as_sc = vac_sc.copy()
                 as_sc.append(as_symbol, vac_sc_site.frac_coords)
+                oxi_min = min(max_min_oxi[as_symbol][0]-1,
+                        max_min_oxi[vac_symbol][0]-1,0)
+                oxi_max = max(max_min_oxi[as_symbol][1]+1,
+                        max_min_oxi[vac_symbol][0]+1,1)
                 as_defs.append({
                     'name': vac_symbol+str(nb_per_elts[vac_specie])+ \
                             "_subst_"+as_symbol,
                     'unique_site': vac_site,
                     'supercell':{'size':sc_scale,'structure':as_sc},
-                    'charges':[c-oxi_states[vac_symbol] for c in range(
-                        max_min_oxi[as_symbol][0],
-                        max_min_oxi[as_symbol][1]+1)]})
+                    'charges':[c for c in range(oxi_min, oxi_max+1)]})
 
             # Substitutional defects generation
             if vac_symbol in substitutions:
                 for subspecie_symbol in substitutions[vac_symbol]:
                     sub_sc = vac_sc.copy()
                     sub_sc.append(subspecie_symbol, vac_sc_site.frac_coords)
+                    oxi_min = min(max_min_oxi[subspecie_symbol][0]-1,0)
+                    oxi_max = max(max_min_oxi[subspecie_symbol][1]+1,1)
                     sub_defs.append({
                         'name': vac_symbol+str(nb_per_elts[vac_specie])+ \
                                 "_subst_"+subspecie_symbol,
                         'unique_site': vac_site,
                         'supercell':{'size':sc_scale,'structure':sub_sc},
                         'charges':[c-oxi_states[vac_symbol] for c in range(
-                            max_min_oxi[subspecie_symbol][0],
-                            max_min_oxi[subspecie_symbol][1]+1)]})
+                            oxi_min, oxi_max+1)]})
 
         self.defects['vacancies'] = vacancies 
         self.defects['substitutions'] = sub_defs
@@ -201,8 +284,8 @@ class ChargedDefectsStructures(object):
                     'unique_site':site,
                     'supercell':{'size':s_size,
                         'structure':self.make_interstitial(site, sc_scale)},
-                    'charges':[c for c in range(max_min_oxid[elt][0],
-                        max_min_oxid[elt][1]+1)]})
+                    'charges':[c for c in range(max_min_oxi[elt][0],
+                        max_min_oxi[elt][1]+1)]})
                 count = count+1
         self.defects['interstitials'] = interstitials
 
