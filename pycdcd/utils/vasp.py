@@ -73,7 +73,7 @@ def make_vasp_defect_files(defects, path_base, user_settings=None,
 
             kpoint=Kpoints.monkhorst_automatic()
 
-            path=os.path.join(path_base,defect['name'],"charge"+str(charge))
+            path=os.path.join(path_base,defect['name'],"charge_"+str(charge))
             os.makedirs(path)
             incar.write_file(os.path.join(path,"INCAR"))
             kpoint.write_file(os.path.join(path,"KPOINTS"))
