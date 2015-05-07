@@ -26,8 +26,8 @@ def parse_defect_energy(structure, root_fldr):
     antisites = []
     vacancies = []
     substitutions = []
-    subfolders += glob.glob(os.path.join(root_fldr,"bulk"))
-    subfolders = glob.glob(os.path.join(root_fldr,"vac_*"))
+    subfolders = glob.glob(os.path.join(root_fldr,"bulk"))
+    subfolders += glob.glob(os.path.join(root_fldr,"vac_*"))
     subfolders += glob.glob(os.path.join(root_fldr,"as_*"))
     subfolders += glob.glob(os.path.join(root_fldr,"sub_*"))
 

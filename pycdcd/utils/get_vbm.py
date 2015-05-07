@@ -19,7 +19,7 @@ def get_vbm(mpid, mapi_key=None):
     else:
         with MPRester(mapi_key) as mp:
             bs = mp.get_bandstructure_by_material_id(mpid)
-    if not bs:
+    if  not bs:
         raise ValueError("Could not fetch band structure!")
 
     vbm_energy = bs.get_vbm()['energy']
