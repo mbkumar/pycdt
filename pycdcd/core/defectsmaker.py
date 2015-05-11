@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+# coding: utf-8
 from __future__ import division
 """
 Code to generate charged defects structure.
@@ -14,7 +14,7 @@ __status__ = "Development"
 __date__ = "November 4, 2012"
 
 import copy
-
+from monty.string import str2unicode
 from pymatgen.core.structure import PeriodicSite
 from pymatgen.core.periodic_table import Specie, Element
 from pymatgen.symmetry.analyzer import SpacegroupAnalyzer
@@ -116,51 +116,66 @@ class ChargedDefectsStructures(object):
 
         self.defects = []
         self.cellmax = cellmax
-        self.struct = structure
+        self.substitutions = {}
+        for key,val in substitutions.items():
+            self.substitutions[str2unicode(key)] = val
 
         spa = SpacegroupAnalyzer(structure,symprec=1e-2)
         prim_struct = spa.get_primitive_standard_structure()
         if standardized:
-            struct = prim_struct
+            self.struct = prim_struct
         else:
-            struct = structure
+            self.struct = structure
 
-        conv_prim_rat = int(struct.num_sites/prim_struct.num_sites)
-        sc_scale = get_optimized_sc_scale(struct,cellmax)
+        struct_species = self.struct.types_of_specie
+        if not oxi_states:
+            if len(struct_species) == 1:
+                oxi_states = {self.struct.types_of_specie[0].symbol: 0}
+            else:
+                vir = ValenceIonicRadiusEvaluator(self.struct)
+                oxi_states = vir.valences
+        self.oxi_states = {}
+        for key,val in oxi_states.items():
+            self.oxi_states[str2unicode(key.rstrip('+-'))] = val
+
+        print self.oxi_states
+
+
+        conv_prim_rat = int(self.struct.num_sites/prim_struct.num_sites)
+        sc_scale = get_optimized_sc_scale(self.struct,cellmax)
         self.defects = {}
-        sc = struct.copy()
+        sc = self.struct.copy()
         sc.make_supercell(sc_scale)
         self.defects['bulk'] = {'name':'bulk',
                 'supercell':{'size':sc_scale,'structure':sc}}
-
-        vacancies = []
-        as_defs = []
-        sub_defs = []
-
-        vac = Vacancy(struct, {}, {})
-        vac_scs = vac.make_supercells_with_defects(sc_scale)
-        struct_species = struct.types_of_specie
-        nb_per_elts = {e:0 for e in structure.composition.elements}
-
-        if not oxi_states:
-            if len(struct_species) == 1:
-                oxi_states = {struct.types_of_specie[0].symbol: 0}
-            else:
-                vir = ValenceIonicRadiusEvaluator(struct)
-                oxi_states = vir.valences
 
         if not max_min_oxi:
             max_min_oxi = {}
             for s in struct_species:
                 if isinstance(s, Specie):
                     el = s.element
-                    max_min_oxi[el.symbol] = (el.min_oxidation_state, 
-                            el.max_oxidation_state)
                 elif isinstance(s, Element):
-                    max_min_oxi[s.symbol] = (s.min_oxidation_state, 
-                            s.max_oxidation_state)
+                    el = s
                 else:
                     continue
+                max_oxi = max(el.common_oxidation_states)
+                min_oxi = min(el.common_oxidation_states)
+                max_min_oxi[str2unicode(el.symbol)] = (min_oxi,max_oxi)
+            for s, subspecies in self.substitutions.items():
+                for subspecie in subspecies:
+                    el = Element(subspecie)
+                    max_oxi = max(el.common_oxidation_states)
+                    min_oxi = min(el.common_oxidation_states)
+                    max_min_oxi[str2unicode(el.symbol)] = (min_oxi,max_oxi)
+        print max_min_oxi
+        self.max_min_oxi = max_min_oxi
+
+        vacancies = []
+        as_defs = []
+        sub_defs = []
+
+        vac = Vacancy(self.struct, {}, {})
+        vac_scs = vac.make_supercells_with_defects(sc_scale)
 
         for i in range(vac.defectsite_count()):
             vac_site = vac.get_defectsite(i)
@@ -172,10 +187,15 @@ class ChargedDefectsStructures(object):
             vac_sc_site = list(set(vac_scs[0].sites) - set(vac_sc.sites))[0]
 
             list_charges=[]
-            for c in range(max_min_oxi[vac_symbol][0]-1, 
-                    max_min_oxi[vac_symbol][1]+2):
+            vac_oxi_state = self.oxi_states[str2unicode(vac_symbol)]
+            if vac_oxi_state < 0:
+                min_oxi = min(vac_oxi_state, max_min_oxi[vac_symbol][0])
+                max_oxi = 0
+            elif vac_oxi_state > 0:
+                min_oxi = 0
+                max_oxi = max(vac_oxi_state, max_min_oxi[vac_symbol][1])
+            for c in range(min_oxi, max_oxi+1):
                 list_charges.append(-c)
-            nb_per_elts[vac_specie] += 1
 
             vacancies.append({
                 'name': "vac_{}_site_specie_{}_site_mult_{}".format(
@@ -201,8 +221,8 @@ class ChargedDefectsStructures(object):
                     'charges':[c for c in range(oxi_min, oxi_max+1)]})
 
             # Substitutional defects generation
-            if vac_symbol in substitutions:
-                for subspecie_symbol in substitutions[vac_symbol]:
+            if vac_symbol in self.substitutions:
+                for subspecie_symbol in self.substitutions[vac_symbol]:
                     sub_sc = vac_sc.copy()
                     sub_sc.append(subspecie_symbol, vac_sc_site.frac_coords)
                     oxi_min = min(max_min_oxi[subspecie_symbol][0]-1,0)
@@ -212,8 +232,8 @@ class ChargedDefectsStructures(object):
                             i+1, vac_symbol, site_mult, subspecie_symbol),
                         'unique_site': vac_site,
                         'supercell':{'size':sc_scale,'structure':sub_sc},
-                        'charges':[c-oxi_states[vac_symbol] for c in range(
-                            oxi_min, oxi_max+1)]})
+                        'charges':[c - self.oxi_states[str2unicode(
+                            vac_symbol)] for c in range(oxi_min, oxi_max+1)]})
 
         self.defects['vacancies'] = vacancies 
         self.defects['substitutions'] = sub_defs
