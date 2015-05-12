@@ -209,10 +209,10 @@ class ChargedDefectsStructures(object):
                 as_symbol = as_specie.symbol
                 as_sc = vac_sc.copy()
                 as_sc.append(as_symbol, vac_sc_site.frac_coords)
-                oxi_min = min(max_min_oxi[as_symbol][0]-1,
-                        max_min_oxi[vac_symbol][0]-1,0)
-                oxi_max = max(max_min_oxi[as_symbol][1]+1,
-                        max_min_oxi[vac_symbol][0]+1,1)
+                oxi_min = min(self.max_min_oxi[as_symbol][0],
+                        self.max_min_oxi[vac_symbol][0],0)
+                oxi_max = max(self.max_min_oxi[as_symbol][1],
+                        self.max_min_oxi[vac_symbol][0],0)
                 as_defs.append({
                     'name': "as_{}_site_specie_{}_site_mult_{}_sub_specie_{}".format(
                         i+1, vac_symbol, site_mult, as_symbol),
@@ -225,8 +225,8 @@ class ChargedDefectsStructures(object):
                 for subspecie_symbol in self.substitutions[vac_symbol]:
                     sub_sc = vac_sc.copy()
                     sub_sc.append(subspecie_symbol, vac_sc_site.frac_coords)
-                    oxi_min = min(max_min_oxi[subspecie_symbol][0]-1,0)
-                    oxi_max = max(max_min_oxi[subspecie_symbol][1]+1,1)
+                    oxi_min = min(self.max_min_oxi[subspecie_symbol][0],0)
+                    oxi_max = max(self.max_min_oxi[subspecie_symbol][1],0)
                     sub_defs.append({
                         'name': "sub_{}_site_specie_{}_site_mult_{}_sub_specie_{}".format(
                             i+1, vac_symbol, site_mult, subspecie_symbol),
