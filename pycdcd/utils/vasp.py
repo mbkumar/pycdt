@@ -20,7 +20,7 @@ from monty.json import MontyDecoder, MontyEncoder
 #import json
 import os
 
-def make_vasp_defect_files(defects, path_base, user_settings=None, 
+def make_vasp_defect_files(defects, path_base, user_settings={}, 
                            hse=False):
     """
     Generates VASP files for defect computations
@@ -33,8 +33,8 @@ def make_vasp_defect_files(defects, path_base, user_settings=None,
         user_settings:
             Settings in dict format to override the defaults used in 
             generating vasp files. The format of the dictionary is
-            {'incar':{...},
-             'kpoints':...}
+            {'defects:{'INCAR':{...},'KPOINTS':{...},
+             'bulk':{'INCAR':{...},'KPOINTS':{...}}
         hse:
             hse run or not
     """
@@ -60,6 +60,9 @@ def make_vasp_defect_files(defects, path_base, user_settings=None,
             if hse == True:
                 incar.update({'LHFCALC':True,"ALGO":"All","HFSCREEN":0.2,
                     "PRECFOCK":"Fast","AEXX":0.45})
+            if user_settings:
+                if 'INCAR' in user_settings.get('defects',None):
+                    incar.update(user_settings['defects']['INCAR'])
 
             comp=s['structure'].composition
             sum_elec=0
@@ -93,6 +96,9 @@ def make_vasp_defect_files(defects, path_base, user_settings=None,
     incar.update({'IBRION':-1,"NSW":0,'ISPIN':2,'LWAVE':False,'EDIFF':1e-5,
         'ISMEAR':0,'SIGMA':0.05,'LVTOT':True,'LVHAR':True,'ALGO':'Fast',
         'ISYM':0})
+    if user_settings:
+        if 'INCAR' in user_settings.get('bulk',None):
+            incar.update(user_settings['bulk']['INCAR'])
     if hse == True:
         incar.update({'LHFCALC':True,"ALGO":"All","HFSCREEN":0.2,
             "PRECFOCK":"Fast","AEXX":0.45})
@@ -106,7 +112,7 @@ def make_vasp_defect_files(defects, path_base, user_settings=None,
     dumpfn(dict_transf,os.path.join(path,'transformations.json'),
             cls=MontyEncoder)
 
-def make_vasp_dielectric_files(struct, path=None, user_settings=None, 
+def make_vasp_dielectric_files(struct, path=None, user_settings={}, 
         hse=False):
     """
     Generates VASP files for dielectric constant computations
@@ -116,8 +122,7 @@ def make_vasp_dielectric_files(struct, path=None, user_settings=None,
         user_settings:
             Settings in dict format to override the defaults used in 
             generating vasp files. The format of the dictionary is
-            {'incar':{...},
-             'kpoints':...}
+            {'INCAR':{...}, 'KPOINTS':{...}}
         hse:
             hse run or not
     """
@@ -129,6 +134,8 @@ def make_vasp_dielectric_files(struct, path=None, user_settings=None,
     incar.update({'ISPIN':1,'LWAVE':False,'EDIFF':1e-5,
         'ISMEAR':-5,'ALGO':'Fast','ISIF':2})
     incar.update({'IBRION':8,'LEPSILON':True,'LPEAD':True})
+    if 'INCAR' in user_settings:
+        incar.update(user_settings['INCAR'])
     if 'NSW' in incar:
         del incar['NSW']
     if hse == True:
