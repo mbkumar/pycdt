@@ -5,8 +5,12 @@ Parses the vasprun.xml files generated during VASP defect calculations.
 #from __future__ import unicode_literals
 from __future__ import division
 
-__author__ = "Bharat Medasani"
-__data__  = "Sep 14, 2014"
+__author__ = "Bharat Medasani, Nils Zimmerman"
+__copyright__ = "Copyright 2014, The Materials Project"
+__version__ = "1.0"
+__maintainer__ = "Bharat Medasani"
+__email__ = 'mbkumar@gmail.com'
+__date__  = "Sep 14, 2014"
 
 import os
 import sys
@@ -14,12 +18,14 @@ import glob
 from argparse import ArgumentParser
 
 from pymatgen.matproj.rest import MPRester
-from monty.serialization import dumpfn
-from monty.json import MontyEncoder
 from pymatgen.io.vaspio.vasp_output import Vasprun
+from pymatgen.electronic_structure.bandstructure import BandStructure
 
 
 def parse_defect_energy(structure, root_fldr):
+    """
+    Parses the defect energies
+    """
 
     energy_dict = {}
 
@@ -109,26 +115,40 @@ def parse_defect_energy(structure, root_fldr):
                     substitutions.append(dict_def)
     else:
         print "All calculations successful for ", mpid
-        e0 = bulk_energy/bulk_sites*structure.num_sites
-        for vac in vacancies:
-            for charge, energy in vac['energies'].items():
-                flip_energy = energy - bulk_energy
-                vac['energies'][charge] = flip_energy
         vacancies.sort(key=lambda entry: entry['site_index'])
-        for antisite in antisites:
-            for charge, energy in antisite['energies'].items():
-                flip_energy = energy - bulk_energy
-                antisite['energies'][charge] = flip_energy
         antisites.sort(key=lambda entry: entry['site_index'])
-        for sub in substitutions:
-            for charge, energy in sub['energies'].items():
-                flip_energy = energy - bulk_energy
-                sub['energies'][charge] = flip_energy
         substitutions.sort(key=lambda entry: entry['site_index'])
         energy_dict[unicode(mpid)] = {u"structure":structure,
-                'e0':e0,'vacancies':vacancies,'antisites':antisites,
-                'substitutions':substitutions}
+                u'bulk_supercell_energy':bulk_energy,
+                u'bulk_supercell_sites':bulk_sites,
+                u'vacancies':vacancies,
+                u'antisites':antisites,
+                u'substitutions':substitutions}
         return energy_dict
 
     return {} # Return Null dict due to failure
+
+def get_vbm(mpid, mapi_key=None):
+    """
+    Returns the valence band maxiumum (float) of the structure with
+    MP-ID mpid.
+
+    Args:
+        mpid (str): MP-ID for which the valence band maximum is to
+            be fetched from the Materials Project database
+        mapi_key: Materials API key to access database
+    """
+
+    if not mapi_key:
+        with MPRester() as mp:
+            bs = mp.get_bandstructure_by_material_id(mpid)
+    else:
+        with MPRester(mapi_key) as mp:
+            bs = mp.get_bandstructure_by_material_id(mpid)
+    if  not bs:
+        raise ValueError("Could not fetch band structure!")
+
+    vbm_energy = bs.get_vbm()['energy']
+    if not vbm_energy:
+        vbm_energy = 0
 
