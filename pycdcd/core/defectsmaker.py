@@ -37,12 +37,13 @@ def get_sc_scale(inp_struct, final_site_no):
     return num_mult
 
 def get_optimized_sc_scale(inp_struct, final_site_no):
+    print inp_struct.num_sites, final_site_no
     target_site = inp_struct.sites[0]
     dictio={}
     result=[]
-    for k1 in range(1,4):
-        for k2 in range(1,4):
-            for k3 in range(1,4):
+    for k1 in range(1,6):
+        for k2 in range(1,6):
+            for k3 in range(1,6):
                 struct = inp_struct.copy()
                 struct.make_supercell([k1,k2,k3])
                 if len(struct.sites) > final_site_no:
@@ -86,8 +87,8 @@ class ChargedDefectsStructures(object):
     TODO: develop a better way to find interstitials
     """
     def __init__(self, structure, max_min_oxi={}, substitutions={}, 
-                 oxi_states={}, cellmax=128, interstitial_sites=[], 
-                 standardized=False):
+                 oxi_states={}, cellmax=128, interstitial_sites=[],
+                 antisites_flag=False, standardized=False):
         """
         Args:
             structure:
@@ -112,6 +113,8 @@ class ChargedDefectsStructures(object):
             interstitials_sites:
                 A list of PeriodicSites in the bulk structure on which we put 
                 an interstitial
+            antisites_flag: 
+                If False, don't generate antisites
         """
 
         self.defects = []
@@ -189,11 +192,11 @@ class ChargedDefectsStructures(object):
             list_charges=[]
             vac_oxi_state = self.oxi_states[str2unicode(vac_symbol)]
             if vac_oxi_state < 0:
-                min_oxi = min(vac_oxi_state, max_min_oxi[vac_symbol][0])
+                min_oxi = min(vac_oxi_state, self.max_min_oxi[vac_symbol][0])
                 max_oxi = 0
             elif vac_oxi_state > 0:
                 min_oxi = 0
-                max_oxi = max(vac_oxi_state, max_min_oxi[vac_symbol][1])
+                max_oxi = max(vac_oxi_state, self.max_min_oxi[vac_symbol][1])
             for c in range(min_oxi, max_oxi+1):
                 list_charges.append(-c)
 
@@ -201,24 +204,34 @@ class ChargedDefectsStructures(object):
                 'name': "vac_{}_site_specie_{}_site_mult_{}".format(
                     i+1, vac_symbol, site_mult),
                 'unique_site': vac_site,
+                'bulk_supercell_site': vac_sc_site,
+                'defect_type':'vacancy',
+                'site_specie':vac_symbol,
+                'site_multiplicity':site_mult,
                 'supercell':{'size':sc_scale,'structure':vac_sc},
                 'charges':list_charges })
 
             # Antisite defects generation
-            for as_specie in set(struct_species)-set([vac_specie]):
-                as_symbol = as_specie.symbol
-                as_sc = vac_sc.copy()
-                as_sc.append(as_symbol, vac_sc_site.frac_coords)
-                oxi_min = min(self.max_min_oxi[as_symbol][0],
-                        self.max_min_oxi[vac_symbol][0],0)
-                oxi_max = max(self.max_min_oxi[as_symbol][1],
-                        self.max_min_oxi[vac_symbol][0],0)
-                as_defs.append({
-                    'name': "as_{}_site_specie_{}_site_mult_{}_sub_specie_{}".format(
-                        i+1, vac_symbol, site_mult, as_symbol),
-                    'unique_site': vac_site,
-                    'supercell':{'size':sc_scale,'structure':as_sc},
-                    'charges':[c for c in range(oxi_min, oxi_max+1)]})
+            if antisites_flag:
+                for as_specie in set(struct_species)-set([vac_specie]):
+                    as_symbol = as_specie.symbol
+                    as_sc = vac_sc.copy()
+                    as_sc.append(as_symbol, vac_sc_site.frac_coords)
+                    oxi_min = min(self.max_min_oxi[as_symbol][0],
+                            self.max_min_oxi[vac_symbol][0],0)
+                    oxi_max = max(self.max_min_oxi[as_symbol][1],
+                            self.max_min_oxi[vac_symbol][0],0)
+                    as_defs.append({
+                        'name': "as_{}_site_specie_{}_site_mult_{}_sub_specie_{}".format(
+                            i+1, vac_symbol, site_mult, as_symbol),
+                        'unique_site': vac_site,
+                        'supercell_site': vac_sc_site,
+                        'defect_type':'antisite',
+                        'site_specie':vac_symbol,
+                        'substitution_specie':as_symbol,
+                        'site_multiplicity':site_mult,
+                        'supercell':{'size':sc_scale,'structure':as_sc},
+                        'charges':[c for c in range(oxi_min, oxi_max+1)]})
 
             # Substitutional defects generation
             if vac_symbol in self.substitutions:
@@ -231,6 +244,11 @@ class ChargedDefectsStructures(object):
                         'name': "sub_{}_site_specie_{}_site_mult_{}_sub_specie_{}".format(
                             i+1, vac_symbol, site_mult, subspecie_symbol),
                         'unique_site': vac_site,
+                        'supercell_site': vac_sc_site,
+                        'defect_type':'antisite',
+                        'site_specie':vac_symbol,
+                        'substitution_specie':subspecie_symbol,
+                        'site_multiplicity':site_mult,
                         'supercell':{'size':sc_scale,'structure':sub_sc},
                         'charges':[c - self.oxi_states[str2unicode(
                             vac_symbol)] for c in range(oxi_min, oxi_max+1)]})
@@ -255,7 +273,24 @@ class ChargedDefectsStructures(object):
                 count = count+1
         self.defects['interstitials'] = interstitials
 
-    
+    def make_defect_complexes(max_complex_size=0, include_vacancies=True):
+        """
+        Function to generate defect complexes
+        Args:
+            max_complex_size: max. number of defects in a complex.
+                If zero, the max size possible is considered based 
+                on no. of subsitutions
+            include_vacancies: Include vacancies in the defect complex
+        """
+        if not max_complex_size:
+            max_complex_size = len(self.defects['substitutions'])
+            if include_vacancies:
+                max_complex_size += 1
+
+        complexes = []
+        for size in range(2,max_complex_size+1):
+            continue
+            
     def make_interstitial(self, target_site, sc_scale):
         sc = self.struct.copy()
         sc.make_supercell(sc_scale)
