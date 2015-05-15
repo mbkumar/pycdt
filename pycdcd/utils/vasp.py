@@ -112,6 +112,119 @@ def make_vasp_defect_files(defects, path_base, user_settings={},
     dumpfn(dict_transf,os.path.join(path,'transformations.json'),
             cls=MontyEncoder)
 
+def make_vasp_defect_files_dos(defects, path_base, user_settings={}, 
+                           hse=False, dos_limits=(-1,7)):
+    """
+    Generates VASP files for defect computations which include dos 
+    generation. Useful when the user don't want to use MPWorks for 
+    dos calculations.
+    Args:
+        defects:
+            the defects data as a dictionnary. Ideally this is generated
+            from core.defectsmaker.ChargedDefectsStructures.
+        path_base:
+            where we write the files
+        user_settings:
+            Settings in dict format to override the defaults used in 
+            generating vasp files. The format of the dictionary is
+            {'defects:{'INCAR':{...},'KPOINTS':{...},
+             'bulk':{'INCAR':{...},'KPOINTS':{...}}
+        hse:
+            hse run or not
+        dos_limits:
+            Lower and upper limits for dos plot as a tuple. The default
+            (-1,7) should work for most of the cases.
+    """
+    bulk_sys = defects['bulk']['supercell']
+    comb_defs = reduce(lambda x,y: x+y, [
+        defects[key] for key in defects if key != 'bulk'])
+
+    for defect in comb_defs:
+        print type(defect)
+        print defect['charges']
+        for charge in defect['charges']:
+            s = defect['supercell']
+            dict_transf={
+                    'defect_type': defect['name'], 
+                    'defect_site': defect['unique_site'], 
+                    'charge': charge, 'supercell': s['size']}
+
+            dict_params=MPVaspInputSet().get_all_vasp_input(s['structure'])
+            incar=dict_params['INCAR']
+            incar.update({'IBRION':2,'ISIF':2,'ISPIN':2,'LWAVE':False,
+                'EDIFF':1e-5,'EDIFFG':-1e-2,'ISMEAR':0,'SIGMA':0.05, 
+                'LVTOT':True,'LVHAR':True,'LORBIT':11,'ALGO':"Fast",'ISYM':0})
+            if hse == True:
+                incar.update({'LHFCALC':True,"ALGO":"All","HFSCREEN":0.2,
+                    "PRECFOCK":"Fast","AEXX":0.45})
+            if user_settings:
+                if 'INCAR' in user_settings.get('defects',None):
+                    incar.update(user_settings['defects']['INCAR'])
+
+            comp=s['structure'].composition
+            sum_elec=0
+            elts=set()
+            for p in dict_params['POTCAR']:
+                if p.element not in elts:
+                    sum_elec += comp.as_dict()[p.element]*p.nelectrons
+                    elts.add(p.element)
+            if charge != 0:
+                incar['NELECT']=sum_elec-charge
+
+            kpoint=Kpoints.monkhorst_automatic()
+
+            path=os.path.join(path_base,defect['name'],"charge_"+str(charge))
+            os.makedirs(path)
+            incar.write_file(os.path.join(path,"INCAR.relax"))
+            kpoint.write_file(os.path.join(path,"KPOINTS"))
+            dict_params['POSCAR'].write_file(os.path.join(path,"POSCAR.orig"))
+            dict_params['POTCAR'].write_file(os.path.join(path,"POTCAR"))
+            dumpfn(dict_transf,os.path.join(path,'transformations.json'),
+                    cls=MontyEncoder)
+
+            # Write addition incar files for dos plots of defect levels
+            del incar['NSW']
+            del incar['ISIF']
+            del incar['EDIFFG']
+            del incar['LVHAR']
+            del incar['LVTOT']
+            incar['IBRION'] = -1
+            incar['ICHARG'] = 1
+            incar['EDIFF'] = 1e-6
+            incar.write_file(os.path.join(path,"INCAR.static"))
+            incar['ICHARG'] = 11
+            incar['NEDOS'] = int((dos_limits[1]-dos_limits[0])/0.006)
+            incar['EMIN'] = dos_limits[0]
+            incar['EMAX'] = dos_limits[1]
+            incar.write_file(os.path.join(path,"INCAR.dos"))
+
+    # Generate bulk supercell inputs
+    s = bulk_sys
+    dict_transf={
+            'defect_type': 'bulk', 
+            'supercell': s['size']}
+
+    dict_params=MPVaspInputSet().get_all_vasp_input(s['structure'])
+    incar=dict_params['INCAR']
+    incar.update({'IBRION':-1,"NSW":0,'ISPIN':2,'LWAVE':False,'EDIFF':1e-5,
+        'ISMEAR':0,'SIGMA':0.05,'LVTOT':True,'LVHAR':True,'ALGO':'Fast',
+        'ISYM':0})
+    if user_settings:
+        if 'INCAR' in user_settings.get('bulk',None):
+            incar.update(user_settings['bulk']['INCAR'])
+    if hse == True:
+        incar.update({'LHFCALC':True,"ALGO":"All","HFSCREEN":0.2,
+            "PRECFOCK":"Fast","AEXX":0.45})
+    kpoint=Kpoints.monkhorst_automatic()
+    path=os.path.join(path_base,'bulk')
+    os.makedirs(path)
+    incar.write_file(os.path.join(path,"INCAR"))
+    kpoint.write_file(os.path.join(path,"KPOINTS"))
+    dict_params['POSCAR'].write_file(os.path.join(path,"POSCAR"))
+    dict_params['POTCAR'].write_file(os.path.join(path,"POTCAR"))
+    dumpfn(dict_transf,os.path.join(path,'transformations.json'),
+            cls=MontyEncoder)
+
 def make_vasp_dielectric_files(struct, path=None, user_settings={}, 
         hse=False):
     """
