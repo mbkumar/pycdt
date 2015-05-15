@@ -50,6 +50,7 @@ def make_vasp_defect_files(defects, path_base, user_settings={},
             dict_transf={
                     'defect_type': defect['name'], 
                     'defect_site': defect['unique_site'], 
+                    'defect_supercell_site': defect['bulk_supercell_site'],
                     'charge': charge, 'supercell': s['size']}
 
             dict_params=MPVaspInputSet().get_all_vasp_input(s['structure'])
@@ -82,7 +83,7 @@ def make_vasp_defect_files(defects, path_base, user_settings={},
             kpoint.write_file(os.path.join(path,"KPOINTS"))
             dict_params['POSCAR'].write_file(os.path.join(path,"POSCAR"))
             dict_params['POTCAR'].write_file(os.path.join(path,"POTCAR"))
-            dumpfn(dict_transf,os.path.join(path,'transformations.json'),
+            dumpfn(dict_transf,os.path.join(path,'transformation.json'),
                     cls=MontyEncoder)
 
     # Generate bulk supercell inputs
