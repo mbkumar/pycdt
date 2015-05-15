@@ -22,8 +22,7 @@ kb = 8.6173324e-5
 hbar = 6.58211928e-16
 conv = (math.sqrt((9.1*1e-31)**3)*math.sqrt((1.6*1e-19)**3))/((1.05*1e-34)**3)
 
-class Defect(object):
-
+class ParsedDefect(object):
     """
     Holds all the info concerning a defect computation: 
     composition+structure, energy, correction on energy and name
@@ -41,7 +40,7 @@ class Defect(object):
         self._entry = entry_defect
         self._site = site_in_bulk
         self._charge = charge
-        self._charge_correction = charge_correction
+        self.charge_correction = charge_correction # Added after initialization
         self._name = name
         self._full_name = self._name + "_" + str(charge)
 
@@ -49,7 +48,7 @@ class Defect(object):
         return {'entry': self._entry.as_dict(),
                 'site': self._site.as_dict(),
                 'charge': self._charge,
-                'charge_correction': self._charge_correction,
+                'charge_correction': self.charge_correction,
                 'name': self._name,
                 'full_name': self._full_name,
                 '@module': self.__class__.__module__,
@@ -57,7 +56,7 @@ class Defect(object):
 
     @staticmethod
     def from_dict(cls, d):
-        return Defect(ComputedEntry.from_dict(d['entry']), 
+        return ParsedDefect(ComputedEntry.from_dict(d['entry']), 
                       PeriodicSite.from_dict(d['site']),
                       charge=d.get('charge',0.0),
                       charge_correction=d.get('charge_correction',0.0),
@@ -105,12 +104,12 @@ class DefectsAnalyzer(object):
         analyzer = DefectsAnalyzer(entry_bulk, d['e_vbm'], 
                 {el:d['mu_elts'][el] for el in d['mu_elts']}, d['band_gap'])
         for ddict in d['defects']:
-            analyzer.add_defect(Defect.from_dict(ddict))
+            analyzer.add_defect(ParsedDefect.from_dict(ddict))
         return analyzer
 
-    def add_defect(self, defect):
+    def add_parsed_defect(self, defect):
         """
-        add a defect to the analyzer
+        add a parsed defect to the analyzer
         Args:
             defect:
                 a Defect object
@@ -154,7 +153,7 @@ class DefectsAnalyzer(object):
 
             self._formation_energies.append(d._entry.energy - multiplier * \
                     self._entry_bulk.energy + sum_mus + d._charge * \
-                    self._e_vbm + d._charge_correction)
+                    self._e_vbm + d.charge_correction)
 
     def correct_bg_simple(self, vbm_correct, cbm_correct):
         """
