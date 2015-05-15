@@ -20,7 +20,8 @@ from argparse import ArgumentParser
 from pymatgen.matproj.rest import MPRester
 from pymatgen.io.vaspio.vasp_output import Vasprun
 from pymatgen.electronic_structure.bandstructure import BandStructure
-
+from pymatgen.phasediagram.pdmaker import PhaseDiagram
+from pymatgen.phasediagram.pdanalyzer import PDAnalyzer
 
 def parse_defect_energy(structure, root_fldr):
     """
@@ -151,4 +152,41 @@ def get_vbm(mpid, mapi_key=None):
     vbm_energy = bs.get_vbm()['energy']
     if not vbm_energy:
         vbm_energy = 0
+
+
+def get_atomic_chempots(structure):
+    """
+    gets atomic chempots from MP database
+
+    note: could also do this with mpid if that would be easier..
+    """
+    specs=list(set(structure.species))
+    listspec=[i.symbol for i in specs]
+    print 'look for atomic chempots relative to:',listspec
+    
+    mp=MPRester() 
+    entries=mp.get_entries_in_chemsys(listspec)
+    if len(listspec)==1:
+        print 'this is elemental system! use bulk value.'
+        vals=[i.energy_per_atom for i in entries]
+        chempot={specs[0]:min(vals)}
+        return chempot
+    pd=PhaseDiagram(entries)
+    print pd
+
+    chemlims={}
+    for i in specs:
+        name=str(i)+'-limiting'
+        tmpchemlims=PDAnalyzer(pd).get_chempot_range_stability_phase(self._structure.composition,i)
+        chemlims[name]={str(i)+'-rich':{},str(i)+'-poor':{}}
+        for j in tmpchemlims.keys():
+            chemlims[name][str(i)+'-rich'][j]=tmpchemlims[j][1]
+            chemlims[name][str(i)+'-poor'][j]=tmpchemlims[j][0]
+
+    #make this less confusing for binary systems...
+    if len(specs)==2:
+	chemlims=chemlims[chemlims.keys()[0]]
+
+    return chemlims 
+
 
