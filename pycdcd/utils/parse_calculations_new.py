@@ -171,15 +171,15 @@ def get_atomic_chempots(structure):
 
 def parse_dielectric_calculation(root_fldr):
     """
-    Parses the "vasprun.xml" file in subfolder "dielec" of root folder
-    root_fldr and returns the dielectric tensor.
+    Parses the "vasprun.xml" file in subdirectory "dielec" of root
+    directory root_fldr and returns the dielectric tensor.
 
     Args:
         root_fldr (str):
-            root folder where subfolder "dielec" is expected
+            root directory where subdirectory "dielec" is expected
     Returns:
-        dielec (3x3 float list):
-            dielectric tensor as a 3x3 list.
+        eps (3x3 float matrix):
+            dielectric tensor
     """
 
     vrun = Vasprun(os.path.join(root_fldr,"dielec/vasprun.xml"), None, 0,
@@ -190,10 +190,6 @@ def parse_dielectric_calculation(root_fldr):
     eps = []
     for i in range(len(eps_ion)):
         eps.append([e[0]+e[1] for e in zip(eps_ion[i],eps_stat[i])])
-    
-    print(eps_ion)
-    print(eps_stat)
-    print(eps)
     
     return eps
 
