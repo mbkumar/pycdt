@@ -327,7 +327,7 @@ class FreysoldtCorrection(object):
 
 
 if __name__ == '__main__':
-
+    pass
     #for testing, example given here is Se_sn+1 in 72 atom cell
     #from pymatgen.io.vaspio.vasp_output import Locpot
     #print 'load locpots'
