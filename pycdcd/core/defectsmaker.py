@@ -139,7 +139,8 @@ class ChargedDefectsStructures(object):
                 oxi_states = vir.valences
         self.oxi_states = {}
         for key,val in oxi_states.items():
-            self.oxi_states[str2unicode(key.rstrip('+-'))] = val
+            strip_key = ''.join([s for s in key if s.isalpha()])
+            self.oxi_states[str2unicode(strip_key)] = val
 
         print self.oxi_states
 
@@ -190,7 +191,9 @@ class ChargedDefectsStructures(object):
             vac_sc_site = list(set(vac_scs[0].sites) - set(vac_sc.sites))[0]
 
             list_charges=[]
-            vac_oxi_state = self.oxi_states[str2unicode(vac_symbol)]
+            print 'vac_symbol=',vac_symbol
+	    print 'self.oxi_states',self.oxi_states
+	    vac_oxi_state = self.oxi_states[str2unicode(vac_symbol)]
             if vac_oxi_state < 0:
                 min_oxi = min(vac_oxi_state, self.max_min_oxi[vac_symbol][0])
                 max_oxi = 0
