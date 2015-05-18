@@ -6,7 +6,7 @@ in conformation with DefectsAnalyzer written by Geoffroy.
 #from __future__ import unicode_literals
 from __future__ import division
 
-__author__ = "Bharat Medasani, Nils Zimmerman, Danny Broberg"
+__author__ = "Bharat Medasani, Nils Zimmermann, Danny Broberg"
 __copyright__ = "Copyright 2014, The Materials Project"
 __version__ = "1.0"
 __maintainer__ = "Bharat Medasani"
@@ -99,7 +99,7 @@ def parse_defect_calculations(root_fldr):
                         data={'locpot_path':locpot_path}),
                     site_in_bulk=site, charge=chrg, name=fldr_name))
 
-    else:
+    else: # there is no opening "if" statement - only a for loop at same indentation
         parsed_defects_data = {}
         parsed_defects_data['bulk_entry'] = bulk_entry 
         parsed_defects_data['defects'] = parsed_defects 
@@ -169,8 +169,27 @@ def get_atomic_chempots(structure):
     return chemlims 
 
 
+def parse_dielectric_calculation(root_fldr):
+    """
+    Parses the "vasprun.xml" file in subdirectory "dielec" of root
+    directory root_fldr and returns the dielectric tensor.
 
+    Args:
+        root_fldr (str):
+            root directory where subdirectory "dielec" is expected
+    Returns:
+        eps (3x3 float matrix):
+            dielectric tensor
+    """
 
-def parse_dielectric_calculation(root_fldr)
+    vrun = Vasprun(os.path.join(root_fldr,"dielec/vasprun.xml"), None, 0,
+        False, False, False, False)
+    eps_ion = vrun.epsilon_ionic
+    eps_stat = vrun.epsilon_static
 
+    eps = []
+    for i in range(len(eps_ion)):
+        eps.append([e[0]+e[1] for e in zip(eps_ion[i],eps_stat[i])])
+    
+    return eps
 
