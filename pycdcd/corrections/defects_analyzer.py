@@ -9,18 +9,20 @@ __email__ = "geoffroy@uclouvain.be, mbkumar@gmail.com"
 __status__ = "Development"
 __date__ = "November 4, 2012"
 
-import math
+from math import sqrt, floor, pi, exp
 
 from pymatgen.core.periodic_table import Element
 from pymatgen.core.structure import PeriodicSite
+from pymatgen.io.vaspio.vasp_output import Locpot
 from pymatgen.entries.computed_entries import ComputedEntry, \
         ComputedStructureEntry
 from pymatgen.symmetry.analyzer import SpagegroupAnalyzer
+from pycdcd.corrections.freysoldt_correction import FreysoldtCorrection
 
 #some constants
 kb = 8.6173324e-5
 hbar = 6.58211928e-16
-conv = (math.sqrt((9.1*1e-31)**3)*math.sqrt((1.6*1e-19)**3))/((1.05*1e-34)**3)
+conv = sqrt((9.1*1e-31)**3)*sqrt((1.6*1e-19)**3)/((1.05*1e-34)**3)
 
 class ParsedDefect(object):
     """
@@ -40,7 +42,7 @@ class ParsedDefect(object):
         self._entry = entry_defect
         self._site = site_in_bulk
         self._charge = charge
-        self.charge_correction = charge_correction # Added after initialization
+        self.charge_correction = charge_correction # Can be added after initialization
         self._name = name
         self._full_name = self._name + "_" + str(charge)
 
@@ -62,6 +64,20 @@ class ParsedDefect(object):
                       charge_correction=d.get('charge_correction',0.0),
                       name=d.get('name',None))
 
+
+def apply_correction(defect, bulk_entry, epsilon, type='freysoldt'):
+    if type == 'freysoldt':
+        locpot_path_blk = bulk_enry.data['locpot_path']
+        locpot_blk = Locpot.from_file(locpot_path_blk)
+        locpot_path_def = defect._entry.data['locpot_path']
+        locpot_def = Locpot.from_file(locpot_path_def)
+        charge = defect._charge
+        frac_coords = self._site.frac_coords
+        encut = defect._entry.data['encut']
+        corr = FreysoldtCorrection(locpot_blk, locpot_defect, 
+                charge, epsilon, frac_coords, encut):
+
+        return corr 
 
 class DefectsAnalyzer(object):
     """
@@ -133,7 +149,7 @@ class DefectsAnalyzer(object):
             atm_blk = self._entry_bulk.composition.num_atoms
             atm_def = d._entry.composition.num_atoms 
             for i in [1,-1,0]:
-                if math.floor((atm_def+i) / atm_blk) == (atm_def+i)/atm_blk:
+                if floor((atm_def+i) / atm_blk) == (atm_def+i)/atm_blk:
                     multiplier = (atm_def+i)/atm_blk
                     break
 
@@ -236,24 +252,24 @@ class DefectsAnalyzer(object):
             equiv_site_no = len(struct.find_equivalent_sites(target_site))
             n = equiv_site_no*1e30/struct.volume
             conc.append({'name': d._name, 'charge': d._charge,
-                         'conc': n*math.exp(
+                         'conc': n*exp(
                              -self._get_form_energy(ef, i)/(kb*temp))})
             i += 1
         return conc
 
     def _get_dos(self, e, m1, m2, m3, e_ext):
-        return math.sqrt(2) / (math.pi**2*hbar**3) * math.sqrt(m1*m2*m3) * \
-               math.sqrt(e-e_ext)
+        return sqrt(2) / (pi**2*hbar**3) * sqrt(m1*m2*m3) * \
+               sqrt(e-e_ext)
 
     def _get_dos_fd_elec(self, e, ef, t, m1, m2, m3):
-        return conv * (2.0/(math.exp((e-ef)/(kb*t))+1)) * \
-               (math.sqrt(2)/(math.pi**2)) * math.sqrt(m1*m2*m3) * \
-               math.sqrt(e-self._band_gap)
+        return conv * (2.0/(exp((e-ef)/(kb*t))+1)) * \
+               (sqrt(2)/(pi**2)) * sqrt(m1*m2*m3) * \
+               sqrt(e-self._band_gap)
 
     def _get_dos_fd_hole(self, e, ef, t, m1, m2, m3):
-        return conv * (math.exp((e-ef)/(kb*t))/(math.exp((e-ef)/(kb*t))+1)) * \
-               (2.0 * math.sqrt(2)/(math.pi**2)) * math.sqrt(m1*m2*m3) * \
-               math.sqrt(-e)
+        return conv * (exp((e-ef)/(kb*t))/(exp((e-ef)/(kb*t))+1)) * \
+               (2.0 * sqrt(2)/(pi**2)) * sqrt(m1*m2*m3) * \
+               sqrt(-e)
 
     def _get_qd(self, ef, t):
         summation = 0.0
@@ -353,8 +369,8 @@ class DefectsAnalyzer(object):
             i = 0
             for d in self._defects:
                 if d._name == n:
-                    sum_d += math.exp(-self._get_form_energy(ef, i)/(kb*t))
-                    sum_q += d._charge * math.exp(
+                    sum_d += exp(-self._get_form_energy(ef, i)/(kb*t))
+                    sum_q += d._charge * exp(
                             -self._get_form_energy(ef, i)/(kb*t))
                 i += 1
             sum_tot += cd[n] * sum_q / sum_d
@@ -368,13 +384,13 @@ class DefectsAnalyzer(object):
             i = 0
             for d in self._defects:
                 if d._name == n:
-                    sum_tot += math.exp(-self._get_form_energy(ef,i)/(kb*t))
+                    sum_tot += exp(-self._get_form_energy(ef,i)/(kb*t))
                 i += 1
             i=0
             for d in self._defects:
                 if d._name == n:
                     res.append({'name':d._name,'charge':d._charge,
-                                'conc':cd[n]*math.exp(-self._get_form_energy(
+                                'conc':cd[n]*exp(-self._get_form_energy(
                                     ef,i)/(kb*t))/sum_tot})
                 i += 1
         return res
