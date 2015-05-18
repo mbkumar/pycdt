@@ -15,7 +15,7 @@ from pymatgen.core.periodic_table import Element
 from pymatgen.core.structure import PeriodicSite
 from pymatgen.entries.computed_entries import ComputedEntry, \
         ComputedStructureEntry
-from pymatgen.symmetry.analyzer import SpagegroupAnalyzer
+from pymatgen.symmetry.analyzer import SpacegroupAnalyzer
 
 #some constants
 kb = 8.6173324e-5
