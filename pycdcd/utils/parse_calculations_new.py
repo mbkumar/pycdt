@@ -99,7 +99,7 @@ def parse_defect_calculations(root_fldr):
                         data={'locpot_path':locpot_path}),
                     site_in_bulk=site, charge=chrg, name=fldr_name))
 
-    else: # there is no opening "if" statement - only a for loop at same indentation
+    else:
         parsed_defects_data = {}
         parsed_defects_data['bulk_entry'] = bulk_entry 
         parsed_defects_data['defects'] = parsed_defects 
@@ -169,7 +169,7 @@ def get_atomic_chempots(structure):
     return chemlims 
 
 
-def parse_dielectric_calculation(root_fldr):
+def parse_dielectric_calculation_for_tensor(root_fldr):
     """
     Parses the "vasprun.xml" file in subdirectory "dielec" of root
     directory root_fldr and returns the dielectric tensor.
@@ -192,4 +192,22 @@ def parse_dielectric_calculation(root_fldr):
         eps.append([e[0]+e[1] for e in zip(eps_ion[i],eps_stat[i])])
     
     return eps
+
+def parse_dielectric_calculation(root_fldr):
+    """
+    Parses the "vasprun.xml" file in subdirectory "dielec" of root
+    directory root_fldr and returns the average of the trace
+    of the dielectric tensor.
+
+    Args:
+        root_fldr (str):
+            root directory where subdirectory "dielec" is expected
+    Returns:
+        eps (float):
+            average of the trace of the dielectric tensor
+    """
+
+    eps_ten = parse_dielectric_calculation_for_tensor(root_fldr)
+
+    return (eps_ten[0][0]+eps_ten[1][1]+eps_ten[2][2])/3.0
 
