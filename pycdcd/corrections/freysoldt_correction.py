@@ -19,7 +19,7 @@ import numpy as np
 
 from monty.tempfile import ScratchDir
 
-class DefectCorrectionFreysoldt(object):
+class FreysoldtCorrection(object):
 
     """
     This class applies the Freysoldt correction to remove electrostatic defect

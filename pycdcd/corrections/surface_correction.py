@@ -47,7 +47,7 @@ def unit_xc_correction(atoms, valence, volume, functional):
     corr = (a*rspa + b*rspb) * ergpercmsq_to_evperangsq
     return corr
 
-def correction(energy_dict, lattice_dict, valence_dict=None):
+def surf_correction(energy_dict, lattice_dict, valence_dict=None):
     """
     Computes the surface energy correction for a neutral vacancy in metal
     Args:

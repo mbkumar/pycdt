@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+# coding: utf-8
 from __future__ import division
 """
 Code to generate charged defects structure.
@@ -14,7 +14,7 @@ __status__ = "Development"
 __date__ = "November 4, 2012"
 
 import copy
-
+from monty.string import str2unicode
 from pymatgen.core.structure import PeriodicSite
 from pymatgen.core.periodic_table import Specie, Element
 from pymatgen.symmetry.analyzer import SpacegroupAnalyzer
@@ -37,12 +37,13 @@ def get_sc_scale(inp_struct, final_site_no):
     return num_mult
 
 def get_optimized_sc_scale(inp_struct, final_site_no):
+    print inp_struct.num_sites, final_site_no
     target_site = inp_struct.sites[0]
     dictio={}
     result=[]
-    for k1 in range(1,4):
-        for k2 in range(1,4):
-            for k3 in range(1,4):
+    for k1 in range(1,6):
+        for k2 in range(1,6):
+            for k3 in range(1,6):
                 struct = inp_struct.copy()
                 struct.make_supercell([k1,k2,k3])
                 if len(struct.sites) > final_site_no:
@@ -86,8 +87,8 @@ class ChargedDefectsStructures(object):
     TODO: develop a better way to find interstitials
     """
     def __init__(self, structure, max_min_oxi={}, substitutions={}, 
-                 oxi_states={}, cellmax=128, interstitial_sites=[], 
-                 standardized=False):
+                 oxi_states={}, cellmax=128, interstitial_sites=[],
+                 antisites_flag=False, standardized=False):
         """
         Args:
             structure:
@@ -112,110 +113,72 @@ class ChargedDefectsStructures(object):
             interstitials_sites:
                 A list of PeriodicSites in the bulk structure on which we put 
                 an interstitial
+            antisites_flag: 
+                If False, don't generate antisites
         """
 
         self.defects = []
         self.cellmax = cellmax
-        self.struct = structure
+        self.substitutions = {}
+        for key,val in substitutions.items():
+            self.substitutions[str2unicode(key)] = val
 
         spa = SpacegroupAnalyzer(structure,symprec=1e-2)
         prim_struct = spa.get_primitive_standard_structure()
         if standardized:
-            struct = prim_struct
+            self.struct = prim_struct
         else:
-            struct = structure
+            self.struct = structure
 
-        conv_prim_rat = int(struct.num_sites/prim_struct.num_sites)
-        sc_scale = get_optimized_sc_scale(struct,cellmax)
+        struct_species = self.struct.types_of_specie
+        if not oxi_states:
+            if len(struct_species) == 1:
+                oxi_states = {self.struct.types_of_specie[0].symbol: 0}
+            else:
+                vir = ValenceIonicRadiusEvaluator(self.struct)
+                oxi_states = vir.valences
+        self.oxi_states = {}
+        for key,val in oxi_states.items():
+            self.oxi_states[str2unicode(key.rstrip('+-'))] = val
+
+        print self.oxi_states
+
+
+        conv_prim_rat = int(self.struct.num_sites/prim_struct.num_sites)
+        sc_scale = get_optimized_sc_scale(self.struct,cellmax)
         self.defects = {}
-        sc = struct.copy()
+        sc = self.struct.copy()
         sc.make_supercell(sc_scale)
         self.defects['bulk'] = {'name':'bulk',
                 'supercell':{'size':sc_scale,'structure':sc}}
-
-        vacancies = []
-        as_defs = []
-        sub_defs = []
-
-        vac = Vacancy(struct, {}, {})
-        vac_scs = vac.make_supercells_with_defects(sc_scale)
-        struct_species = struct.types_of_specie
-        nb_per_elts = {e:0 for e in structure.composition.elements}
-
-        if not oxi_states:
-            if len(struct_species) == 1:
-                oxi_states = {struct.types_of_specie[0].symbol: 0}
-            else:
-                vir = ValenceIonicRadiusEvaluator(struct)
-                oxi_states = vir.valences
-
-        #if not oxi_states == 0 or len(max_min_oxi) == 0:
-        #    if len(struct_species) == 1:
-        #        struct_oxi = struct.copy()
-        #        struct_oxi.add_oxidation_state_by_element(
-        #            {struct.types_of_specie[0].symbol: 0})
-        #    else:
-        #        vba = BVAnalyzer()
-        #        struct_oxi = vba.get_oxi_state_decorated_structure(struct)
-
-        #if len(oxi_states) == 0:
-        #    local_oxi_states = {}
-        #    for s in struct_oxi:
-        #        ele_sym = s.specie.element.symbol
-        #        if ele_sym not in local_oxi_states.keys():
-        #            local_oxi_states[ele_sym]=s.specie.oxi_state
-        #else:
-        #    local_oxi_states = oxi_states
-        #if len(local_oxi_states) != len(struct_species):
-        #    raise ValueError("Number of oxidation states does not"
-        #                     " match number of specie types!")
 
         if not max_min_oxi:
             max_min_oxi = {}
             for s in struct_species:
                 if isinstance(s, Specie):
                     el = s.element
-                    max_min_oxi[el.symbol] = (el.min_oxidation_state, 
-                            el.max_oxidation_state)
                 elif isinstance(s, Element):
-                    max_min_oxi[s.symbol] = (s.min_oxidation_state, 
-                            s.max_oxidation_state)
+                    el = s
                 else:
                     continue
-            #local_max_min_oxi = {}
-            #for s in struct_oxi:
-            #    spec = s.specie
-            #    spec_oxi = spec.oxi_state
-            #    ele = spec.element
-            #    ele_sym = ele.symbol
-            #    if ele_sym not in local_max_min_oxi.keys():
-            #        oxi_min = ele.min_oxidation_state
-            #        oxi_max = ele.max_oxidation_state
-            #        n_oxi = len(ele.oxidation_states)
-            #        if len(struct_species) > 1 and n_oxi > 1:
-            #            oxis = list(sorted(ele.oxidation_states))
-            #            if spec_oxi <= 0 and oxi_max > 0:
-            #                for i in range(n_oxi):
-            #                    oxi_max = oxis[n_oxi-1-i]
-            #                    if oxi_max == spec_oxi:
-            #                        break
-            #                    elif oxi_max < spec_oxi:
-            #                        raise ValueError("Unexpected oxidation"
-            #                                         " state!")
-            #            elif spec_oxi >= 0 and oxi_min < 0:
-            #                for i in range(n_oxi):
-            #                    oxi_min = oxis[i]
-            #                    if oxi_min == spec_oxi:
-            #                        break
-            #                    elif oxi_min > spec_oxi:
-            #                        raise ValueError("Unexpected oxidation"
-            #                                         " state!")
-            #        local_max_min_oxi[ele_sym]=(oxi_min, oxi_max)
-        #else:
-            #local_max_min_oxi = max_min_oxi
-        #if len(local_max_min_oxi) != len(struct_species):
-        #    raise ValueError("Number of ranges of oxidation states does"
-        #                     " not match number of specie types!")
+                max_oxi = max(el.common_oxidation_states)
+                min_oxi = min(el.common_oxidation_states)
+                max_min_oxi[str2unicode(el.symbol)] = (min_oxi,max_oxi)
+            for s, subspecies in self.substitutions.items():
+                for subspecie in subspecies:
+                    el = Element(subspecie)
+                    max_oxi = max(el.common_oxidation_states)
+                    min_oxi = min(el.common_oxidation_states)
+                    max_min_oxi[str2unicode(el.symbol)] = (min_oxi,max_oxi)
+        print max_min_oxi
+        self.max_min_oxi = max_min_oxi
+
+        vacancies = []
+        as_defs = []
+        sub_defs = []
+
+        vac = Vacancy(self.struct, {}, {})
+        vac_scs = vac.make_supercells_with_defects(sc_scale)
 
         for i in range(vac.defectsite_count()):
             vac_site = vac.get_defectsite(i)
@@ -227,47 +190,68 @@ class ChargedDefectsStructures(object):
             vac_sc_site = list(set(vac_scs[0].sites) - set(vac_sc.sites))[0]
 
             list_charges=[]
-            for c in range(max_min_oxi[vac_symbol][0]-1, 
-                    max_min_oxi[vac_symbol][1]+2):
+            vac_oxi_state = self.oxi_states[str2unicode(vac_symbol)]
+            if vac_oxi_state < 0:
+                min_oxi = min(vac_oxi_state, self.max_min_oxi[vac_symbol][0])
+                max_oxi = 0
+            elif vac_oxi_state > 0:
+                min_oxi = 0
+                max_oxi = max(vac_oxi_state, self.max_min_oxi[vac_symbol][1])
+            for c in range(min_oxi, max_oxi+1):
                 list_charges.append(-c)
-            nb_per_elts[vac_specie] += 1
 
             vacancies.append({
-                'name': vac_symbol+str(nb_per_elts[vac_specie])+"_vac",
+                'name': "vac_{}_site_specie_{}_site_mult_{}".format(
+                    i+1, vac_symbol, site_mult),
                 'unique_site': vac_site,
+                'bulk_supercell_site': vac_sc_site,
+                'defect_type':'vacancy',
+                'site_specie':vac_symbol,
+                'site_multiplicity':site_mult,
                 'supercell':{'size':sc_scale,'structure':vac_sc},
                 'charges':list_charges })
 
             # Antisite defects generation
-            for as_specie in set(struct_species)-set([vac_specie]):
-                as_symbol = as_specie.symbol
-                as_sc = vac_sc.copy()
-                as_sc.append(as_symbol, vac_sc_site.frac_coords)
-                oxi_min = min(max_min_oxi[as_symbol][0]-1,
-                        max_min_oxi[vac_symbol][0]-1,0)
-                oxi_max = max(max_min_oxi[as_symbol][1]+1,
-                        max_min_oxi[vac_symbol][0]+1,1)
-                as_defs.append({
-                    'name': vac_symbol+str(nb_per_elts[vac_specie])+ \
-                            "_subst_"+as_symbol,
-                    'unique_site': vac_site,
-                    'supercell':{'size':sc_scale,'structure':as_sc},
-                    'charges':[c for c in range(oxi_min, oxi_max+1)]})
+            if antisites_flag:
+                for as_specie in set(struct_species)-set([vac_specie]):
+                    as_symbol = as_specie.symbol
+                    as_sc = vac_sc.copy()
+                    as_sc.append(as_symbol, vac_sc_site.frac_coords)
+                    oxi_min = min(self.max_min_oxi[as_symbol][0],
+                            self.max_min_oxi[vac_symbol][0],0)
+                    oxi_max = max(self.max_min_oxi[as_symbol][1],
+                            self.max_min_oxi[vac_symbol][0],0)
+                    as_defs.append({
+                        'name': "as_{}_site_specie_{}_site_mult_{}_sub_specie_{}".format(
+                            i+1, vac_symbol, site_mult, as_symbol),
+                        'unique_site': vac_site,
+                        'supercell_site': vac_sc_site,
+                        'defect_type':'antisite',
+                        'site_specie':vac_symbol,
+                        'substitution_specie':as_symbol,
+                        'site_multiplicity':site_mult,
+                        'supercell':{'size':sc_scale,'structure':as_sc},
+                        'charges':[c for c in range(oxi_min, oxi_max+1)]})
 
             # Substitutional defects generation
-            if vac_symbol in substitutions:
-                for subspecie_symbol in substitutions[vac_symbol]:
+            if vac_symbol in self.substitutions:
+                for subspecie_symbol in self.substitutions[vac_symbol]:
                     sub_sc = vac_sc.copy()
                     sub_sc.append(subspecie_symbol, vac_sc_site.frac_coords)
-                    oxi_min = min(max_min_oxi[subspecie_symbol][0]-1,0)
-                    oxi_max = max(max_min_oxi[subspecie_symbol][1]+1,1)
+                    oxi_min = min(self.max_min_oxi[subspecie_symbol][0],0)
+                    oxi_max = max(self.max_min_oxi[subspecie_symbol][1],0)
                     sub_defs.append({
-                        'name': vac_symbol+str(nb_per_elts[vac_specie])+ \
-                                "_subst_"+subspecie_symbol,
+                        'name': "sub_{}_site_specie_{}_site_mult_{}_sub_specie_{}".format(
+                            i+1, vac_symbol, site_mult, subspecie_symbol),
                         'unique_site': vac_site,
+                        'supercell_site': vac_sc_site,
+                        'defect_type':'antisite',
+                        'site_specie':vac_symbol,
+                        'substitution_specie':subspecie_symbol,
+                        'site_multiplicity':site_mult,
                         'supercell':{'size':sc_scale,'structure':sub_sc},
-                        'charges':[c-oxi_states[vac_symbol] for c in range(
-                            oxi_min, oxi_max+1)]})
+                        'charges':[c - self.oxi_states[str2unicode(
+                            vac_symbol)] for c in range(oxi_min, oxi_max+1)]})
 
         self.defects['vacancies'] = vacancies 
         self.defects['substitutions'] = sub_defs
@@ -289,7 +273,24 @@ class ChargedDefectsStructures(object):
                 count = count+1
         self.defects['interstitials'] = interstitials
 
-    
+    def make_defect_complexes(max_complex_size=0, include_vacancies=True):
+        """
+        Function to generate defect complexes
+        Args:
+            max_complex_size: max. number of defects in a complex.
+                If zero, the max size possible is considered based 
+                on no. of subsitutions
+            include_vacancies: Include vacancies in the defect complex
+        """
+        if not max_complex_size:
+            max_complex_size = len(self.defects['substitutions'])
+            if include_vacancies:
+                max_complex_size += 1
+
+        complexes = []
+        for size in range(2,max_complex_size+1):
+            continue
+            
     def make_interstitial(self, target_site, sc_scale):
         sc = self.struct.copy()
         sc.make_supercell(sc_scale)
