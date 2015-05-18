@@ -66,6 +66,15 @@ class ParsedDefect(object):
 
 
 def apply_correction(defect, bulk_entry, epsilon, type='freysoldt'):
+    """
+    Function to compute the correction for each defect.
+    Args:
+        defect: ParsedDefect object
+        bulk_entry: ComputedEntry corresponding to bulk
+        epsilon: Dielectric constant
+        type: String indicating the type of correction. Only Freysoldt
+            method is implemented.
+    """
     if type == 'freysoldt':
         locpot_path_blk = bulk_enry.data['locpot_path']
         locpot_blk = Locpot.from_file(locpot_path_blk)
@@ -78,6 +87,7 @@ def apply_correction(defect, bulk_entry, epsilon, type='freysoldt'):
                 charge, epsilon, frac_coords, encut):
 
         return corr 
+
 
 class DefectsAnalyzer(object):
     """
