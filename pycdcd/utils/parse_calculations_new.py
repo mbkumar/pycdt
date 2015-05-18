@@ -182,7 +182,7 @@ def parse_dielectric_calculation_for_tensor(root_fldr):
             dielectric tensor
     """
 
-    vrun = Vasprun(os.path.join(root_fldr,"dielec","vasprun.xml"))
+    vrun = Vasprun(os.path.join(root_fldr,"dielectric","vasprun.xml"))
     eps_ion = vrun.epsilon_ionic
     eps_stat = vrun.epsilon_static
 
