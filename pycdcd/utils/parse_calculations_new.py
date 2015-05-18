@@ -74,8 +74,7 @@ def parse_defect_calculations(root_fldr):
             bulk_energy = vr.final_energy
             bulk_struct = vr.final_structure
             bulk_sites = vr.structures[-1].num_sites
-            bulk_locpot_path = os.path.abspath(os.path.join(
-                fldr_name,'LOCPOT'))
+            bulk_locpot_path = os.path.abspath(os.path.join(fldr,'LOCPOT'))
             bulk_entry = ComputedStructureEntry(bulk_struct, bulk_energy, 
                     data={'locpot_path':bulk_locpot_path})
         else:
@@ -93,13 +92,14 @@ def parse_defect_calculations(root_fldr):
                 site = trans_dict['defect_supercell_site']
                 energy = vr.final_energy
                 struct = vr.final_structure
-                locpot_path = os.path.abspath(os.path.join(chrg_fldr, 'LOCPOT')
+                encut = vr.incar['ENCUT']
+                locpot_path = os.path.abspath(os.path.join(chrg_fldr, 'LOCPOT'))
                 parsed_defects.append(ParsedDefect(
                     ComputedStructureEntry(struct, energy, 
-                        data={'locpot_path':locpot_path}),
+                        data={'locpot_path':locpot_path,'encut':encut}),
                     site_in_bulk=site, charge=chrg, name=fldr_name))
 
-    else: # there is no opening "if" statement - only a for loop at same indentation
+    else: 
         parsed_defects_data = {}
         parsed_defects_data['bulk_entry'] = bulk_entry 
         parsed_defects_data['defects'] = parsed_defects 
@@ -182,8 +182,7 @@ def parse_dielectric_calculation(root_fldr):
             dielectric tensor
     """
 
-    vrun = Vasprun(os.path.join(root_fldr,"dielec/vasprun.xml"), None, 0,
-        False, False, False, False)
+    vrun = Vasprun(os.path.join(root_fldr,"dielec","vasprun.xml"))
     eps_ion = vrun.epsilon_ionic
     eps_stat = vrun.epsilon_static
 
