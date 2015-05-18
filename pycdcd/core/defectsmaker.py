@@ -226,7 +226,7 @@ class ChargedDefectsStructures(object):
                         'name': "as_{}_site_specie_{}_site_mult_{}_sub_specie_{}".format(
                             i+1, vac_symbol, site_mult, as_symbol),
                         'unique_site': vac_site,
-                        'supercell_site': vac_sc_site,
+                        'bulk_supercell_site': vac_sc_site,
                         'defect_type':'antisite',
                         'site_specie':vac_symbol,
                         'substitution_specie':as_symbol,
@@ -245,7 +245,7 @@ class ChargedDefectsStructures(object):
                         'name': "sub_{}_site_specie_{}_site_mult_{}_sub_specie_{}".format(
                             i+1, vac_symbol, site_mult, subspecie_symbol),
                         'unique_site': vac_site,
-                        'supercell_site': vac_sc_site,
+                        'bulk_supercell_site': vac_sc_site,
                         'defect_type':'antisite',
                         'site_specie':vac_symbol,
                         'substitution_specie':subspecie_symbol,
