@@ -67,7 +67,7 @@ def parse_defect_calculations(root_fldr):
         fldr_fields = fldr_name.split("_")
         if 'bulk' in fldr_fields:
             vr, error_msg = get_vr_and_check_locpot(fldr)
-            if errro_msg:
+            if error_msg:
                 print (fldr_name, error_msg)
                 print "Abandoing parsing of the calculations"
                 break
@@ -93,7 +93,7 @@ def parse_defect_calculations(root_fldr):
                 site = trans_dict['defect_supercell_site']
                 energy = vr.final_energy
                 struct = vr.final_structure
-                locpot_path = os.path.abspath(os.path.join(chrg_fldr, 'LOCPOT')
+                locpot_path = os.path.abspath(os.path.join(chrg_fldr, 'LOCPOT'))
                 parsed_defects.append(ParsedDefect(
                     ComputedStructureEntry(struct, energy, 
                         data={'locpot_path':locpot_path}),
