@@ -139,24 +139,27 @@ def get_atomic_chempots(structure):
 
     note: could also do this with mpid if that would be easier..
     """
-    specs=list(set(structure.species))
-    listspec=[i.symbol for i in specs]
-    print 'look for atomic chempots relative to:',listspec
+    #specs=list(set(structure.species))
+    #listspec=[i.symbol for i in specs]
+    #print 'look for atomic chempots relative to:',listspec
+    species = [specie.symbol for specie in structure.types_of_speice]
     
     mp=MPRester() 
-    entries=mp.get_entries_in_chemsys(listspec)
-    if len(listspec)==1:
+    entries=mp.get_entries_in_chemsys(species)
+    if len(species)==1:
         print 'this is elemental system! use bulk value.'
-        vals=[i.energy_per_atom for i in entries]
+        vals=[entry.energy_per_atom for entry in entries]
         chempot={specs[0]:min(vals)}
         return chempot
+
     pd=PhaseDiagram(entries)
-    print pd
+    #print pd
 
     chemlims={}
     for i in specs:
         name=str(i)+'-limiting'
-        tmpchemlims=PDAnalyzer(pd).get_chempot_range_stability_phase(self._structure.composition,i)
+        tmpchemlims=PDAnalyzer(pd).get_chempot_range_stability_phase(
+                self._structure.composition,i)
         chemlims[name]={str(i)+'-rich':{},str(i)+'-poor':{}}
         for j in tmpchemlims.keys():
             chemlims[name][str(i)+'-rich'][j]=tmpchemlims[j][1]
@@ -164,7 +167,7 @@ def get_atomic_chempots(structure):
 
     #make this less confusing for binary systems...
     if len(specs)==2:
-	chemlims=chemlims[chemlims.keys()[0]]
+	    chemlims=chemlims[chemlims.keys()[0]]
 
     return chemlims 
 
