@@ -6,6 +6,7 @@ defects data for further processing.
 """
 from arg_parser import ArgParse
 
+from pymatgen.matproj.rest import MPRester
 from pycdcd.utilities.parsing_calculations import  parse_defect_calculations, \
         get_vbm_bandgap, get_atomic_chempots, parse_dielectric_calculation
 from pycdcd.corrections.defect_analyzer import  DefectAnalyzer
