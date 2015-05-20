@@ -108,7 +108,7 @@ def parse_defect_calculations(root_fldr):
     return {} # Return Null dict due to failure
 
 
-def get_vbm(mpid, mapi_key=None):
+def get_vbm_bandgap(mpid, mapi_key=None):
     """
     Returns the valence band maxiumum (float) of the structure with
     MP-ID mpid.
@@ -128,9 +128,11 @@ def get_vbm(mpid, mapi_key=None):
     if  not bs:
         raise ValueError("Could not fetch band structure!")
 
-    vbm_energy = bs.get_vbm()['energy']
-    if not vbm_energy:
-        vbm_energy = 0
+    vbm = bs.get_vbm()['energy']
+    if not vbm:
+        vbm = 0
+    bandgap = bs.get_band_gap()
+    return (vbm, bandgap)
 
 
 def get_atomic_chempots(structure):
