@@ -20,7 +20,6 @@ import numpy as np
 from monty.tempfile import ScratchDir
 
 class FreysoldtCorrection(object):
-
     """
     This class applies the Freysoldt correction to remove electrostatic defect
     interaction contribution to energy and apply potential alignment.
@@ -29,17 +28,22 @@ class FreysoldtCorrection(object):
     """
     
     def __init__(self, locpot_bulk, locpot_defect, charge, epsilon, 
-            frac_coords,encut):
+            site_frac_coords,encut):
         """
-        locpot_bulk = LOCPOT of bulk as Locpot object
-        locpot_defect=LOCPOT of defect as Locpot object
+        Args:
+            locpot_bulk: LOCPOT of bulk as Locpot object
+            locpot_defect: LOCPOT of defect as Locpot object
+            charge: Charge relative to neutral defect (not relative to bulk)
+            epsilon: Dielectric constant obtained from relaxation run
+            site_frac_coords: Fractional coordinates of defect site as list
+            enuct: Planewave basis energy cutoff used in VASP run (in eV)
         """
-        self._locpot_bulk=locpot_bulk
-        self._locpot_defect=locpot_defect
-        self._charge=charge #relative to neutral defect (not relative to bulk)
-        self._epsilon=epsilon #this should include ionic relaxation effects
-        self._frac_coords=frac_coords   #in form [0,0,0]
-        self._encut=encut #encut value in eV from Vasp
+        self._locpot_bulk = locpot_bulk
+        self._locpot_defect = locpot_defect
+        self._charge = charge 
+        self._epsilon = epsilon 
+        self._frac_coords = site_frac_coords   
+        self._encut = encut 
         
     def prepare_files(self):
         if  self._charge==0:
@@ -121,17 +125,17 @@ class FreysoldtCorrection(object):
 
     def plot_pot_diff(self, align=[0.0,0.0,0.0], print_pot_flag='written'):
         """
-        runs sxdefectalign and obtains three alignment constants for 
-        each axis. To do freysoldt correction you need to run this twice 
+        Runs sxdefectalign and obtains three alignment constants for 
+        each axis. To obtain Freysoldt correction call this function twice 
         (once to get alignment, and second time to get final correction 
-        and plots). To do this just call the run_correction() method with
-        print flag = none then just get corrections and leave vline-eV.dat 
+        and plots). In the first call, use print_pot_flag=none.  
+        Then in second call get corrections and leave vline-eV.dat 
         files for each axis and produce potential alignment correction
         or if  print flag= written then get different parts of vline-eV.dat 
         written to files for plotting (good for nersc or where you can't 
         plot easy) or if print flag=plotfull then show the full matplotlib 
-        plot for all three axes at end of calculation encut is eV cutoff 
-        from VASP
+        plot for all three axes at end of calculation. 
+        encut is eV cutoff from VASP
 
         Would like final workflow to include the flag that I have put here 
         for when planar average varies by more than 0.2 eV around far region
@@ -327,7 +331,7 @@ class FreysoldtCorrection(object):
 
 
 if __name__ == '__main__':
-
+    pass
     #for testing, example given here is Se_sn+1 in 72 atom cell
     #from pymatgen.io.vaspio.vasp_output import Locpot
     #print 'load locpots'
