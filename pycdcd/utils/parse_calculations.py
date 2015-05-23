@@ -25,7 +25,8 @@ from pymatgen.io.vaspio.vasp_output import Vasprun
 from pymatgen.electronic_structure.bandstructure import BandStructure
 from pymatgen.entries.computed_entries import ComputedStructureEntry
 from pycdcd.corrections.defects_analyzer import ParsedDefect, DefectsAnalyzer
-
+from pymatgen.phasediagram.pdmaker import PhaseDiagram
+from pymatgen.phasediagram.pdanalyzer import PDAnalyzer
 
 def parse_defect_calculations(root_fldr):
     """
@@ -62,6 +63,7 @@ def parse_defect_calculations(root_fldr):
 
         return (vr, None)
 
+    print 'subfolders=',subfolders
     for fldr in subfolders:
         fldr_name = os.path.split(fldr)[1]
         fldr_fields = fldr_name.split("_")
@@ -78,7 +80,8 @@ def parse_defect_calculations(root_fldr):
             bulk_entry = ComputedStructureEntry(bulk_struct, bulk_energy, 
                     data={'locpot_path':bulk_locpot_path})
         else:
-            chrg_fldrs = glob.glob(os.path.join(fldr,'charge_*'))
+            chrg_fldrs = glob.glob(os.path.join(fldr,'charge*'))
+	    print 'charge folders=',chrg_fldrs
             for chrg_fldr in chrg_fldrs:
                 vr, error_msg = get_vr_and_check_locpot(chrg_fldr)
                 if error_msg:
@@ -87,7 +90,7 @@ def parse_defect_calculations(root_fldr):
                     continue  # The successful calculations maybe useful
 
                 #chrg = int(chrg_fldr_name.split("_")[1])
-                trans_dict = loadfn('transformation.json')
+                trans_dict = loadfn(str(chrg_fldr)+'/'+'transformation.json')
                 chrg = trans_dict['charge']
                 site = trans_dict['defect_supercell_site']
                 energy = vr.final_energy
@@ -137,38 +140,40 @@ def get_vbm_bandgap(mpid, mapi_key=None):
 
 def get_atomic_chempots(structure):
     """
-    gets atomic chempots from MP database
+    gets atomic chempots from bulk structure object
 
     note: could also do this with mpid if that would be easier..
     """
     #specs=list(set(structure.species))
     #listspec=[i.symbol for i in specs]
     #print 'look for atomic chempots relative to:',listspec
-    species = [specie.symbol for specie in structure.types_of_speice]
+    species = [s for s in structure.types_of_specie]
+    species_symbol = [s.symbol for s in structure.types_of_specie]
     
     mp=MPRester() 
-    entries=mp.get_entries_in_chemsys(species)
+    entries=mp.get_entries_in_chemsys(species_symbol)
     if len(species)==1:
         print 'this is elemental system! use bulk value.'
         vals=[entry.energy_per_atom for entry in entries]
-        chempot={specs[0]:min(vals)}
+        chempot={species[0]:min(vals)}
         return chempot
 
     pd=PhaseDiagram(entries)
-    #print pd
+    print pd
 
     chemlims={}
-    for i in specs:
+    print 'species=',species
+    for i in species:
         name=str(i)+'-limiting'
         tmpchemlims=PDAnalyzer(pd).get_chempot_range_stability_phase(
-                self._structure.composition,i)
+                structure.get_primitive_structure().composition,i)
         chemlims[name]={str(i)+'-rich':{},str(i)+'-poor':{}}
         for j in tmpchemlims.keys():
             chemlims[name][str(i)+'-rich'][j]=tmpchemlims[j][1]
             chemlims[name][str(i)+'-poor'][j]=tmpchemlims[j][0]
 
     #make this less confusing for binary systems...
-    if len(specs)==2:
+    if len(species)==2:
 	    chemlims=chemlims[chemlims.keys()[0]]
 
     return chemlims 
