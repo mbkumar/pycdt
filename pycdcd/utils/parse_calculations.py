@@ -147,7 +147,7 @@ def get_atomic_chempots(mpid,mapi_key=None):
         with MPRester(mapi_key) as mp:
             structure = mp.get_structure_by_material_id(mpid)
     if  not structure:
-        raise ValueError("Could not fetch structure object!")
+        raise ValueError("Could not fetch structure object for atomic chempots!")
 
     species = [s for s in structure.types_of_specie]
     species_symbol = [s.symbol for s in structure.types_of_specie]
