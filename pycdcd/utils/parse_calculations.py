@@ -136,12 +136,19 @@ def get_vbm_bandgap(mpid, mapi_key=None):
     return (vbm, bandgap)
 
 
-def get_atomic_chempots(structure):
+def get_atomic_chempots(mpid,mapi_key=None):
     """
-    gets atomic chempots from bulk structure object
+    gets atomic chempots from mpid
+    """
+    if not mapi_key:
+        with MPRester() as mp:
+            structure = mp.get_structure_by_material_id(mpid)
+    else:
+        with MPRester(mapi_key) as mp:
+            structure = mp.get_structure_by_material_id(mpid)
+    if  not structure:
+        raise ValueError("Could not fetch structure object!")
 
-    note: could also do this with mpid if that would be easier..
-    """
     species = [s for s in structure.types_of_specie]
     species_symbol = [s.symbol for s in structure.types_of_specie]
     #print 'look for atomic chempots relative to:',species
