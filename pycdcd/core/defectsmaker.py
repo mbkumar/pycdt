@@ -217,10 +217,16 @@ class ChargedDefectsStructures(object):
                     as_symbol = as_specie.symbol
                     as_sc = vac_sc.copy()
                     as_sc.append(as_symbol, vac_sc_site.frac_coords)
-                    oxi_min = min(self.max_min_oxi[as_symbol][0],
-                            self.max_min_oxi[vac_symbol][0],0)
-                    oxi_max = max(self.max_min_oxi[as_symbol][1],
-                            self.max_min_oxi[vac_symbol][0],0)
+                    #oxi_min = min(self.max_min_oxi[as_symbol][0],
+                    #        self.max_min_oxi[vac_symbol][0],0)
+                    #oxi_max = max(self.max_min_oxi[as_symbol][1],
+                    #        self.max_min_oxi[vac_symbol][0],0)
+                    if vac_symbol > 0:
+                        oxi_max = max(self.max_min_oxi[as_symbol][1],0)
+                        oxi_min = 0
+                    else:
+                        oxi_max = 0
+                        oxi_min = min(self.max_min_oxi[as_symbol][0],0)
                     as_defs.append({
                         'name': "as_{}_site_specie_{}_site_mult_{}_sub_specie_{}".format(
                             i+1, vac_symbol, site_mult, as_symbol),
@@ -231,15 +237,21 @@ class ChargedDefectsStructures(object):
                         'substitution_specie':as_symbol,
                         'site_multiplicity':site_mult,
                         'supercell':{'size':sc_scale,'structure':as_sc},
-                        'charges':[c for c in range(oxi_min, oxi_max+1)]})
+                        #'charges':[c for c in range(oxi_min, oxi_max+1)]})
+                        'charges':[c - self.oxi_states[str2unicode(
+                            vac_symbol)] for c in range(oxi_min, oxi_max+1)]})
 
             # Substitutional defects generation
             if vac_symbol in self.substitutions:
                 for subspecie_symbol in self.substitutions[vac_symbol]:
                     sub_sc = vac_sc.copy()
                     sub_sc.append(subspecie_symbol, vac_sc_site.frac_coords)
-                    oxi_min = min(self.max_min_oxi[subspecie_symbol][0],0)
-                    oxi_max = max(self.max_min_oxi[subspecie_symbol][1],0)
+                    if vac_symbol > 0:
+                        oxi_max = max(self.max_min_oxi[subspecie_symbol][1],0)
+                        oxi_min = 0
+                    else:
+                        oxi_max = 0
+                        oxi_min = min(self.max_min_oxi[subspecie_symbol][0],0)
                     sub_defs.append({
                         'name': "sub_{}_site_specie_{}_site_mult_{}_sub_specie_{}".format(
                             i+1, vac_symbol, site_mult, subspecie_symbol),
