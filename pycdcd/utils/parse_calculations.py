@@ -63,7 +63,6 @@ def parse_defect_calculations(root_fldr):
 
         return (vr, None)
 
-    print 'subfolders=',subfolders
     for fldr in subfolders:
         fldr_name = os.path.split(fldr)[1]
         fldr_fields = fldr_name.split("_")
@@ -81,7 +80,6 @@ def parse_defect_calculations(root_fldr):
                     data={'locpot_path':bulk_locpot_path})
         else:
             chrg_fldrs = glob.glob(os.path.join(fldr,'charge*'))
-	    print 'charge folders=',chrg_fldrs
             for chrg_fldr in chrg_fldrs:
                 vr, error_msg = get_vr_and_check_locpot(chrg_fldr)
                 if error_msg:
@@ -144,11 +142,9 @@ def get_atomic_chempots(structure):
 
     note: could also do this with mpid if that would be easier..
     """
-    #specs=list(set(structure.species))
-    #listspec=[i.symbol for i in specs]
-    #print 'look for atomic chempots relative to:',listspec
     species = [s for s in structure.types_of_specie]
     species_symbol = [s.symbol for s in structure.types_of_specie]
+    #print 'look for atomic chempots relative to:',species
     
     mp=MPRester() 
     entries=mp.get_entries_in_chemsys(species_symbol)
