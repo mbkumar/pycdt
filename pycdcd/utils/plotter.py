@@ -13,20 +13,25 @@ from pymatgen.util.plotting_utils import get_publication_quality_plot
 
 class DefectPlotter(object):
     """
-    class performing all the typical plots from a defects study
+    Class performing all the typical plots from a defects study
     """
 
     def __init__(self, analyzer):
+        """
+        Args:
+            analyzer: DefectsAnalyzer object 
+        """
+
         self._analyzer = analyzer
 
     def get_plot_form_energy(self, xlim=None, ylim=None):
         """
-        plots the typical formation energy vs Fermi energy plot
+        Formation energy vs Fermi energy plot
         Args:
             xlim:
-                a tuple of (min, max) giving the edge of the x (fermi energy) axis
+                Tuple (min,max) giving the range of the x (fermi energy) axis
             ylim:
-                a tuple of (min, max) giving the limits for the formation energy axis
+                Tuple (min,max) giving the range for the formation energy axis
         Returns:
             a matplotlib object
 
