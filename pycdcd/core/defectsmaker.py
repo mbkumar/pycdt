@@ -204,8 +204,7 @@ class ChargedDefectsStructures(object):
                 list_charges.append(-c)
 
             vacancies.append({
-                'name': "vac_{}_site_specie_{}_site_mult_{}".format(
-                    i+1, vac_symbol, site_mult),
+                'name': "vac_{}_{}".format(i+1, vac_symbol),
                 'unique_site': vac_site,
                 'bulk_supercell_site': vac_sc_site,
                 'defect_type':'vacancy',
@@ -231,8 +230,8 @@ class ChargedDefectsStructures(object):
                         oxi_max = 0
                         oxi_min = min(self.max_min_oxi[as_symbol][0],0)
                     as_defs.append({
-                        'name': "as_{}_site_specie_{}_site_mult_{}_sub_specie_{}".format(
-                            i+1, vac_symbol, site_mult, as_symbol),
+                        'name': "as_{}_{}_on_{}".format(
+                            i+1, vac_symbol, as_symbol),
                         'unique_site': vac_site,
                         'bulk_supercell_site': vac_sc_site,
                         'defect_type':'antisite',
@@ -256,8 +255,8 @@ class ChargedDefectsStructures(object):
                         oxi_max = 0
                         oxi_min = min(self.max_min_oxi[subspecie_symbol][0],0)
                     sub_defs.append({
-                        'name': "sub_{}_site_specie_{}_site_mult_{}_sub_specie_{}".format(
-                            i+1, vac_symbol, site_mult, subspecie_symbol),
+                        'name': "sub_{}_{}_on_{}".format(
+                            i+1, vac_symbol, subspecie_symbol),
                         'unique_site': vac_site,
                         'bulk_supercell_site': vac_sc_site,
                         'defect_type':'antisite',
