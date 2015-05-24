@@ -16,7 +16,7 @@ from pymatgen.core.structure import PeriodicSite
 from pymatgen.io.vaspio.vasp_output import Locpot
 from pymatgen.entries.computed_entries import ComputedEntry, \
         ComputedStructureEntry
-from pymatgen.symmetry.analyzer import SpagegroupAnalyzer
+from pymatgen.symmetry.analyzer import SpacegroupAnalyzer
 from pycdcd.corrections.freysoldt_correction import FreysoldtCorrection
 
 #some constants
