@@ -105,14 +105,15 @@ class PostProcess(object):
                         print "But parsing of the rest of the calculations"
                         continue  # The successful calculations maybe useful
 
-                    #chrg = int(chrg_fldr_name.split("_")[1])
-                    trans_dict = loadfn(str(chrg_fldr)+'/'+'transformation.json')
+                    trans_dict = loadfn(os.path.join(
+                        chrg_fldr,'transformation.json'))
                     chrg = trans_dict['charge']
                     site = trans_dict['defect_supercell_site']
                     energy = vr.final_energy
                     struct = vr.final_structure
                     encut = vr.incar['ENCUT']
-                    locpot_path = os.path.abspath(os.path.join(chrg_fldr, 'LOCPOT'))
+                    locpot_path = os.path.abspath(os.path.join(
+                        chrg_fldr, 'LOCPOT'))
                     parsed_defects.append(ParsedDefect(
                         ComputedStructureEntry(struct, energy,
                             data={'locpot_path':locpot_path,'encut':encut}),
@@ -125,7 +126,6 @@ class PostProcess(object):
             return parsed_defects_data
 
         return {} # Return Null dict due to failure
-
 
     def get_vbm_bandgap(self):
         """
@@ -152,7 +152,6 @@ class PostProcess(object):
         bandgap = bs.get_band_gap()
         return (vbm, bandgap)
 
-
     def get_atomic_chempots(self):
         """
         gets atomic chempots from mpid
@@ -164,14 +163,21 @@ class PostProcess(object):
             with MPRester(self._mapi_key) as mp:
                 structure = mp.get_structure_by_material_id(self._mpid)
         if  not structure:
-            raise ValueError("Could not fetch structure object for atomic chempots!")
+            raise ValueError("Could not fetch structure for atomic chempots!")
 
-        species = [s for s in structure.types_of_specie]
+        species = structure.types_of_specie
         species_symbol = [s.symbol for s in structure.types_of_specie]
         #print 'look for atomic chempots relative to:',species
 
-        mp=MPRester()
-        entries=mp.get_entries_in_chemsys(species_symbol)
+        if not self._mapi_key:
+            with MPRester() as mp:
+                entries=mp.get_entries_in_chemsys(species_symbol)
+        else:
+            with MPRester(self._mapi_key) as mp:
+                entries=mp.get_entries_in_chemsys(species_symbol)
+        if  not entries:
+            raise ValueError("Could not fetch entries for atomic chempots!")
+
         if len(species)==1:
             print 'this is elemental system! use bulk value.'
             vals=[entry.energy_per_atom for entry in entries]
@@ -198,21 +204,19 @@ class PostProcess(object):
 
         return chemlims
 
-
-    def parse_dielectric_calculation_for_tensor(self):
+    def _get_dielectric_tensor(self, vrun):
         """
         Parses the "vasprun.xml" file in subdirectory "dielec" of root
         directory root_fldr and returns the dielectric tensor.
 
         Args:
-            root_fldr (str):
-                root directory where subdirectory "dielec" is expected
+            vrun: 
+                Vasprun object of the dielectric calculation
         Returns:
             eps (3x3 float matrix):
                 dielectric tensor
         """
 
-        vrun = Vasprun(os.path.join(self._root_fldr,"dielectric","vasprun.xml"))
         eps_ion = vrun.epsilon_ionic
         eps_stat = vrun.epsilon_static
 
@@ -224,8 +228,8 @@ class PostProcess(object):
 
     def parse_dielectric_calculation(self):
         """
-        Parses the "vasprun.xml" file in subdirectory "dielec" of root
-        directory root_fldr and returns the average of the trace
+        Parses the "vasprun.xml" file in subdirectory "dielectric" of 
+        root directory root_fldr and returns the average of the trace
         of the dielectric tensor.
 
         Args:
@@ -236,7 +240,8 @@ class PostProcess(object):
                 average of the trace of the dielectric tensor
         """
 
-        eps_ten = self.parse_dielectric_calculation_for_tensor()
+        vr = Vasprun(os.path.join(self._root_fldr,"dielectric","vasprun.xml"))
+        eps_ten = self._get_dielectric_tensor(vr)
 
         return (eps_ten[0][0]+eps_ten[1][1]+eps_ten[2][2])/3.0
 
