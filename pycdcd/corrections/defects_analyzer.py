@@ -84,7 +84,7 @@ def apply_correction(defect, bulk_entry, epsilon, type='freysoldt'):
         frac_coords = self._site.frac_coords
         encut = defect._entry.data['encut']
         corr = FreysoldtCorrection(locpot_blk, locpot_defect, 
-                charge, epsilon, frac_coords, encut):
+                charge, epsilon, frac_coords, encut)
 
         return corr 
 
