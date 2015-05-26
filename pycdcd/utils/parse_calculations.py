@@ -30,9 +30,21 @@ from pymatgen.phasediagram.pdanalyzer import PDAnalyzer
 
 
 class PostProcess(object):
-    def __init__(self,root_fldr,mpid):
-        self._root_fldr=root_fldr
-        self._mpid=mpid
+    def __init__(self, root_fldr, mpid, mapi_key=None):
+        """
+        Post processing object for charged point-defect calculations.
+
+        Args:
+            root_fldr (str): path (relative) to directory
+                in which data of charged point-defect calculations for
+                a particular system are to be found;
+            mpid (str): Materials Project ID of bulk structure; 
+                format "mp-X", where X is an integer;
+            mapi_key (str): Materials API key to access database.
+        """
+        self._root_fldr = root_fldr
+        self._mpid = mpid
+        self._mapi_key = mapi_key
 
     def parse_defect_calculations(self):
         """
@@ -115,7 +127,7 @@ class PostProcess(object):
         return {} # Return Null dict due to failure
 
 
-    def get_vbm_bandgap(self,mapi_key=None):
+    def get_vbm_bandgap(self):
         """
         Returns the valence band maxiumum (float) of the structure with
         MP-ID mpid.
@@ -123,16 +135,15 @@ class PostProcess(object):
         Args:
             mpid (str): MP-ID for which the valence band maximum is to
                 be fetched from the Materials Project database
-            mapi_key: Materials API key to access database
         """
 
-        if not mapi_key:
+        if not self._mapi_key:
             with MPRester() as mp:
                 bs = mp.get_bandstructure_by_material_id(self._mpid)
         else:
-            with MPRester(mapi_key) as mp:
+            with MPRester(self._mapi_key) as mp:
                 bs = mp.get_bandstructure_by_material_id(self._mpid)
-        if  not bs:
+        if not bs:
             raise ValueError("Could not fetch band structure!")
 
         vbm = bs.get_vbm()['energy']
@@ -142,15 +153,15 @@ class PostProcess(object):
         return (vbm, bandgap)
 
 
-    def get_atomic_chempots(self,mapi_key=None):
+    def get_atomic_chempots(self):
         """
         gets atomic chempots from mpid
         """
-        if not mapi_key:
+        if not self._mapi_key:
             with MPRester() as mp:
                 structure = mp.get_structure_by_material_id(self._mpid)
         else:
-            with MPRester(mapi_key) as mp:
+            with MPRester(self._mapi_key) as mp:
                 structure = mp.get_structure_by_material_id(self._mpid)
         if  not structure:
             raise ValueError("Could not fetch structure object for atomic chempots!")
