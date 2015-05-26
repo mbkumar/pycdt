@@ -83,8 +83,6 @@ def generate_input_files(args):
         conv_struct.composition.reduced_formula)
 
 
-
-
 def parse_vasp_output(args):
     """
     Parses output files from VASP calculations that aim to determine
