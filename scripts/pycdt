@@ -29,6 +29,7 @@ from pymatgen.analysis.bond_valence import BVAnalyzer
 from pycdcd.core.defectsmaker import ChargedDefectsStructures
 from pycdcd.utils.vasp import make_vasp_defect_files, \
         make_vasp_dielectric_files
+from pycdcd.utils.parse_calculations import PostProcess
 
 
 def generate_input_files(args):
