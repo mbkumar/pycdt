@@ -129,42 +129,42 @@ def main():
         Last updated: {}""".format(__version__, __date__))
 
     subparsers = parser.add_subparsers()
-    MPID_string = "Materials Project id of the structure.\nFor more info on " \
+    mpid_string = "Materials Project id of the structure.\nFor more info on " \
         "Materials Project, please, visit www.materialsproject.org"
-    MAPI_string = "Your Materials Project REST API key.\nFor more info, " \
+    mapi_string = "Your Materials Project REST API key.\nFor more info, " \
         "please, visit www.materialsproject.org/open"
-    NMAX_string = "Maximum number of atoms in supercell.\nThe default is" \
+    nmax_string = "Maximum number of atoms in supercell.\nThe default is" \
         "128.\nKeep in mind the number of atoms in the supercell may vary" \
         "from the provided number including the default."
-    OXI_RANGE_string = "Oxidation range for an element.\nThree arguments" \
+    oxi_range_string = "Oxidation range for an element.\nThree arguments" \
         " expected: the element type for which the oxidation state range is" \
         " to be specified as well as the lower and the upper limit of the" \
         " range (e.g., --oxi_states As -3 5)."
-    ROOT_FLDR_string = "Path (relative or absolute) to directory" \
+    root_fldr_string = "Path (relative or absolute) to directory" \
         " in which data of charged point-defect calculations for" \
         " a particular system are to be found.\n"
 
     parser_input_files = subparsers.add_parser("generate_input_files",
         help="Generates Vasp input files for charged point defects.")
     parser_input_files.add_argument("--mpid", type=str.lower, dest="mpid",
-        help=MPID_string)
+        help=mpid_string)
     parser_input_files.add_argument("--mapi_key", default = None,
-        dest="mapi_key", help=MAPI_string)
+        dest="mapi_key", help=mapi_string)
     parser_input_files.add_argument("--nmax", type=int, default = 128,
-        dest="nmax", help=NMAX_string)
+        dest="nmax", help=nmax_string)
     parser_input_files.add_argument("--oxi_range", action='append', type=str,
-        nargs=3, dest="oxi_range", help=OXI_RANGE_string)
+        nargs=3, dest="oxi_range", help=oxi_range_string)
     parser_input_files.set_defaults(func=generate_input_files)
 
     parser_vasp_output = subparsers.add_parser("parse_vasp_output",
         help="Parses VASP output for calculation of formation energies of"
              " charged point defects.")
     parser_vasp_output.add_argument("--mpid", type=str.lower, dest="mpid",
-        help=MPID_string)
+        help=mpid_string)
     parser_vasp_output.add_argument("--mapi_key", default = None,
-        dest="mapi_key", help=MAPI_string)
+        dest="mapi_key", help=mapi_string)
     parser_vasp_output.add_argument("--dir", default = None,
-        dest="root_fldr", help=ROOT_FLDR_string)
+        dest="root_fldr", help=root_fldr_string)
     parser_vasp_output.set_defaults(func=parse_vasp_output)
 
     args = parser.parse_args()
