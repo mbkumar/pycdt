@@ -106,7 +106,7 @@ class PostProcess(object):
                         continue  # The successful calculations maybe useful
 
                     trans_dict = loadfn(os.path.join(
-                        chrg_fldr,'transformation.json'))
+                        chrg_fldr,'transformation.json'),cls=MontyDecoder)
                     chrg = trans_dict['charge']
                     site = trans_dict['defect_supercell_site']
                     energy = vr.final_energy
@@ -187,22 +187,22 @@ class PostProcess(object):
         pd=PhaseDiagram(entries)
         print pd
 
-        chemlims={}
+        chem_lims={}
         print 'species=',species
         for specie in species:
             mu_lims = PDAnalyzer(pd).get_chempot_range_stability_phase(
                     structure.composition, specie)
             sp_symb = specie.symbol
             chem_lims[sp_symb] = {'rich':{},'poor':{}}
-            for el in tmpchemlims.keys():
-                chemlims[sp_symb]['rich'][el] = mu_lims[el][1]
-                chemlims[sp_symb]['poor'][el] = mu_lims[el][0]
+            for el in mu_lims.keys():
+                chem_lims[sp_symb]['rich'][el.symbol] = mu_lims[el][1]
+                chem_lims[sp_symb]['poor'][el.symbol] = mu_lims[el][0]
 
         #make this less confusing for binary systems...
         if len(species)==2:
-            chemlims = chemlims[chemlims.keys()[0]]
+            chem_lims = chem_lims[chem_lims.keys()[0]]
 
-        return chemlims
+        return chem_lims
 
     def _get_dielectric_tensor(self, vrun):
         """
