@@ -32,6 +32,14 @@ from pycdcd.utils.vasp import make_vasp_defect_files, \
 from pycdcd.utils.parse_calculations import PostProcess
 
 
+def print_error_message(err_str):
+    print("\n=================================================================="
+        "=============\n\nError: "+err_str)
+    print("\n================================================================"
+        "===============\n")
+
+
+
 def generate_input_files(args):
     """
     Generates input files for VASP calculations that aim to determine
@@ -50,11 +58,16 @@ def generate_input_files(args):
     mpid = args.mpid
     mapi_key = args.mapi_key
     nmax = args.nmax
+    oxi_state = args.oxi_state
     oxi_range = args.oxi_range
 
     # error-checking
     if not mpid:
-        print ("============\nERROR: Provide an mpid\n============")
+        print_error_message("no Materials Project structure ID (MP-ID) provided!")
+        return
+    if nmax <= 0:
+        print_error_message("maximal number of atoms per supercell"
+            " must be larger than zero!")
         return
 
     # get primitive unit cell
@@ -70,17 +83,39 @@ def generate_input_files(args):
         prim_struct).get_conventional_standard_structure()
 
     make_vasp_dielectric_files(prim_struct)
+
+    # manually set oxidation states if those were provided
+    oxi_state_dict = {}
+    if oxi_state:
+        for i in range(len(oxi_state)):
+            oxi_state_dict[oxi_state[i][0]] = int(oxi_state[i][1])
+        if len(oxi_state_dict) != conv_struct.ntypesp:
+            print_error_message("number of oxidation states"
+                " provided does not match number of species in structure!")
+            return
+
+    # manually set oxidation-state ranges if those were provided
+    oxi_range_dict = {}
     if oxi_range:
-        oxi_range_dict = {}
         for i in range(len(oxi_range)):
             oxi_range_dict[oxi_range[i][0]] = tuple([int(oxi_range[i][1]),
                 int(oxi_range[i][2])])
-        def_structs = ChargedDefectsStructures(conv_struct, oxi_range_dict,
-            cellmax=nmax)
-    else:
-        def_structs = ChargedDefectsStructures(conv_struct, cellmax=nmax)
-    make_vasp_defect_files(def_structs.defects,
+        if len(oxi_range_dict) != conv_struct.ntypesp:
+            print_error_message("number of distinct oxidation ranges"
+                " provided does not match number of species in structure!")
+            return
+
+    # finally, generate VASP input files for defect calculations
+    def_structs = ChargedDefectsStructures(
+        conv_struct,
+        max_min_oxi = oxi_range_dict,
+        oxi_states = oxi_state_dict,
+        cellmax = nmax)
+    make_vasp_defect_files(
+        def_structs.defects,
         conv_struct.composition.reduced_formula)
+
+
 
 
 def parse_vasp_output(args):
@@ -102,7 +137,7 @@ def parse_vasp_output(args):
 
     # error-checking
     if not mpid:
-        print ("============\nERROR: Provide an mpid\n============")
+        print_error_message("no Materials Project structure ID (MP-ID) provided!")
         return
 
     # get primitive unit cell
@@ -113,8 +148,10 @@ def parse_vasp_output(args):
         with MPRester(mapi_key) as mp:
             prim_struct = mp.get_structure_by_material_id(mpid)
 
-    PostProcess(root_fldr, mpid, mapi_key).parse_defect_calculations()
-
+    output_dict = PostProcess(root_fldr, mpid, mapi_key).compile_all()
+    #print(output_dict)
+    #for pd in output_dict['defects']:
+    #    print(pd.as_dict())
 
 def main():
     parser = argparse.ArgumentParser(description="""
@@ -136,10 +173,13 @@ def main():
     nmax_string = "Maximum number of atoms in supercell.\nThe default is" \
         "128.\nKeep in mind the number of atoms in the supercell may vary" \
         "from the provided number including the default."
+    oxi_state_string = "Oxidation state for an element.\nTwo arguments" \
+        " expected: the element type for which the oxidation state is" \
+        " to be specified and the oxidation state (e.g., --oxi_state As -3)."
     oxi_range_string = "Oxidation range for an element.\nThree arguments" \
         " expected: the element type for which the oxidation state range is" \
         " to be specified as well as the lower and the upper limit of the" \
-        " range (e.g., --oxi_states As -3 5)."
+        " range (e.g., --oxi_range As -3 5)."
     root_fldr_string = "Path (relative or absolute) to directory" \
         " in which data of charged point-defect calculations for" \
         " a particular system are to be found.\n"
@@ -154,6 +194,8 @@ def main():
         dest="nmax", help=nmax_string)
     parser_input_files.add_argument("--oxi_range", action='append', type=str,
         nargs=3, dest="oxi_range", help=oxi_range_string)
+    parser_input_files.add_argument("--oxi_state", action='append', type=str,
+        nargs=2, dest="oxi_state", help=oxi_state_string)
     parser_input_files.set_defaults(func=generate_input_files)
 
     parser_vasp_output = subparsers.add_parser("parse_vasp_output",
