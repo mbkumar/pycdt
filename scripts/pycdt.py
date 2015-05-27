@@ -30,6 +30,7 @@ from pycdcd.core.defectsmaker import ChargedDefectsStructures
 from pycdcd.utils.vasp import make_vasp_defect_files, \
         make_vasp_dielectric_files
 from pycdcd.utils.parse_calculations import PostProcess
+from pymatgen.serializers.json_coders import json_pretty_dump
 
 
 def print_error_message(err_str):
@@ -134,24 +135,22 @@ def parse_vasp_output(args):
     mpid = args.mpid
     mapi_key = args.mapi_key
     root_fldr = args.root_fldr
+    json_file_name = args.json_file_name
 
     # error-checking
     if not mpid:
         print_error_message("no Materials Project structure ID (MP-ID) provided!")
         return
 
-    # get primitive unit cell
-    if not mapi_key:
-        with MPRester() as mp:
-            prim_struct = mp.get_structure_by_material_id(mpid)
-    else:
-        with MPRester(mapi_key) as mp:
-            prim_struct = mp.get_structure_by_material_id(mpid)
-
     output_dict = PostProcess(root_fldr, mpid, mapi_key).compile_all()
-    #print(output_dict)
-    #for pd in output_dict['defects']:
-    #    print(pd.as_dict())
+    print("\n\n")    
+    print(output_dict)
+    print("\n\n")
+    json_pretty_dump(output_dict,
+        json_file_name)
+
+
+
 
 def main():
     parser = argparse.ArgumentParser(description="""
@@ -183,6 +182,8 @@ def main():
     root_fldr_string = "Path (relative or absolute) to directory" \
         " in which data of charged point-defect calculations for" \
         " a particular system are to be found.\n"
+    json_file_name_string = "Name of output file in json format.\n" \
+        "Default is \"output_defects.json\""
 
     parser_input_files = subparsers.add_parser("generate_input_files",
         help="Generates Vasp input files for charged point defects.")
@@ -207,6 +208,9 @@ def main():
         dest="mapi_key", help=mapi_string)
     parser_vasp_output.add_argument("--dir", default = None,
         dest="root_fldr", help=root_fldr_string)
+    parser_vasp_output.add_argument("--json_file_name",
+        default = "output_defects.json", dest="json_file_name",
+        help=json_file_name_string)
     parser_vasp_output.set_defaults(func=parse_vasp_output)
 
     args = parser.parse_args()
