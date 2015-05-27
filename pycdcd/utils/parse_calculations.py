@@ -254,8 +254,8 @@ class PostProcess(object):
             2) incorporated charge corrections for defects
         """
         output = self.parse_defect_calculations()    
-        output['eps'] = self.parse_dielectric_calculation()
-        output['chemlims'] = self.get_chempot_limits()
+        output['epsilon'] = self.parse_dielectric_calculation()
+        output['mu_range'] = self.get_chempot_limits()
         vbm,gap = self.get_vbm_bandgap()
         output['vbm'] = vbm
         output['gap'] = gap

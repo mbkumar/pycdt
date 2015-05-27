@@ -131,7 +131,7 @@ def parse_vasp_output(args):
 
     # error-checking
     if not mpid:
-        print_error_message("no Materials Project structure ID (MP-ID) provided!")
+        print_error_message("No Materials Project structure ID provided!")
         return
 
     # get primitive unit cell
