@@ -39,7 +39,6 @@ def print_error_message(err_str):
         "===============\n")
 
 
-
 def generate_input_files(args):
     """
     Generates input files for VASP calculations that aim to determine
@@ -63,7 +62,7 @@ def generate_input_files(args):
 
     # error-checking
     if not mpid:
-        print_error_message("no Materials Project structure ID (MP-ID) provided!")
+        print_error_message("No Materials Project ID (MP-ID) provided!")
         return
     if nmax <= 0:
         print_error_message("maximal number of atoms per supercell"
@@ -106,16 +105,11 @@ def generate_input_files(args):
             return
 
     # finally, generate VASP input files for defect calculations
-    def_structs = ChargedDefectsStructures(
-        conv_struct,
-        max_min_oxi = oxi_range_dict,
-        oxi_states = oxi_state_dict,
-        cellmax = nmax)
-    make_vasp_defect_files(
-        def_structs.defects,
-        conv_struct.composition.reduced_formula)
-
-
+    def_structs = ChargedDefectsStructures(conv_struct, 
+            max_min_oxi=oxi_range_dict, oxi_states=oxi_state_dict, 
+            cellmax=nmax)
+    make_vasp_defect_files(def_structs.defects,
+            conv_struct.composition.reduced_formula)
 
 
 def parse_vasp_output(args):
@@ -161,7 +155,7 @@ def main():
         To see the options for the sub-commands, type
         "pycdt sub-command -h".""",
         epilog="""
-        Authors: Nils E. R. Zimmermann, Bharat Medasani
+        Authors: N. E. R. Zimmermann, B. Medasani, D. Broberg, G. Hautier
         Version: {}
         Last updated: {}""".format(__version__, __date__))
 
@@ -188,9 +182,9 @@ def main():
         help="Generates Vasp input files for charged point defects.")
     parser_input_files.add_argument("--mpid", type=str.lower, dest="mpid",
         help=mpid_string)
-    parser_input_files.add_argument("--mapi_key", default = None,
+    parser_input_files.add_argument("--mapi_key", default=None,
         dest="mapi_key", help=mapi_string)
-    parser_input_files.add_argument("--nmax", type=int, default = 128,
+    parser_input_files.add_argument("--nmax", type=int, default=128,
         dest="nmax", help=nmax_string)
     parser_input_files.add_argument("--oxi_range", action='append', type=str,
         nargs=3, dest="oxi_range", help=oxi_range_string)

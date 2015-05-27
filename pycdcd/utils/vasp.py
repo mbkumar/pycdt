@@ -261,7 +261,7 @@ def make_vasp_dielectric_files(struct, path=None, user_settings={},
 
     if not path:
         path_base = struct.composition.reduced_formula
-        path=os.path.join(path_base,'dielectric')
+        path = os.path.join(path_base,'dielectric')
     os.makedirs(path)
     incar.write_file(os.path.join(path,"INCAR"))
     kpoints.write_file(os.path.join(path,"KPOINTS"))

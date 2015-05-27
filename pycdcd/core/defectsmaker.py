@@ -191,8 +191,8 @@ class ChargedDefectsStructures(object):
             vac_sc_site = list(set(vac_scs[0].sites) - set(vac_sc.sites))[0]
 
             list_charges=[]
-            print 'vac_symbol=',vac_symbol
-	    print 'self.oxi_states',self.oxi_states
+            print 'vac_symbol=', vac_symbol
+	    print 'self.oxi_states', self.oxi_states
 	    vac_oxi_state = self.oxi_states[str2unicode(vac_symbol)]
             if vac_oxi_state < 0:
                 min_oxi = min(vac_oxi_state, self.max_min_oxi[vac_symbol][0])
