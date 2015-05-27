@@ -106,7 +106,7 @@ class PostProcess(object):
                         continue  # The successful calculations maybe useful
 
                     trans_dict = loadfn(os.path.join(
-                        chrg_fldr,'transformation.json'))
+                        chrg_fldr,'transformation.json'),cls=MontyDecoder)
                     chrg = trans_dict['charge']
                     site = trans_dict['defect_supercell_site']
                     energy = vr.final_energy
@@ -152,9 +152,9 @@ class PostProcess(object):
         bandgap = bs.get_band_gap()
         return (vbm, bandgap)
 
-    def get_atomic_chempots(self):
+    def get_chempot_limits(self):
         """
-        gets atomic chempots from mpid
+        Returns atomic chempots from mpid
         """
         if not self._mapi_key:
             with MPRester() as mp:
@@ -171,42 +171,42 @@ class PostProcess(object):
 
         if not self._mapi_key:
             with MPRester() as mp:
-                entries=mp.get_entries_in_chemsys(species_symbol)
+                entries = mp.get_entries_in_chemsys(species_symbol)
         else:
             with MPRester(self._mapi_key) as mp:
-                entries=mp.get_entries_in_chemsys(species_symbol)
+                entries = mp.get_entries_in_chemsys(species_symbol)
         if  not entries:
             raise ValueError("Could not fetch entries for atomic chempots!")
 
-        if len(species)==1:
-            #print 'this is elemental system! use bulk value.'
-            vals=[entry.energy_per_atom for entry in entries]
-            chempot={species[0]:min(vals)}
+        if len(species) == 1:
+            print 'this is elemental system! use bulk value.'
+            vals = [entry.energy_per_atom for entry in entries]
+            chempot = {species[0]:min(vals)}
             return chempot
 
         pd=PhaseDiagram(entries)
         print pd
 
-        chemlims={}
-        #print 'species=',species
-        for i in species:
-            name=str(i)+'-limiting'
-            tmpchemlims=PDAnalyzer(pd).get_chempot_range_stability_phase(
-                    structure.get_primitive_structure().composition,i)
-            chemlims[name]={str(i)+'-rich':{},str(i)+'-poor':{}}
-            for j in tmpchemlims.keys():
-                chemlims[name][str(i)+'-rich'][j.symbol]=tmpchemlims[j][1]
-                chemlims[name][str(i)+'-poor'][j.symbol]=tmpchemlims[j][0]
+        chem_lims={}
+        print 'species=',species
+        for specie in species:
+            mu_lims = PDAnalyzer(pd).get_chempot_range_stability_phase(
+                structure.composition, specie)
+            sp_symb = specie.symbol
+            chem_lims[sp_symb] = {'rich':{},'poor':{}}
+            for el in mu_lims.keys():
+                chem_lims[sp_symb]['rich'][el.symbol] = mu_lims[el][1]
+                chem_lims[sp_symb]['poor'][el.symbol] = mu_lims[el][0]
 
         #make this less confusing for binary systems...
         if len(species)==2:
-            chemlims=chemlims[chemlims.keys()[0]]
+            chem_lims = chem_lims[chem_lims.keys()[0]]
 
-        return chemlims
+        return chem_lims
 
     def _get_dielectric_tensor(self, vrun):
         """
-        Parses the "vasprun.xml" file in subdirectory "dielectric" of root
+        Parses the "vasprun.xml" file in subdirectory "dielec" of root
         directory root_fldr and returns the dielectric tensor.
 
         Args:
@@ -234,7 +234,7 @@ class PostProcess(object):
 
         Args:
             root_fldr (str):
-                root directory where subdirectory "dielectric" is expected
+                root directory where subdirectory "dielec" is expected
         Returns:
             eps (float):
                 average of the trace of the dielectric tensor
@@ -252,24 +252,10 @@ class PostProcess(object):
         note: still need to implement
             1) ability for substitutional atomic chempots
             2) incorporated charge corrections for defects
-
-        Returns:
-            output (dict): the output dictionary stores data for the band
-                gap (key: gap), valence-band maximum (vbm), atomic chemical
-                potentials (chemlims), data of the bulk-structure
-                calculation as a dictionary (bulk_entry), and data of all
-                defect calculations (defects) as a list of dictionaries.
         """
-
-        output = {}
-        tmp_dict = self.parse_defect_calculations()    
-        output['bulk_entry'] = tmp_dict['bulk_entry'].as_dict()
-        tmp_list = []
-        for parsed_defect in tmp_dict['defects']:
-            tmp_list.append(parsed_defect.as_dict())
-        output['defects'] = tmp_list
-        output['eps'] = self.parse_dielectric_calculation()
-        output['chemlims'] = self.get_atomic_chempots()
+        output = self.parse_defect_calculations()    
+        output['epsilon'] = self.parse_dielectric_calculation()
+        output['mu_range'] = self.get_chempot_limits()
         vbm,gap = self.get_vbm_bandgap()
         output['vbm'] = vbm
         output['gap'] = gap
