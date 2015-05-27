@@ -181,7 +181,7 @@ class ChargedDefectsStructures(object):
         vac = Vacancy(self.struct, {}, {})
         vac_scs = vac.make_supercells_with_defects(sc_scale)
 
-	    print 'self.oxi_states', self.oxi_states
+        print 'self.oxi_states', self.oxi_states
         for i in range(vac.defectsite_count()):
             vac_site = vac.get_defectsite(i)
             site_mult = vac.get_defectsite_multiplicity(i)
@@ -193,7 +193,7 @@ class ChargedDefectsStructures(object):
 
             list_charges=[]
             print 'vac_symbol=', vac_symbol
-	        vac_oxi_state = self.oxi_states[str2unicode(vac_symbol)]
+            vac_oxi_state = self.oxi_states[str2unicode(vac_symbol)]
             if vac_oxi_state < 0:
                 min_oxi = min(vac_oxi_state, self.max_min_oxi[vac_symbol][0])
                 max_oxi = 0
