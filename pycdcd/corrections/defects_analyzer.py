@@ -48,7 +48,7 @@ class ParsedDefect(object):
 
     def as_dict(self):
         return {'entry': self._entry.as_dict(),
-                'site': self._site.as_dict(),
+                'site': self._site,
                 'charge': self._charge,
                 'charge_correction': self.charge_correction,
                 'name': self._name,
