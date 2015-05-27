@@ -152,7 +152,7 @@ class PostProcess(object):
         bandgap = bs.get_band_gap()
         return (vbm, bandgap)
 
-    def get_atomic_chempot_limits(self):
+    def get_chempot_limits(self):
         """
         Returns atomic chempots from mpid
         """
@@ -253,12 +253,12 @@ class PostProcess(object):
             1) ability for substitutional atomic chempots
             2) incorporated charge corrections for defects
         """
-        output=self.parse_defect_calculations()    
-        output['eps']=self.parse_dielectric_calculation()
-        output['chemlims']=self.get_atomic_chempots()
-        vbm,gap=self.get_vbm_bandgap()
-        output['vbm']=vbm
-        output['gap']=gap
+        output = self.parse_defect_calculations()    
+        output['eps'] = self.parse_dielectric_calculation()
+        output['chemlims'] = self.get_chempot_limits()
+        vbm,gap = self.get_vbm_bandgap()
+        output['vbm'] = vbm
+        output['gap'] = gap
 
         return output
 
