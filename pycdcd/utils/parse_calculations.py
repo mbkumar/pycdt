@@ -152,9 +152,9 @@ class PostProcess(object):
         bandgap = bs.get_band_gap()
         return (vbm, bandgap)
 
-    def get_atomic_chempots(self):
+    def get_atomic_chempot_limits(self):
         """
-        gets atomic chempots from mpid
+        Returns atomic chempots from mpid
         """
         if not self._mapi_key:
             with MPRester() as mp:
@@ -171,17 +171,17 @@ class PostProcess(object):
 
         if not self._mapi_key:
             with MPRester() as mp:
-                entries=mp.get_entries_in_chemsys(species_symbol)
+                entries = mp.get_entries_in_chemsys(species_symbol)
         else:
             with MPRester(self._mapi_key) as mp:
-                entries=mp.get_entries_in_chemsys(species_symbol)
+                entries = mp.get_entries_in_chemsys(species_symbol)
         if  not entries:
             raise ValueError("Could not fetch entries for atomic chempots!")
 
-        if len(species)==1:
+        if len(species) == 1:
             print 'this is elemental system! use bulk value.'
-            vals=[entry.energy_per_atom for entry in entries]
-            chempot={species[0]:min(vals)}
+            vals = [entry.energy_per_atom for entry in entries]
+            chempot = {species[0]:min(vals)}
             return chempot
 
         pd=PhaseDiagram(entries)
@@ -189,18 +189,18 @@ class PostProcess(object):
 
         chemlims={}
         print 'species=',species
-        for i in species:
-            name=str(i)+'-limiting'
-            tmpchemlims=PDAnalyzer(pd).get_chempot_range_stability_phase(
-                    structure.get_primitive_structure().composition,i)
-            chemlims[name]={str(i)+'-rich':{},str(i)+'-poor':{}}
-            for j in tmpchemlims.keys():
-                chemlims[name][str(i)+'-rich'][j]=tmpchemlims[j][1]
-                chemlims[name][str(i)+'-poor'][j]=tmpchemlims[j][0]
+        for specie in species:
+            mu_lims = PDAnalyzer(pd).get_chempot_range_stability_phase(
+                    structure.composition, specie)
+            sp_symb = specie.symbol
+            chem_lims[sp_symb] = {'rich':{},'poor':{}}
+            for el in tmpchemlims.keys():
+                chemlims[sp_symb]['rich'][el] = mu_lims[el][1]
+                chemlims[sp_symb]['poor'][el] = mu_lims[el][0]
 
         #make this less confusing for binary systems...
         if len(species)==2:
-            chemlims=chemlims[chemlims.keys()[0]]
+            chemlims = chemlims[chemlims.keys()[0]]
 
         return chemlims
 
