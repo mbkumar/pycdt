@@ -19,19 +19,15 @@ import argparse
 #import os
 #import json
 #import glob
-import math
+from monty.serialization import dumpfn
+from monty.json import MontyEncoder
 
-import pymatgen
 from pymatgen.matproj.rest import MPRester
 from pymatgen.symmetry.analyzer import SpacegroupAnalyzer
-from pymatgen.transformations.standard_transformations import SupercellTransformation
-from pymatgen.analysis.bond_valence import BVAnalyzer
 from pycdcd.core.defectsmaker import ChargedDefectsStructures
 from pycdcd.utils.vasp import make_vasp_defect_files, \
         make_vasp_dielectric_files
 from pycdcd.utils.parse_calculations import PostProcess
-from pymatgen.serializers.json_coders import pmg_dump
-from monty.serialization import dumpfn
 
 
 def print_error_message(err_str):
@@ -144,7 +140,8 @@ def parse_vasp_output(args):
     #json_pretty_dump(output_dict,
     #    json_file_name)
     #pmg_dump(PostProcess(root_fldr, mpid, mapi_key).compile_all(), json_file_name)
-    dumpfn(PostProcess(root_fldr, mpid, mapi_key).compile_all(), json_file_name)
+    dumpfn(PostProcess(root_fldr, mpid, mapi_key).compile_all(), 
+            json_file_name, cls=MontyEncoder)
 
 
 
