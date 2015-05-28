@@ -58,11 +58,12 @@ class ParsedDefect(object):
 
     @staticmethod
     def from_dict(cls, d):
-        return ParsedDefect(ComputedEntry.from_dict(d['entry']), 
-                      PeriodicSite.from_dict(d['site']),
-                      charge=d.get('charge',0.0),
-                      charge_correction=d.get('charge_correction',0.0),
-                      name=d.get('name',None))
+        return ParsedDefect(
+                ComputedEntry.from_dict(d['entry']), 
+                PeriodicSite.from_dict(d['site']),
+                charge=d.get('charge',0.0),
+                charge_correction=d.get('charge_correction',0.0),
+                name=d.get('name',None))
 
 
 def apply_correction(defect, bulk_entry, epsilon, type='freysoldt'):
@@ -84,7 +85,7 @@ def apply_correction(defect, bulk_entry, epsilon, type='freysoldt'):
         frac_coords = self._site.frac_coords
         encut = defect._entry.data['encut']
         corr = FreysoldtCorrection(locpot_blk, locpot_defect, 
-                charge, epsilon, frac_coords, encut)
+                                   charge, epsilon, frac_coords, encut)
 
         return corr 
 
@@ -114,21 +115,22 @@ class DefectsAnalyzer(object):
         self._formation_energies = []
 
     def as_dict(self):
-        d = {'entry_bulk':self._entry_bulk.as_dict(),
-             'e_vbm':self._e_vbm,
-             'mu_elts':self._mu_elts,
-             'band_gap':self._band_gap,
-             'defects':[d.as_dict() for d in self._defects],
-             'formation_energies':self._formation_energies,
-             "@module":self.__class__.__module__,
-             "@class":self.__class__.__name__}
+        d = {'entry_bulk': self._entry_bulk.as_dict(),
+             'e_vbm': self._e_vbm,
+             'mu_elts': self._mu_elts,
+             'band_gap': self._band_gap,
+             'defects': [d.as_dict() for d in self._defects],
+             'formation_energies': self._formation_energies,
+             "@module": self.__class__.__module__,
+             "@class": self.__class__.__name__}
         return d
 
     @staticmethod
     def from_dict(d):
         entry_bulk = ComputedStructureEntry.from_dict(d['entry_bulk'])
-        analyzer = DefectsAnalyzer(entry_bulk, d['e_vbm'], 
-                {el:d['mu_elts'][el] for el in d['mu_elts']}, d['band_gap'])
+        analyzer = DefectsAnalyzer(
+                entry_bulk, d['e_vbm'], 
+                {el: d['mu_elts'][el] for el in d['mu_elts']}, d['band_gap'])
         for ddict in d['defects']:
             analyzer.add_defect(ParsedDefect.from_dict(ddict))
         return analyzer
@@ -159,7 +161,7 @@ class DefectsAnalyzer(object):
             atm_blk = self._entry_bulk.composition.num_atoms
             atm_def = d._entry.composition.num_atoms 
             for i in [1,-1,0]:
-                if floor((atm_def+i) / atm_blk) == (atm_def+i)/atm_blk:
+                if floor((atm_def+i)/atm_blk) == (atm_def+i)/atm_blk:
                     multiplier = (atm_def+i)/atm_blk
                     break
 
@@ -168,18 +170,19 @@ class DefectsAnalyzer(object):
             for elt in d._entry.composition.elements:
                 el_def_comp = d._entry.composition[elt] 
                 el_blk_comp = self._entry_bulk.composition[elt]
-                if el_def_comp > multiplier * el_blk_comp:
+                if el_def_comp > multiplier*el_blk_comp:
                     mu_needed_coeffs[elt] = -1.0
-                if el_def_comp < multiplier * el_blk_comp:
+                if el_def_comp < multiplier*el_blk_comp:
                     mu_needed_coeffs[elt] = 1.0
 
             sum_mus = 0.0
             for elt in mu_needed_coeffs:
                 sum_mus += mu_needed_coeffs[elt] * self._mu_elts[elt]
 
-            self._formation_energies.append(d._entry.energy - multiplier * \
-                    self._entry_bulk.energy + sum_mus + d._charge * \
-                    self._e_vbm + d.charge_correction)
+            self._formation_energies.append(
+                    d._entry.energy - multiplier*self._entry_bulk.energy + \
+                            sum_mus + d._charge*self._e_vbm + \
+                            d.charge_correction)
 
     def correct_bg_simple(self, vbm_correct, cbm_correct):
         """
@@ -230,7 +233,7 @@ class DefectsAnalyzer(object):
                 self._formation_energies[i] +=  z * cbm_correct
 
     def _get_form_energy(self, ef, i):
-        return self._formation_energies[i] + self._defects[i]._charge * ef
+        return self._formation_energies[i] + self._defects[i]._charge*ef
 
     def get_defects_concentration(self, temp=300, ef=0.0):
         """
@@ -245,7 +248,7 @@ class DefectsAnalyzer(object):
                                'conc': defects concentration in m-3}
         """
         conc=[]
-        spga = SpacegroupAnalyzer(self._entry_bulk.structure,symprec=1e-1)
+        spga = SpacegroupAnalyzer(self._entry_bulk.structure, symprec=1e-1)
         struct = spga.get_symmetrized_structure()
         i = 0
         for d in self._defects:
@@ -255,12 +258,12 @@ class DefectsAnalyzer(object):
             for s in struct.sites:
                 sf_coords = s.frac_coords
                 if abs(s.frac_coords[0]-df_coords[0]) < 0.1 \
-                    and abs(s.frac_coords[1]-df_coords[1]) < 0.1 \
-                    and abs(s.frac_coords[2]-df_coords[2]) < 0.1:
+                        and abs(s.frac_coords[1]-df_coords[1]) < 0.1 \
+                        and abs(s.frac_coords[2]-df_coords[2]) < 0.1:
                     target_site=s
                     break
             equiv_site_no = len(struct.find_equivalent_sites(target_site))
-            n = equiv_site_no*1e30/struct.volume
+            n = equiv_site_no * 1e30 / struct.volume
             conc.append({'name': d._name, 'charge': d._charge,
                          'conc': n*exp(
                              -self._get_form_energy(ef, i)/(kb*temp))})
@@ -268,8 +271,7 @@ class DefectsAnalyzer(object):
         return conc
 
     def _get_dos(self, e, m1, m2, m3, e_ext):
-        return sqrt(2) / (pi**2*hbar**3) * sqrt(m1*m2*m3) * \
-               sqrt(e-e_ext)
+        return sqrt(2) / (pi**2*hbar**3) * sqrt(m1*m2*m3) * sqrt(e-e_ext)
 
     def _get_dos_fd_elec(self, e, ef, t, m1, m2, m3):
         return conv * (2.0/(exp((e-ef)/(kb*t))+1)) * \
@@ -366,9 +368,9 @@ class DefectsAnalyzer(object):
             else:
                 cd[c['name']] = c['conc']
         ef = bisect(lambda e:self._get_non_eq_qtot(cd, e, teq, m_elec, m_hole),
-                -1.0, self._band_gap+1.0)
+                    -1.0, self._band_gap+1.0)
         return {'ef':ef, 'Qi':self._get_qi(ef, teq, m_elec, m_hole),
-                'conc_syn': eqsyn['conc'],
+                'conc_syn':eqsyn['conc'],
                 'conc':self._get_non_eq_conc(cd, ef, teq)}
 
     def _get_non_eq_qd(self, cd, ef, t):
@@ -383,7 +385,7 @@ class DefectsAnalyzer(object):
                     sum_q += d._charge * exp(
                             -self._get_form_energy(ef, i)/(kb*t))
                 i += 1
-            sum_tot += cd[n] * sum_q / sum_d
+            sum_tot += cd[n]*sum_q/sum_d
         return sum_tot
 
     def _get_non_eq_conc(self, cd, ef, t):
