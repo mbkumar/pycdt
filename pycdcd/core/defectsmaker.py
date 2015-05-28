@@ -150,7 +150,8 @@ class ChargedDefectsStructures(object):
         self.defects = {}
         sc = self.struct.copy()
         sc.make_supercell(sc_scale)
-        self.defects['bulk'] = {'name':'bulk',
+        self.defects['bulk'] = {
+                'name':'bulk',
                 'supercell':{'size':sc_scale,'structure':sc}}
 
         if not max_min_oxi:
