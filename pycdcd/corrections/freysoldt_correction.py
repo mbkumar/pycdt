@@ -152,8 +152,10 @@ class FreysoldtCorrection(object):
             plotvals = {'0':{},'1':{},'2':{}}
         for axis in [0,1,2]:
             print 'do axis '+str(axis+1)
-            relpos = (str(self._frac_coords)[1:])[:-1]
-            relpos = relpos.replace(" ","")
+            #print self._frac_coords[1:]
+            #relpos = (str(self._frac_coords)[1:])[:-1]
+            #relpos = relpos.replace(" ",",")
+            relpos = ",".join(str(i) for i in self._frac_coords)
             command = ['~/sxdefectalign', '--vasp', '-a'+str(axis+1), 
                     '--relative', '--pos', relpos, 
                     '--charge', str(-self._charge), 
@@ -189,7 +191,7 @@ class FreysoldtCorrection(object):
             f.close()
             print 'output from sxdefectalign = '+str(output)
             print 'output -1', output[-1]
-            val =  output[-1].split()[-1].rstrip()
+            val =  output[-2].split()[3].strip()
             #result.append(float(output[-1].split()[3]))
             result.append(float(val))
             print "chg correction is "+str(result[-1])
