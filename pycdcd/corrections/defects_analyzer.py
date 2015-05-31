@@ -56,7 +56,7 @@ class ParsedDefect(object):
                 '@module': self.__class__.__module__,
                 '@class': self.__class__.__name__}
 
-    @staticmethod
+    @classmethod
     def from_dict(cls, d):
         return ParsedDefect(ComputedEntry.from_dict(d['entry']), 
                       PeriodicSite.from_dict(d['site']),
@@ -65,7 +65,7 @@ class ParsedDefect(object):
                       name=d.get('name',None))
 
 
-def apply_correction(defect, bulk_entry, epsilon, type='freysoldt'):
+def get_correction(defect, bulk_entry, epsilon, type='freysoldt'):
     """
     Function to compute the correction for each defect.
     Args:
@@ -76,15 +76,15 @@ def apply_correction(defect, bulk_entry, epsilon, type='freysoldt'):
             method is implemented.
     """
     if type == 'freysoldt':
-        locpot_path_blk = bulk_enry.data['locpot_path']
+        locpot_path_blk = bulk_entry.data['locpot_path']
         locpot_blk = Locpot.from_file(locpot_path_blk)
         locpot_path_def = defect._entry.data['locpot_path']
-        locpot_def = Locpot.from_file(locpot_path_def)
+        locpot_defect = Locpot.from_file(locpot_path_def)
         charge = defect._charge
-        frac_coords = self._site.frac_coords
+        frac_coords = defect._site.frac_coords
         encut = defect._entry.data['encut']
         corr = FreysoldtCorrection(locpot_blk, locpot_defect, 
-                charge, epsilon, frac_coords, encut)
+                charge, epsilon, frac_coords, encut).run_correction()
 
         return corr 
 
@@ -124,8 +124,8 @@ class DefectsAnalyzer(object):
              "@class":self.__class__.__name__}
         return d
 
-    @staticmethod
-    def from_dict(d):
+    @classmethod
+    def from_dict(cls, d):
         entry_bulk = ComputedStructureEntry.from_dict(d['entry_bulk'])
         analyzer = DefectsAnalyzer(entry_bulk, d['e_vbm'], 
                 {el:d['mu_elts'][el] for el in d['mu_elts']}, d['band_gap'])

@@ -141,7 +141,7 @@ def parse_vasp_output(args):
     #    json_file_name)
     #pmg_dump(PostProcess(root_fldr, mpid, mapi_key).compile_all(), json_file_name)
     dumpfn(PostProcess(root_fldr, mpid, mapi_key).compile_all(), 
-            json_file_name, cls=MontyEncoder)
+            json_file_name, cls=MontyEncoder, indent=2)
 
 
 
