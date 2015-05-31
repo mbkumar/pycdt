@@ -76,8 +76,8 @@ def generate_input_files(args):
             prim_struct = mp.get_structure_by_material_id(mpid)
 
     # transform to conventional unit cell
-    conv_struct = SpacegroupAnalyzer(
-        prim_struct).get_conventional_standard_structure()
+    conv_struct = SpacegroupAnalyzer( 
+            prim_struct).get_conventional_standard_structure()
 
     make_vasp_dielectric_files(prim_struct)
 
@@ -95,18 +95,19 @@ def generate_input_files(args):
     oxi_range_dict = {}
     if oxi_range:
         for i in range(len(oxi_range)):
-            oxi_range_dict[oxi_range[i][0]] = tuple([int(oxi_range[i][1]),
-                int(oxi_range[i][2])])
+            oxi_range_dict[oxi_range[i][0]] = tuple(
+                    [int(oxi_range[i][1]), int(oxi_range[i][2])])
         if len(oxi_range_dict) != conv_struct.ntypesp:
             print_error_message("number of distinct oxidation ranges"
                 " provided does not match number of species in structure!")
             return
 
     # finally, generate VASP input files for defect calculations
-    def_structs = ChargedDefectsStructures(conv_struct, 
-            max_min_oxi=oxi_range_dict, oxi_states=oxi_state_dict, 
-            cellmax=nmax)
-    make_vasp_defect_files(def_structs.defects,
+    def_structs = ChargedDefectsStructures(
+            conv_struct, max_min_oxi=oxi_range_dict, 
+            oxi_states=oxi_state_dict, cellmax=nmax)
+    make_vasp_defect_files(
+            def_structs.defects,
             conv_struct.composition.reduced_formula)
 
 
@@ -132,22 +133,13 @@ def parse_vasp_output(args):
     if not mpid:
         print_error_message("No Materials Project structure ID provided!")
         return
-
-    #output_dict = PostProcess(root_fldr, mpid, mapi_key).compile_all()
-    #print("\n\n")    
-    #print(output_dict)
-    #print("\n\n")
-    #json_pretty_dump(output_dict,
-    #    json_file_name)
-    #pmg_dump(PostProcess(root_fldr, mpid, mapi_key).compile_all(), json_file_name)
     dumpfn(PostProcess(root_fldr, mpid, mapi_key).compile_all(), 
             json_file_name, cls=MontyEncoder, indent=2)
 
 
-
 def main():
-    parser = argparse.ArgumentParser(description = """
-        pycdt is a script that generates vasp input files, parses vasp output
+    parser = argparse.ArgumentParser(description="""
+        PyCDT is a script that generates vasp input files, parses vasp output
         files, and computes the formation energy of charged defects.
         This script works based on several sub-commands with their own options.
         To see the options for the sub-commands, type
@@ -178,32 +170,37 @@ def main():
     json_file_name_string = "Name of output file in json format.\n" \
         "Default is \"output_defects.json\""
 
-    parser_input_files = subparsers.add_parser("generate_input_files",
-        help="Generates Vasp input files for charged point defects.")
+    parser_input_files = subparsers.add_parser(
+            "generate_input_files",
+            help="Generates Vasp input files for charged point defects.")
     parser_input_files.add_argument("--mpid", type=str.lower, dest="mpid",
-        help=mpid_string)
+                                    help=mpid_string)
     parser_input_files.add_argument("--mapi_key", default=None,
-        dest="mapi_key", help=mapi_string)
+                                    dest="mapi_key", help=mapi_string)
     parser_input_files.add_argument("--nmax", type=int, default=128,
-        dest="nmax", help=nmax_string)
+                                    dest="nmax", help=nmax_string)
     parser_input_files.add_argument("--oxi_range", action='append', type=str,
-        nargs=3, dest="oxi_range", help=oxi_range_string)
+                                    nargs=3, dest="oxi_range", 
+                                    help=oxi_range_string)
     parser_input_files.add_argument("--oxi_state", action='append', type=str,
-        nargs=2, dest="oxi_state", help=oxi_state_string)
+                                    nargs=2, dest="oxi_state", 
+                                    help=oxi_state_string)
     parser_input_files.set_defaults(func=generate_input_files)
 
-    parser_vasp_output = subparsers.add_parser("parse_vasp_output",
-        help="Parses VASP output for calculation of formation energies of"
+    parser_vasp_output = subparsers.add_parser(
+            "parse_vasp_output",
+            help="Parses VASP output for calculation of formation energies of"
              " charged point defects.")
     parser_vasp_output.add_argument("--mpid", type=str.lower, dest="mpid",
-        help=mpid_string)
+                                    help=mpid_string)
     parser_vasp_output.add_argument("--mapi_key", default=None,
-        dest="mapi_key", help=mapi_string)
+                                    dest="mapi_key", help=mapi_string)
     parser_vasp_output.add_argument("--dir", default=None,
-        dest="root_fldr", help=root_fldr_string)
+                                    dest="root_fldr", help=root_fldr_string)
     parser_vasp_output.add_argument("--json_file_name",
-        default= "output_defects.json", dest="json_file_name",
-        help=json_file_name_string)
+                                    default= "output_defects.json", 
+                                    dest="json_file_name", 
+                                    help=json_file_name_string)
     parser_vasp_output.set_defaults(func = parse_vasp_output)
 
     args = parser.parse_args()

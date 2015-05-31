@@ -150,8 +150,9 @@ class ChargedDefectsStructures(object):
         self.defects = {}
         sc = self.struct.copy()
         sc.make_supercell(sc_scale)
-        self.defects['bulk'] = {'name':'bulk',
-                'supercell':{'size':sc_scale,'structure':sc}}
+        self.defects['bulk'] = {
+                'name': 'bulk',
+                'supercell': {'size': sc_scale, 'structure': sc}}
 
         if not max_min_oxi:
             max_min_oxi = {}
@@ -207,11 +208,11 @@ class ChargedDefectsStructures(object):
                 'name': "vac_{}_{}".format(i+1, vac_symbol),
                 'unique_site': vac_site,
                 'bulk_supercell_site': vac_sc_site,
-                'defect_type':'vacancy',
-                'site_specie':vac_symbol,
-                'site_multiplicity':site_mult,
-                'supercell':{'size':sc_scale,'structure':vac_sc},
-                'charges':list_charges })
+                'defect_type': 'vacancy',
+                'site_specie': vac_symbol,
+                'site_multiplicity': site_mult,
+                'supercell': {'size': sc_scale,'structure': vac_sc},
+                'charges': list_charges })
 
             # Antisite defects generation
             if antisites_flag:
@@ -234,13 +235,13 @@ class ChargedDefectsStructures(object):
                             i+1, vac_symbol, as_symbol),
                         'unique_site': vac_site,
                         'bulk_supercell_site': vac_sc_site,
-                        'defect_type':'antisite',
-                        'site_specie':vac_symbol,
-                        'substitution_specie':as_symbol,
-                        'site_multiplicity':site_mult,
-                        'supercell':{'size':sc_scale,'structure':as_sc},
+                        'defect_type': 'antisite',
+                        'site_specie': vac_symbol,
+                        'substitution_specie': as_symbol,
+                        'site_multiplicity': site_mult,
+                        'supercell': {'size': sc_scale,'structure': as_sc},
                         #'charges':[c for c in range(oxi_min, oxi_max+1)]})
-                        'charges':[c - self.oxi_states[str2unicode(
+                        'charges': [c - self.oxi_states[str2unicode(
                             vac_symbol)] for c in range(oxi_min, oxi_max+1)]})
 
             # Substitutional defects generation
@@ -278,12 +279,12 @@ class ChargedDefectsStructures(object):
             for frac_coord in interstitial_sites:
                 site = PeriodicSite(elt, frac_coord, structure.lattice)
                 interstitials.append({
-                    'name':elt.symbol+str(count)+"_inter",
-                    'unique_site':site,
-                    'supercell':{'size':s_size,
-                        'structure':self.make_interstitial(site, sc_scale)},
-                    'charges':[c for c in range(max_min_oxi[elt][0],
-                        max_min_oxi[elt][1]+1)]})
+                    'name': elt.symbol+str(count)+"_inter",
+                    'unique_site': site,
+                    'supercell': {'size': s_size,
+                        'structure': self.make_interstitial(site, sc_scale)},
+                    'charges': [c for c in range(
+                        max_min_oxi[elt][0], max_min_oxi[elt][1]+1)]})
                 count = count+1
         self.defects['interstitials'] = interstitials
 
@@ -302,7 +303,7 @@ class ChargedDefectsStructures(object):
                 max_complex_size += 1
 
         complexes = []
-        for size in range(2,max_complex_size+1):
+        for size in range(2, max_complex_size+1):
             continue
             
     def make_interstitial(self, target_site, sc_scale):
