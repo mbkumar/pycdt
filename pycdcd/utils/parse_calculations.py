@@ -94,7 +94,8 @@ class PostProcess(object):
                 bulk_struct = vr.final_structure
                 bulk_sites = vr.structures[-1].num_sites
                 bulk_locpot_path = os.path.abspath(os.path.join(fldr,'LOCPOT'))
-                bulk_entry = ComputedStructureEntry(bulk_struct, bulk_energy,
+                bulk_entry = ComputedStructureEntry(
+                        bulk_struct, bulk_energy,
                         data={'locpot_path':bulk_locpot_path})
             else:
                 chrg_fldrs = glob.glob(os.path.join(fldr,'charge*'))
@@ -105,19 +106,23 @@ class PostProcess(object):
                         print "But parsing of the rest of the calculations"
                         continue  # The successful calculations maybe useful
 
-                    trans_dict = loadfn(os.path.join(
-                        chrg_fldr,'transformation.json'),cls=MontyDecoder)
+                    trans_dict = loadfn(
+                            os.path.join(chrg_fldr, 'transformation.json'), 
+                            cls=MontyDecoder)
                     chrg = trans_dict['charge']
                     site = trans_dict['defect_supercell_site']
                     energy = vr.final_energy
                     struct = vr.final_structure
                     encut = vr.incar['ENCUT']
-                    locpot_path = os.path.abspath(os.path.join(
-                        chrg_fldr, 'LOCPOT'))
-                    parsed_defects.append(ParsedDefect(
-                        ComputedStructureEntry(struct, energy,
-                            data={'locpot_path':locpot_path,'encut':encut}),
-                        site_in_bulk=site, charge=chrg, name=fldr_name))
+                    locpot_path = os.path.abspath(
+                            os.path.join(chrg_fldr, 'LOCPOT'))
+                    comp_def_entry = ComputedStructureEntry(
+                            struct, energy, 
+                            data={'locpot_path': locpot_path, 'encut': encut})
+                    parsed_defects.append(
+                            ParsedDefect( 
+                                comp_def_entry, site_in_bulk=site, 
+                                charge=chrg, name=fldr_name))
 
         else:
             parsed_defects_data = {}
@@ -166,7 +171,7 @@ class PostProcess(object):
             raise ValueError("Could not fetch structure for atomic chempots!")
 
         species = structure.types_of_specie
-        species_symbol = [s.symbol for s in structure.types_of_specie]
+        species_symbol = [s.symbol for s in species]
         #print 'look for atomic chempots relative to:',species
 
         if not self._mapi_key:
@@ -181,25 +186,25 @@ class PostProcess(object):
         if len(species) == 1:
             print 'this is elemental system! use bulk value.'
             vals = [entry.energy_per_atom for entry in entries]
-            chempot = {species[0]:min(vals)}
+            chempot = {species[0]: min(vals)}
             return chempot
 
-        pd=PhaseDiagram(entries)
+        pd = PhaseDiagram(entries)
         print pd
 
-        chem_lims={}
-        print 'species=',species
+        chem_lims = {}
+        print 'species=', species
         for specie in species:
             mu_lims = PDAnalyzer(pd).get_chempot_range_stability_phase(
                     structure.composition, specie)
             sp_symb = specie.symbol
-            chem_lims[sp_symb] = {'rich':{},'poor':{}}
+            chem_lims[sp_symb] = {'rich': {},'poor': {}}
             for el in mu_lims.keys():
                 chem_lims[sp_symb]['rich'][el.symbol] = mu_lims[el][1]
                 chem_lims[sp_symb]['poor'][el.symbol] = mu_lims[el][0]
 
         #make this less confusing for binary systems...
-        if len(species)==2:
+        if len(species) == 2:
             chem_lims = chem_lims[chem_lims.keys()[0]]
 
         return chem_lims

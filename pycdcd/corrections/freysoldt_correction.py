@@ -152,8 +152,10 @@ class FreysoldtCorrection(object):
             plotvals = {'0':{},'1':{},'2':{}}
         for axis in [0,1,2]:
             print 'do axis '+str(axis+1)
-            relpos = (str(self._frac_coords)[1:])[:-1]
-            relpos = relpos.replace(" ","")
+            #print self._frac_coords[1:]
+            #relpos = (str(self._frac_coords)[1:])[:-1]
+            #relpos = relpos.replace(" ",",")
+            relpos = ",".join(str(i) for i in self._frac_coords)
             command = ['~/sxdefectalign', '--vasp', '-a'+str(axis+1), 
                     '--relative', '--pos', relpos, 
                     '--charge', str(-self._charge), 
@@ -166,31 +168,34 @@ class FreysoldtCorrection(object):
 
             #standard way of running NERSC commands.
             #in case NERSC (Hopper) has issues with python subprocess can use hack
-            p = subprocess.Popen(command, stdout=subprocess.PIPE, 
-                    stdin=subprocess.PIPE, stderr=subprocess.PIPE)
-            output, err = p.communicate()
-            out = out.decode('utf-8')
-            err = err.decode('utf-8')
-            print 'output from sxdefectalign = ', str(out)
-            result.append(float(out[0].split("\n")[12].split()[3]))
-            print "chg correction is "+str(result[-1])
+            #p = subprocess.Popen(command, stdout=subprocess.PIPE, 
+            #        stdin=subprocess.PIPE, stderr=subprocess.PIPE)
+            #output, err = p.communicate()
+            #out = out.decode('utf-8')
+            #err = err.decode('utf-8')
+            #print 'output from sxdefectalign = ', str(out)
+            #result.append(float(out[0].split("\n")[12].split()[3]))
+            #print "chg correction is "+str(result[-1])
 
             ##this is hack wrap-around for when subprocess doesn't work
             ##(which is always an issue on hopper now...)
-            #cmd=''
-            #for i in range(len(command)):
-            #    cmd+=command[i]+' '
-            #cmd+=' > tmpoutput'
-            #os.system(cmd)
-            #output=[]
-            #f=open('tmpoutput','r')
-            #for r in f.readlines():
-            #    output.append(r)
-            #f.close()
-            #print 'output from sxdefectalign = '+str(output)
+            cmd=''
+            for i in range(len(command)):
+                cmd+=command[i]+' '
+            cmd+=' > tmpoutput'
+            os.system(cmd)
+            output=[]
+            f=open('tmpoutput','r')
+            for r in f.readlines():
+                output.append(r)
+            f.close()
+            print 'output from sxdefectalign = '+str(output)
+            print 'output -1', output[-1]
+            val =  output[-2].split()[3].strip()
             #result.append(float(output[-1].split()[3]))
-            #print "chg correction is "+str(result[-1])
-            #os.remove('tmpoutput')
+            result.append(float(val))
+            print "chg correction is "+str(result[-1])
+            os.remove('tmpoutput')
 
             x_lr, y_lr = [], []
             x, y = [], []
