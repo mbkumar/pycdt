@@ -224,7 +224,7 @@ class ChargedDefectsStructures(object):
                     #        self.max_min_oxi[vac_symbol][0],0)
                     #oxi_max = max(self.max_min_oxi[as_symbol][1],
                     #        self.max_min_oxi[vac_symbol][0],0)
-                    if vac_symbol > 0:
+                    if vac_oxi_state > 0:
                         oxi_max = max(self.max_min_oxi[as_symbol][1],0)
                         oxi_min = 0
                     else:
@@ -249,7 +249,7 @@ class ChargedDefectsStructures(object):
                 for subspecie_symbol in self.substitutions[vac_symbol]:
                     sub_sc = vac_sc.copy()
                     sub_sc.append(subspecie_symbol, vac_sc_site.frac_coords)
-                    if vac_symbol > 0:
+                    if vac_oxi_state > 0:
                         oxi_max = max(self.max_min_oxi[subspecie_symbol][1],0)
                         oxi_min = 0
                     else:
