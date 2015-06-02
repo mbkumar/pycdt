@@ -88,7 +88,7 @@ class ChargedDefectsStructures(object):
     """
     def __init__(self, structure, max_min_oxi={}, substitutions={}, 
                  oxi_states={}, cellmax=128, interstitial_sites=[],
-                 antisites_flag=False, standardized=False):
+                 antisites_flag=True, standardized=False):
         """
         Args:
             structure:
@@ -230,9 +230,10 @@ class ChargedDefectsStructures(object):
                     else:
                         oxi_max = 0
                         oxi_min = min(self.max_min_oxi[as_symbol][0],0)
+                    print vac_symbol, as_symbol, oxi_min, oxi_max
                     as_defs.append({
                         'name': "as_{}_{}_on_{}".format(
-                            i+1, vac_symbol, as_symbol),
+                            i+1, as_symbol, vac_symbol),
                         'unique_site': vac_site,
                         'bulk_supercell_site': vac_sc_site,
                         'defect_type': 'antisite',
@@ -257,7 +258,7 @@ class ChargedDefectsStructures(object):
                         oxi_min = min(self.max_min_oxi[subspecie_symbol][0],0)
                     sub_defs.append({
                         'name': "sub_{}_{}_on_{}".format(
-                            i+1, vac_symbol, subspecie_symbol),
+                            i+1, subspecie_symbol, vac_symbol),
                         'unique_site': vac_site,
                         'bulk_supercell_site': vac_sc_site,
                         'defect_type':'antisite',
