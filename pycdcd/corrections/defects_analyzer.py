@@ -85,7 +85,8 @@ def get_correction(defect, bulk_entry, epsilon, type='freysoldt'):
         frac_coords = defect._site.frac_coords
         encut = defect._entry.data['encut']
         corr_meth = FreysoldtCorrection(locpot_blk, locpot_defect, charge, 
-                                        epsilon, frac_coords, encut)
+                                        epsilon, frac_coords, encut,
+                                        name=defect._name)
         corr_val = corr_meth.run_correction()
 
         return corr_val 
@@ -144,6 +145,18 @@ class DefectsAnalyzer(object):
                 a Defect object
         """
         self._defects.append(defect)
+        self._compute_form_en()
+
+    def change_charge_correction(self, i, correction):
+        """
+        Change the charge correction for defect at index i
+        Args:
+            i:
+                Index of defects
+            correction:
+                New correction to be applied for defect
+        """
+        self._defects[i].charge_correction = correction
         self._compute_form_en()
 
     def _get_all_defect_types(self):

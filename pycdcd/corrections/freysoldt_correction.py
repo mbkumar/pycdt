@@ -28,7 +28,7 @@ class FreysoldtCorrection(object):
     """
     
     def __init__(self, locpot_bulk, locpot_defect, charge, epsilon, 
-            site_frac_coords,encut):
+                 site_frac_coords, encut, name=''):
         """
         Args:
             locpot_bulk: LOCPOT of bulk as Locpot object
@@ -44,6 +44,7 @@ class FreysoldtCorrection(object):
         self._epsilon = epsilon 
         self._frac_coords = site_frac_coords   
         self._encut = encut 
+        self._name = name
         
     def prepare_files(self):
         if  self._charge==0:
@@ -262,15 +263,24 @@ class FreysoldtCorrection(object):
                       'oscillations or atomic relaxation'
 
             if print_pot_flag == 'written':
-                with open(os.path.join('..',"xylong"+str(axis)+".dat"),'w') as f:
-                    for i in range(len(x_lr)):
-                        f.write(str(x_lr[i])+" "+str(y_lr[i])+"\n")
-                with open(os.path.join('..',"xy"+str(axis)+".dat"),'w') as f:
-                    for i in range(len(x)):
-                        f.write(str(x[i])+" "+str(y[i])+"\n")
-                with open(os.path.join('..',"xy"+str(axis)+"diff.dat"),'w') as f:
-                    for i in range(len(x_diff)):
-                        f.write(str(x_diff[i])+" "+str(y_diff[i])+"\n")
+                def write_xy(x, y, fname):
+                    """
+                    Write the x, y vectors to file
+                    """
+                    with open(os.path.join('..',fname),'w') as f:
+                        for pair in zip(x, y):
+                            print >> f, ' '.join(str(i) for i in pair)
+
+                name = self._name
+                charge = str(self._charge)
+                fname = '_'.join([name,charge,'xylong',str(axis)]) + '.dat'
+                write_xy(x_lr, y_lr, fname)
+                fname = '_'.join([name,charge,'xy',str(axis)]) + '.dat'
+                #fname = name + charge + 'xy' + str(axis) + '.dat'
+                write_xy(x, y, fname)
+                fname = '_'.join([name,charge,'xy',str(axis),'diff.dat'])
+                #fname = name + charge + 'xy' + str(axis) + 'diff.dat'
+                write_xy(x_diff, y_diff, fname)
 
             elif print_pot_flag == 'plotfull': #store data for plotting at end of all calcs
                 plotvals[str(axis)]['xylong'] = [x_lr,y_lr]
@@ -322,7 +332,7 @@ class FreysoldtCorrection(object):
             print 'get final correction terms'
             print '--'
             #To get locpot plots use print_pot_flag = 'written' or 'plotfull'
-            vals = self.plot_pot_diff(align=s[1], print_pot_flag='none')   
+            vals = self.plot_pot_diff(align=s[1], print_pot_flag='written')   
             print 'vals is '+str(vals)
             for i in range(3):
                 if np.abs(vals[1][i]) > 0.0001:
