@@ -19,6 +19,7 @@ import numpy as np
 
 from monty.tempfile import ScratchDir
 
+
 class FreysoldtCorrection(object):
     """
     This class applies the Freysoldt correction to remove electrostatic defect
@@ -28,30 +29,47 @@ class FreysoldtCorrection(object):
     """
     
     def __init__(self, locpot_bulk, locpot_defect, charge, epsilon, 
-            site_frac_coords,encut):
+            site_frac_coords,encut,lengths=[]):
         """
         Args:
-            locpot_bulk: LOCPOT of bulk as Locpot object
-            locpot_defect: LOCPOT of defect as Locpot object
+            locpot_bulk: location of LOCPOT of bulk (i.e. 'bulk/LOCPOT' )
+            locpot_defect: location of LOCPOT of defect (i.e. 'deffolder/charge1/LOCPOT' )
             charge: Charge relative to neutral defect (not relative to bulk)
             epsilon: Dielectric constant obtained from relaxation run
             site_frac_coords: Fractional coordinates of defect site as list
             enuct: Planewave basis energy cutoff used in VASP run (in eV)
+            lengths is length of trans vectors: can be specified to save time, else Poscar is loaded
         """
-        self._locpot_bulk = locpot_bulk
-        self._locpot_defect = locpot_defect
         self._charge = charge 
         self._epsilon = epsilon 
         self._frac_coords = site_frac_coords   
-        self._encut = encut 
+        self._encut = encut
+        self._locpot_bulk = locpot_bulk
+        self._locpot_defect = locpot_defect
+        if not lengths:
+            print 'lattice matrix not imported, get this information from bulk Poscar'
+            from pymatgen.io.vaspio.vasp_output import Poscar
+            s=Poscar.from_file(self._locpot_bulk[:-6]+'POSCAR')
+            self._lengths=s.structure.lattice.abc
+        else:
+            self._lengths=lengths
         
     def prepare_files(self):
         if  self._charge==0:
             print 'defect has charge 0, so freysoldt correction is 0'
             return
-        print 'Need to prep Locpots'
-        self._locpot_bulk.write_file("LOCPOT_vref",True)
-        self._locpot_defect.write_file("LOCPOT_vdef",True)
+        #self._locpot_bulk.write_file("LOCPOT_vref",True)   #from when these were locpot objects
+        #self._locpot_defect.write_file("LOCPOT_vdef",True) #from when these were locpot objects
+        if not os.path.exists('../'+str(self._locpot_bulk)+'_vref'):
+            print 'prep pure Locpot'
+            cmd="perl -n -e 'print if $. != 6' ../"+str(self._locpot_bulk)+" > ../"+str(self._locpot_bulk)+'_vref'
+            print cmd
+            os.system(cmd)
+        if not os.path.exists('../'+str(self._locpot_defect)+'_vdef'):
+            print 'prep defect Locpot'
+            cmd="perl -n -e 'print if $. != 6' ../"+str(self._locpot_defect)+" > ../"+str(self._locpot_defect)+'_vdef'
+            print cmd
+            os.system(cmd)
         print 'locpots prepared for sxdefectalign'
 
     def plot_hartree_pot(self):
@@ -63,7 +81,7 @@ class FreysoldtCorrection(object):
         get_aavg = self._locpot_bulk.get_average_along_axis
         for axis in [0,1,2]:
             ax = fig.add_subplot(3, 1, axis+1)
-            latt_len = self._locpot_defect.structure.lattice._lengths[axis]
+            latt_len = self._lengths[axis]
             ax.plot(get_agrid(axis),get_aavg(axis),'r',
                     label="Bulk potential")
             ax.plot(get_agrid(axis), get_aavg(axis),'b',
@@ -87,7 +105,7 @@ class FreysoldtCorrection(object):
             defect_axis=self._locpot_defect.get_axis_grid(axis)
             defect_pot=self._locpot_defect.get_average_along_axis(axis)
             pure_pot=self._locpot_bulk.get_average_along_axis(axis)
-            latt_len = self._locpot_defect.structure.lattice._lengths[axis]
+            latt_len = self._lengths[axis]
             ax.plot(defect_axis,defect_pot-pure_pot,'b',
                     label='Defect-Bulk difference')
             ax.plot([self._frac_coords[axis] * latt_len], [0], 'or',
@@ -114,7 +132,7 @@ class FreysoldtCorrection(object):
             ax.plot(defect_axis,defect_pot-pure_pot,'k',
                     label='Defect-Bulk difference')
             ax.plot([self._frac_coords[axis] * \
-                    self._locpot_defect.structure.lattice._lengths[axis]],\
+                    self._lengths[axis]],\
                     [0],'or',markersize=4.0,label='Defect site')
             ax.set_ylabel("axis "+str(axis+1))
             if axis==0:
@@ -162,8 +180,8 @@ class FreysoldtCorrection(object):
                     '--ecut', str(self._encut/13.6057), #eV to Ry for sxdefect 
                     '--eps', str(self._epsilon), 
                     '-C', str(-float(align[axis])), 
-                    '--vref', 'LOCPOT_vref', 
-                    '--vdef', 'LOCPOT_vdef']
+                    '--vref', '../'+str(self._locpot_bulk)+'_vref',
+                    '--vdef', '../'+str(self._locpot_defect)+'_vdef']
             print command
 
             #standard way of running NERSC commands.
@@ -189,8 +207,8 @@ class FreysoldtCorrection(object):
             for r in f.readlines():
                 output.append(r)
             f.close()
-            print 'output from sxdefectalign = '+str(output)
-            print 'output -1', output[-1]
+            #print 'output from sxdefectalign = '+str(output)
+            print  output[-1]
             val =  output[-2].split()[3].strip()
             #result.append(float(output[-1].split()[3]))
             result.append(float(val))
@@ -221,7 +239,7 @@ class FreysoldtCorrection(object):
 
             # Extract potential alignment term averaging window of +/- 1 Ang 
             # around point halfway between neighboring defects
-            latt_len = self._locpot_defect.structure.lattice._lengths[axis]
+            latt_len = self._lengths[axis]
             if self._frac_coords[axis] >= 0.5:
                  platx = (self._frac_coords[axis]-0.5) * latt_len
             else:
@@ -296,7 +314,7 @@ class FreysoldtCorrection(object):
                     ax.set_title("Electrostatic planar averaged potential")
                     ax.legend(['V_defect-V_ref-V_lr','V_defect-V_ref','V_lr'])
 
-                latt_len = self._locpot_defect.structure.lattice._lengths[axis]
+                latt_len = self._lengths[axis]
                 fcoords = self._frac_coords[axis]
                 ax.plot([fcoords*latt_len], [0], 'or', markersize=4.0)
                 if fcoords >= 0.5:
@@ -313,6 +331,7 @@ class FreysoldtCorrection(object):
         Runs all neccessary parts to get freysoldt corrections out with
         planar averaged potentials
         Change plot_pot_flag if you want plotted planar averages
+        set transflag to True if you want to write flags
         """
         with ScratchDir('.'):
             self.prepare_files()
@@ -322,7 +341,7 @@ class FreysoldtCorrection(object):
             print 'get final correction terms'
             print '--'
             #To get locpot plots use print_pot_flag = 'written' or 'plotfull'
-            vals = self.plot_pot_diff(align=s[1], print_pot_flag='none')   
+            vals = self.plot_pot_diff(align=s[1], print_pot_flag='written')
             print 'vals is '+str(vals)
             for i in range(3):
                 if np.abs(vals[1][i]) > 0.0001:
