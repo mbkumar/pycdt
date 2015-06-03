@@ -205,7 +205,11 @@ class PostProcess(object):
 
         #make this less confusing for binary systems...
         if len(species) == 2:
-            chem_lims = chem_lims[chem_lims.keys()[0]]
+            first_specie = sorted(chem_lims.keys())[0]
+            for key in chem_lim:
+                if key is not first_specie:
+                    del chem_lims[key]
+            #chem_lims = chem_lims[chem_lims.keys()[0]]
 
         return chem_lims
 
