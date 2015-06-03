@@ -195,7 +195,8 @@ class DefectsAnalyzer(object):
 
             sum_mus = 0.0
             for elt in mu_needed_coeffs:
-                sum_mus += mu_needed_coeffs[elt] * self._mu_elts[elt]
+                el = elt.symbol
+                sum_mus += mu_needed_coeffs[elt] * self._mu_elts[el]
 
             self._formation_energies.append(
                     d.entry.energy - multiplier*self._entry_bulk.energy + \
