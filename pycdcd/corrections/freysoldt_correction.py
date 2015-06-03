@@ -19,6 +19,7 @@ import numpy as np
 
 from monty.tempfile import ScratchDir
 
+
 class FreysoldtCorrection(object):
     """
     This class applies the Freysoldt correction to remove electrostatic defect
@@ -27,31 +28,72 @@ class FreysoldtCorrection(object):
     code implementing a generalized anisotropic Freysoldt correction
     """
     
-    def __init__(self, locpot_bulk, locpot_defect, charge, epsilon, 
-            site_frac_coords,encut):
+    def __init__(self, locpot_bulk_path, locpot_defect_path, charge, epsilon, 
+                 site_frac_coords, encut, lengths, name=''):
         """
         Args:
-            locpot_bulk: LOCPOT of bulk as Locpot object
-            locpot_defect: LOCPOT of defect as Locpot object
-            charge: Charge relative to neutral defect (not relative to bulk)
-            epsilon: Dielectric constant obtained from relaxation run
-            site_frac_coords: Fractional coordinates of defect site as list
-            enuct: Planewave basis energy cutoff used in VASP run (in eV)
+            locpot_bulk: 
+                Location of LOCPOT of bulk 
+            locpot_defect: 
+                Location of LOCPOT of defect 
+            charge: 
+                Charge relative to neutral defect (not relative to bulk)
+            epsilon: 
+                Dielectric constant obtained from relaxation run
+            site_frac_coords: 
+                Fractional coordinates of defect site as list
+            encut: 
+                Planewave basis energy cutoff used in VASP run (in eV)
+            name:
+                Name of the defect to write files
+            lengths:
+                Length of lattice vectors. 
         """
-        self._locpot_bulk = locpot_bulk
-        self._locpot_defect = locpot_defect
+        self._locpot_bulk = locpot_bulk_path
+        self._locpot_defect = locpot_defect_path
         self._charge = charge 
         self._epsilon = epsilon 
         self._frac_coords = site_frac_coords   
-        self._encut = encut 
+        self._encut = encut
+        self._lengths = lengths
+        self._name = name
         
     def prepare_files(self):
         if  self._charge==0:
             print 'defect has charge 0, so freysoldt correction is 0'
             return
-        print 'Need to prep Locpots'
-        self._locpot_bulk.write_file("LOCPOT_vref",True)
-        self._locpot_defect.write_file("LOCPOT_vdef",True)
+        #self._locpot_bulk.write_file("LOCPOT_vref",True)   #from when these were locpot objects
+        #self._locpot_defect.write_file("LOCPOT_vdef",True) #from when these were locpot objects
+        path, name = os.path.split(self._locpot_bulk)
+        mod_blk_locpot = os.path.join(path, name+'_vref')
+        self.mod_bulk_locpot = mod_blk_locpot
+        if not os.path.exists(mod_blk_locpot):
+            print 'prep pure Locpot'
+            with open(self._locpot_bulk) as input:
+                with open(mod_blk_locpot,'w') as output: 
+                    cnt = 0
+                    for line in input:
+                        cnt += 1
+                        if cnt != 6:
+                            output.write(line)
+            #cmd="perl -n -e 'print if $. != 6' "+str(self._locpot_bulk)+" > "+mod_blk_locpot
+            #print cmd
+            #os.system(cmd)
+        path, name = os.path.split(self._locpot_defect)
+        mod_defect_locpot = os.path.join(path, name+'_vref')
+        self.mod_defect_locpot = mod_defect_locpot
+        if not os.path.exists(mod_defect_locpot):
+            print 'prep defect Locpot'
+            with open(self._locpot_defect) as input:
+                with open(mod_defect_locpot,'w') as output: 
+                    cnt = 0
+                    for line in input:
+                        cnt += 1
+                        if cnt != 6:
+                            output.write(line)
+            #md="perl -n -e 'print if $. != 6' "+str(self._locpot_defect)+" > "+mod_def_locpot
+            #rint cmd
+            #s.system(cmd)
         print 'locpots prepared for sxdefectalign'
 
     def plot_hartree_pot(self):
@@ -63,7 +105,7 @@ class FreysoldtCorrection(object):
         get_aavg = self._locpot_bulk.get_average_along_axis
         for axis in [0,1,2]:
             ax = fig.add_subplot(3, 1, axis+1)
-            latt_len = self._locpot_defect.structure.lattice._lengths[axis]
+            latt_len = self._lengths[axis]
             ax.plot(get_agrid(axis),get_aavg(axis),'r',
                     label="Bulk potential")
             ax.plot(get_agrid(axis), get_aavg(axis),'b',
@@ -87,7 +129,7 @@ class FreysoldtCorrection(object):
             defect_axis=self._locpot_defect.get_axis_grid(axis)
             defect_pot=self._locpot_defect.get_average_along_axis(axis)
             pure_pot=self._locpot_bulk.get_average_along_axis(axis)
-            latt_len = self._locpot_defect.structure.lattice._lengths[axis]
+            latt_len = self._lengths[axis]
             ax.plot(defect_axis,defect_pot-pure_pot,'b',
                     label='Defect-Bulk difference')
             ax.plot([self._frac_coords[axis] * latt_len], [0], 'or',
@@ -114,7 +156,7 @@ class FreysoldtCorrection(object):
             ax.plot(defect_axis,defect_pot-pure_pot,'k',
                     label='Defect-Bulk difference')
             ax.plot([self._frac_coords[axis] * \
-                    self._locpot_defect.structure.lattice._lengths[axis]],\
+                    self._lengths[axis]],\
                     [0],'or',markersize=4.0,label='Defect site')
             ax.set_ylabel("axis "+str(axis+1))
             if axis==0:
@@ -162,8 +204,8 @@ class FreysoldtCorrection(object):
                     '--ecut', str(self._encut/13.6057), #eV to Ry for sxdefect 
                     '--eps', str(self._epsilon), 
                     '-C', str(-float(align[axis])), 
-                    '--vref', 'LOCPOT_vref', 
-                    '--vdef', 'LOCPOT_vdef']
+                    '--vref', self.mod_locpot_bulk,
+                    '--vdef', self.mod_locpot_defect]
             print command
 
             #standard way of running NERSC commands.
@@ -189,8 +231,7 @@ class FreysoldtCorrection(object):
             for r in f.readlines():
                 output.append(r)
             f.close()
-            print 'output from sxdefectalign = '+str(output)
-            print 'output -1', output[-1]
+            #print 'output from sxdefectalign = '+str(output)
             val =  output[-2].split()[3].strip()
             #result.append(float(output[-1].split()[3]))
             result.append(float(val))
@@ -221,7 +262,7 @@ class FreysoldtCorrection(object):
 
             # Extract potential alignment term averaging window of +/- 1 Ang 
             # around point halfway between neighboring defects
-            latt_len = self._locpot_defect.structure.lattice._lengths[axis]
+            latt_len = self._lengths[axis]
             if self._frac_coords[axis] >= 0.5:
                  platx = (self._frac_coords[axis]-0.5) * latt_len
             else:
@@ -262,15 +303,24 @@ class FreysoldtCorrection(object):
                       'oscillations or atomic relaxation'
 
             if print_pot_flag == 'written':
-                with open(os.path.join('..',"xylong"+str(axis)+".dat"),'w') as f:
-                    for i in range(len(x_lr)):
-                        f.write(str(x_lr[i])+" "+str(y_lr[i])+"\n")
-                with open(os.path.join('..',"xy"+str(axis)+".dat"),'w') as f:
-                    for i in range(len(x)):
-                        f.write(str(x[i])+" "+str(y[i])+"\n")
-                with open(os.path.join('..',"xy"+str(axis)+"diff.dat"),'w') as f:
-                    for i in range(len(x_diff)):
-                        f.write(str(x_diff[i])+" "+str(y_diff[i])+"\n")
+                def write_xy(x, y, fname):
+                    """
+                    Write the x, y vectors to file
+                    """
+                    with open(os.path.join('..',fname),'w') as f:
+                        for pair in zip(x, y):
+                            print >> f, ' '.join(str(i) for i in pair)
+
+                name = self._name
+                charge = str(self._charge)
+                fname = '_'.join([name,charge,'xylong',str(axis)]) + '.dat'
+                write_xy(x_lr, y_lr, fname)
+                fname = '_'.join([name,charge,'xy',str(axis)]) + '.dat'
+                #fname = name + charge + 'xy' + str(axis) + '.dat'
+                write_xy(x, y, fname)
+                fname = '_'.join([name,charge,'xy',str(axis),'diff.dat'])
+                #fname = name + charge + 'xy' + str(axis) + 'diff.dat'
+                write_xy(x_diff, y_diff, fname)
 
             elif print_pot_flag == 'plotfull': #store data for plotting at end of all calcs
                 plotvals[str(axis)]['xylong'] = [x_lr,y_lr]
@@ -296,7 +346,7 @@ class FreysoldtCorrection(object):
                     ax.set_title("Electrostatic planar averaged potential")
                     ax.legend(['V_defect-V_ref-V_lr','V_defect-V_ref','V_lr'])
 
-                latt_len = self._locpot_defect.structure.lattice._lengths[axis]
+                latt_len = self._lengths[axis]
                 fcoords = self._frac_coords[axis]
                 ax.plot([fcoords*latt_len], [0], 'or', markersize=4.0)
                 if fcoords >= 0.5:
@@ -313,6 +363,7 @@ class FreysoldtCorrection(object):
         Runs all neccessary parts to get freysoldt corrections out with
         planar averaged potentials
         Change plot_pot_flag if you want plotted planar averages
+        set transflag to True if you want to write flags
         """
         with ScratchDir('.'):
             self.prepare_files()
@@ -322,7 +373,7 @@ class FreysoldtCorrection(object):
             print 'get final correction terms'
             print '--'
             #To get locpot plots use print_pot_flag = 'written' or 'plotfull'
-            vals = self.plot_pot_diff(align=s[1], print_pot_flag='none')   
+            vals = self.plot_pot_diff(align=s[1], print_pot_flag='written')
             print 'vals is '+str(vals)
             for i in range(3):
                 if np.abs(vals[1][i]) > 0.0001:

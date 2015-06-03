@@ -88,7 +88,8 @@ class ChargedDefectsStructures(object):
     """
     def __init__(self, structure, max_min_oxi={}, substitutions={}, 
                  oxi_states={}, cellmax=128, interstitial_sites=[],
-                 antisites_flag=True, standardized=False):
+                 antisites_flag=True, standardized=False, 
+                 charge_states='liberal'):
         """
         Args:
             structure:
@@ -115,11 +116,15 @@ class ChargedDefectsStructures(object):
                 an interstitial
             antisites_flag: 
                 If False, don't generate antisites
+            charge_states:
+                Options are 'liberal' and 'conservative'. If liberal is selected
+                more charge states are computed
         """
 
         self.defects = []
         self.cellmax = cellmax
         self.substitutions = {}
+        self.charge_states = charge_states
         for key,val in substitutions.items():
             self.substitutions[str2unicode(key)] = val
 
@@ -215,22 +220,30 @@ class ChargedDefectsStructures(object):
                 'charges': list_charges })
 
             # Antisite defects generation
+
             if antisites_flag:
                 for as_specie in set(struct_species)-set([vac_specie]):
                     as_symbol = as_specie.symbol
                     as_sc = vac_sc.copy()
                     as_sc.append(as_symbol, vac_sc_site.frac_coords)
-                    #oxi_min = min(self.max_min_oxi[as_symbol][0],
-                    #        self.max_min_oxi[vac_symbol][0],0)
-                    #oxi_max = max(self.max_min_oxi[as_symbol][1],
-                    #        self.max_min_oxi[vac_symbol][0],0)
                     if vac_oxi_state > 0:
                         oxi_max = max(self.max_min_oxi[as_symbol][1],0)
                         oxi_min = 0
                     else:
                         oxi_max = 0
                         oxi_min = min(self.max_min_oxi[as_symbol][0],0)
-                    print vac_symbol, as_symbol, oxi_min, oxi_max
+                    if self.charge_states=='liberal' and oxi_min==oxi_max:
+                        print 'oxi', 'vac', oxi_min, vac_oxi_state
+                        if oxi_min - vac_oxi_state > 0:
+                            charges = list(range(oxi_min-vac_oxi_state+1))
+                            print charges
+                        else:
+                            charges = list(range(oxi_min-vac_oxi_state-1,1))
+                            print charges
+                    else:
+                        charges = [c - vac_oxi_state for c in range(
+                            oxi_min, oxi_max+1)]
+
                     as_defs.append({
                         'name': "as_{}_{}_on_{}".format(
                             i+1, as_symbol, vac_symbol),
@@ -241,9 +254,7 @@ class ChargedDefectsStructures(object):
                         'substitution_specie': as_symbol,
                         'site_multiplicity': site_mult,
                         'supercell': {'size': sc_scale,'structure': as_sc},
-                        #'charges':[c for c in range(oxi_min, oxi_max+1)]})
-                        'charges': [c - self.oxi_states[str2unicode(
-                            vac_symbol)] for c in range(oxi_min, oxi_max+1)]})
+                        'charges': charges})
 
             # Substitutional defects generation
             if vac_symbol in self.substitutions:
@@ -256,6 +267,18 @@ class ChargedDefectsStructures(object):
                     else:
                         oxi_max = 0
                         oxi_min = min(self.max_min_oxi[subspecie_symbol][0],0)
+                    if self.charge_states=='liberal' and oxi_min==oxi_max:
+                        print 'oxi', 'vac', oxi_min, vac_oxi_state
+                        if oxi_min - vac_oxi_state > 0:
+                            charges = list(range(oxi_min-vac_oxi_state+1))
+                            print charges
+                        else:
+                            charges = list(range(oxi_min-vac_oxi_state-1,1))
+                            print charges
+                    else:
+                        charges = [c - vac_oxi_state for c in range(
+                            oxi_min, oxi_max+1)]
+
                     sub_defs.append({
                         'name': "sub_{}_{}_on_{}".format(
                             i+1, subspecie_symbol, vac_symbol),
@@ -266,8 +289,7 @@ class ChargedDefectsStructures(object):
                         'substitution_specie':subspecie_symbol,
                         'site_multiplicity':site_mult,
                         'supercell':{'size':sc_scale,'structure':sub_sc},
-                        'charges':[c - self.oxi_states[str2unicode(
-                            vac_symbol)] for c in range(oxi_min, oxi_max+1)]})
+                        'charges':charges})
 
         self.defects['vacancies'] = vacancies 
         self.defects['substitutions'] = sub_defs
