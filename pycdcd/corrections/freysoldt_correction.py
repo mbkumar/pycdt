@@ -204,8 +204,8 @@ class FreysoldtCorrection(object):
                     '--ecut', str(self._encut/13.6057), #eV to Ry for sxdefect 
                     '--eps', str(self._epsilon), 
                     '-C', str(-float(align[axis])), 
-                    '--vref', self.mod_locpot_bulk,
-                    '--vdef', self.mod_locpot_defect]
+                    '--vref', self.mod_bulk_locpot,
+                    '--vdef', self.mod_defect_locpot]
             print command
 
             #standard way of running NERSC commands.
