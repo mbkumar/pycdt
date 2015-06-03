@@ -14,8 +14,7 @@ from math import sqrt, floor, pi, exp
 from pymatgen.core.periodic_table import Element
 from pymatgen.core.structure import PeriodicSite
 from pymatgen.io.vaspio.vasp_output import Locpot
-from pymatgen.entries.computed_entries import ComputedEntry, \
-        ComputedStructureEntry
+from pymatgen.entries.computed_entries import ComputedStructureEntry
 from pymatgen.symmetry.analyzer import SpacegroupAnalyzer
 from pycdcd.corrections.freysoldt_correction import FreysoldtCorrection
 
@@ -33,13 +32,17 @@ class ParsedDefect(object):
                  charge_correction=0.0, name=None):
         """
         Args:
-            entry_defect: an Entry object corresponding to the defect
-            charge: the charge of the defect
-            charge_correction: some correction to the energy due to charge
-            name: the name of the defect
+            entry_defect: 
+                An Entry object corresponding to the defect
+            charge: 
+                The charge of the defect
+            charge_correction: 
+                Some correction to the energy due to charge
+            name: 
+                The name of the defect
         """
 
-        self._entry = entry_defect
+        self.entry = entry_defect
         self._site = site_in_bulk
         self._charge = charge
         self.charge_correction = charge_correction # Can be added after initialization
@@ -47,7 +50,7 @@ class ParsedDefect(object):
         self._full_name = self._name + "_" + str(charge)
 
     def as_dict(self):
-        return {'entry': self._entry.as_dict(),
+        return {'entry': self.entry.as_dict(),
                 'site': self._site.as_dict(),
                 'charge': self._charge,
                 'charge_correction': self.charge_correction,
@@ -59,7 +62,7 @@ class ParsedDefect(object):
     @classmethod
     def from_dict(cls, d):
         return ParsedDefect(
-                ComputedEntry.from_dict(d['entry']), 
+                ComputedStructureEntry.from_dict(d['entry']), 
                 PeriodicSite.from_dict(d['site']),
                 charge=d.get('charge',0.0),
                 charge_correction=d.get('charge_correction',0.0),
@@ -71,22 +74,23 @@ def get_correction(defect, bulk_entry, epsilon, type='freysoldt'):
     Function to compute the correction for each defect.
     Args:
         defect: ParsedDefect object
-        bulk_entry: ComputedEntry corresponding to bulk
+        bulk_entry: ComputedStructureEntry corresponding to bulk
         epsilon: Dielectric constant
         type: String indicating the type of correction. Only Freysoldt
             method is implemented.
     """
     if type == 'freysoldt':
         locpot_path_blk = bulk_entry.data['locpot_path']
-        locpot_blk = Locpot.from_file(locpot_path_blk)
-        locpot_path_def = defect._entry.data['locpot_path']
-        locpot_defect = Locpot.from_file(locpot_path_def)
+        #locpot_blk = Locpot.from_file(locpot_path_blk)
+        locpot_path_def = defect.entry.data['locpot_path']
+        #locpot_defect = Locpot.from_file(locpot_path_def)
         charge = defect._charge
         frac_coords = defect._site.frac_coords
-        encut = defect._entry.data['encut']
-        corr_meth = FreysoldtCorrection(locpot_blk, locpot_defect, charge, 
-                                        epsilon, frac_coords, encut,
-                                        name=defect._name)
+        encut = defect.entry.data['encut']
+        latt_len = defect.entry.structure.lattice.abc
+        corr_meth = FreysoldtCorrection(
+                locpot_path_blk, locpot_path_def, charge, epsilon, 
+                frac_coords, encut, latt_len, name=defect._name)
         corr_val = corr_meth.run_correction()
 
         return corr_val 
@@ -173,7 +177,7 @@ class DefectsAnalyzer(object):
         for d in self._defects:
             multiplier = None
             atm_blk = self._entry_bulk.composition.num_atoms
-            atm_def = d._entry.composition.num_atoms 
+            atm_def = d.entry.composition.num_atoms 
             for i in [1,-1,0]:
                 if floor((atm_def+i)/atm_blk) == (atm_def+i)/atm_blk:
                     multiplier = (atm_def+i)/atm_blk
@@ -181,8 +185,8 @@ class DefectsAnalyzer(object):
 
             #compensate each element in defect with the chemical potential
             mu_needed_coeffs = {}
-            for elt in d._entry.composition.elements:
-                el_def_comp = d._entry.composition[elt] 
+            for elt in d.entry.composition.elements:
+                el_def_comp = d.entry.composition[elt] 
                 el_blk_comp = self._entry_bulk.composition[elt]
                 if el_def_comp > multiplier*el_blk_comp:
                     mu_needed_coeffs[elt] = -1.0
@@ -194,7 +198,7 @@ class DefectsAnalyzer(object):
                 sum_mus += mu_needed_coeffs[elt] * self._mu_elts[elt]
 
             self._formation_energies.append(
-                    d._entry.energy - multiplier*self._entry_bulk.energy + \
+                    d.entry.energy - multiplier*self._entry_bulk.energy + \
                             sum_mus + d._charge*self._e_vbm + \
                             d.charge_correction)
 
