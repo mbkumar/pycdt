@@ -123,7 +123,7 @@ def make_vasp_defect_files(defects, path_base, user_settings={}, hse=False):
     path = os.path.join(path_base,'bulk')
     try:
         os.makedirs(path)
-    except
+    except:
         pass
     kpoint.write_file(os.path.join(path,"KPOINTS"))
     dict_params['POSCAR'].write_file(os.path.join(path,"POSCAR"))
