@@ -20,8 +20,7 @@ from monty.json import MontyDecoder, MontyEncoder
 #import json
 import os
 
-def make_vasp_defect_files(defects, path_base, user_settings={}, 
-                           hse=False):
+def make_vasp_defect_files(defects, path_base, user_settings={}, hse=False):
     """
     Generates VASP files for defect computations
     Args:
@@ -60,10 +59,10 @@ def make_vasp_defect_files(defects, path_base, user_settings={},
                 'EDIFF': 1e-5, 'EDIFFG': -1e-2, 'ISMEAR': 0, 'SIGMA': 0.05,
                 'LVTOT': True, 'LVHAR': True, 'LORBIT': 11, 'ALGO': "Fast",
                 'ISYM':0})
-            if hse == True:
-                incar.update({
-                    'LHFCALC': True, "ALGO": "All", "HFSCREEN": 0.2,
-                    "PRECFOCK": "Fast", "AEXX": 0.45})
+            #if hse == True:
+            #    incar.update({
+            #        'LHFCALC': True, "ALGO": "All", "HFSCREEN": 0.2,
+            #        "PRECFOCK": "Fast", 'NKRED': 2})#, "AEXX": 0.45})
             if user_settings:
                 if 'INCAR' in user_settings.get('defects',None):
                     incar.update(user_settings['defects']['INCAR'])
@@ -81,13 +80,27 @@ def make_vasp_defect_files(defects, path_base, user_settings={},
             kpoint=Kpoints.monkhorst_automatic()
 
             path=os.path.join(path_base,defect['name'],"charge_"+str(charge))
-            os.makedirs(path)
-            incar.write_file(os.path.join(path,"INCAR"))
+            try:
+                os.makedirs(path)
+            except:
+                pass
+            #incar.write_file(os.path.join(path,"INCAR"))
             kpoint.write_file(os.path.join(path,"KPOINTS"))
             dict_params['POSCAR'].write_file(os.path.join(path,"POSCAR"))
             dict_params['POTCAR'].write_file(os.path.join(path,"POTCAR"))
             dumpfn(dict_transf, os.path.join(path,'transformation.json'),
                    cls=MontyEncoder)
+            if hse:
+                incar.update({"LWAVE": True})
+                incar.write_file(os.path.join(path,"INCAR.gga"))
+                incar.update({
+                    'LHFCALC': True, "ALGO": "All", "HFSCREEN": 0.2, 
+                    "PRECFOCK": "Fast", 'NKRED': 2}) #"AEXX": 0.45, 
+                #incar.write_file(os.path.join(path,"INCAR.hse"))
+                incar.write_file(os.path.join(path,"INCAR.hse1"))
+                del incar['PRECFOCK']
+                del incar['NKRED']
+                incar.write_file(os.path.join(path,"INCAR.hse2"))
 
     # Generate bulk supercell inputs
     s = bulk_sys
@@ -102,19 +115,33 @@ def make_vasp_defect_files(defects, path_base, user_settings={},
     if user_settings:
         if 'INCAR' in user_settings.get('bulk',None):
             incar.update(user_settings['bulk']['INCAR'])
-    if hse == True:
-        incar.update({
-            'LHFCALC': True, "ALGO": "All", "HFSCREEN": 0.2, "AEXX": 0.45, 
-            "PRECFOCK": "Fast"})
+    #if hse == True:
+    #    incar.update({
+    #        'LHFCALC': True, "ALGO": "All", "HFSCREEN": 0.2, "AEXX": 0.45, 
+    #        "PRECFOCK": "Fast", 'NKRED': 2})
     kpoint = Kpoints.monkhorst_automatic()
     path = os.path.join(path_base,'bulk')
-    os.makedirs(path)
-    incar.write_file(os.path.join(path,"INCAR"))
+    try:
+        os.makedirs(path)
+    except:
+        pass
     kpoint.write_file(os.path.join(path,"KPOINTS"))
     dict_params['POSCAR'].write_file(os.path.join(path,"POSCAR"))
     dict_params['POTCAR'].write_file(os.path.join(path,"POTCAR"))
     dumpfn(dict_transf, os.path.join(path,'transformations.json'),
            cls=MontyEncoder)
+    if hse:
+        incar.update({"LWAVE": True})
+        incar.write_file(os.path.join(path,"INCAR.gga"))
+        incar.update({
+            'LHFCALC': True, "ALGO": "All", "HFSCREEN": 0.2, #"AEXX": 0.45, 
+            "PRECFOCK": "Fast", 'NKRED': 2})
+        incar.write_file(os.path.join(path,"INCAR.hse1"))
+        del incar['PRECFOCK']
+        del incar['NKRED']
+        incar.write_file(os.path.join(path,"INCAR.hse2"))
+    else:
+        incar.write_file(os.path.join(path,"INCAR"))
 
 def make_vasp_defect_files_dos(defects, path_base, user_settings={}, 
                            hse=False, dos_limits=(-1,7)):
@@ -162,10 +189,10 @@ def make_vasp_defect_files_dos(defects, path_base, user_settings={},
                 'EDIFF': 1e-5, 'EDIFFG': -1e-2, 'ISMEAR': 0, 'SIGMA': 0.05, 
                 'LVTOT': True, 'LVHAR': True, 'LORBIT': 11, 'ALGO': "Fast",
                 'ISYM': 0})
-            if hse == True:
-                incar.update({
-                    'LHFCALC': True, "ALGO": "All", "HFSCREEN": 0.2,
-                    "PRECFOCK": "Fast", "AEXX": 0.45})
+            #if hse == True:
+            #    incar.update({
+            #        'LHFCALC': True, "ALGO": "All", "HFSCREEN": 0.2,
+            #        "PRECFOCK": "Fast", 'NKRED': 2})#, "AEXX": 0.45})
             if user_settings:
                 if 'INCAR' in user_settings.get('defects', None):
                     incar.update(user_settings['defects']['INCAR'])
@@ -184,8 +211,22 @@ def make_vasp_defect_files_dos(defects, path_base, user_settings={},
 
             path = os.path.join(
                     path_base, defect['name'], "charge_"+str(charge))
-            os.makedirs(path)
-            incar.write_file(os.path.join(path, "INCAR.relax"))
+            try:
+                os.makedirs(path)
+            except:
+                pass
+            if hse:
+                incar.update({"LWAVE": True})
+                incar.write_file(os.path.join(path,"INCAR.relax.gga"))
+                incar.update({
+                    'LHFCALC': True, "ALGO": "All", "HFSCREEN": 0.2, #"AEXX": 0.45, 
+                    "PRECFOCK": "Fast", 'NKRED': 2})
+                incar.write_file(os.path.join(path,"INCAR.relax.hse1"))
+                del incar['PRECFOCK']
+                del incar['NKRED']
+                incar.write_file(os.path.join(path,"INCAR.relax.hse2"))
+            else:
+                incar.write_file(os.path.join(path,"INCAR.relax"))
             kpoint.write_file(os.path.join(path, "KPOINTS"))
             dict_params['POSCAR'].write_file(os.path.join(path, "POSCAR.orig"))
             dict_params['POTCAR'].write_file(os.path.join(path, "POTCAR"))
@@ -201,7 +242,11 @@ def make_vasp_defect_files_dos(defects, path_base, user_settings={},
             incar['IBRION'] = -1
             incar['ICHARG'] = 1
             incar['EDIFF'] = 1e-6
+            # High acc not required for chgcar
+            incar.update({"PRECFOCK": "Fast", 'NKRED': 2}) 
             incar.write_file(os.path.join(path, "INCAR.static"))
+            del incar['PRECFOCK']
+            del incar['NKRED']
             incar['ICHARG'] = 11
             incar['NEDOS'] = int((dos_limits[1]-dos_limits[0])/0.006)
             incar['EMIN'] = dos_limits[0]
@@ -221,14 +266,28 @@ def make_vasp_defect_files_dos(defects, path_base, user_settings={},
     if user_settings:
         if 'INCAR' in user_settings.get('bulk', None):
             incar.update(user_settings['bulk']['INCAR'])
-    if hse == True:
-        incar.update({
-            'LHFCALC': True, "ALGO": "All", "HFSCREEN": 0.2,
-            "PRECFOCK": "Fast", "AEXX": 0.45})
+    #if hse == True:
+    #    incar.update({
+    #        'LHFCALC': True, "ALGO": "All", "HFSCREEN": 0.2,
+    #        "PRECFOCK": "Fast", "AEXX": 0.45})
     kpoint=Kpoints.monkhorst_automatic()
     path=os.path.join(path_base, 'bulk')
-    os.makedirs(path)
-    incar.write_file(os.path.join(path, "INCAR"))
+    try:
+        os.makedirs(path)
+    except:
+        pass
+    if hse:
+        incar.update({"LWAVE": True})
+        incar.write_file(os.path.join(path,"INCAR.gga"))
+        incar.update({
+            'LHFCALC': True, "ALGO": "All", "HFSCREEN": 0.2, #"AEXX": 0.45, 
+            "PRECFOCK": "Fast", 'NKRED': 2})
+        incar.write_file(os.path.join(path,"INCAR.hse1"))
+        del incar['PRECFOCK']
+        del incar['NKRED']
+        incar.write_file(os.path.join(path,"INCAR.hse2"))
+    else:
+        incar.write_file(os.path.join(path,"INCAR"))
     kpoint.write_file(os.path.join(path, "KPOINTS"))
     dict_params['POSCAR'].write_file(os.path.join(path, "POSCAR"))
     dict_params['POTCAR'].write_file(os.path.join(path,"POTCAR"))
@@ -265,7 +324,7 @@ def make_vasp_dielectric_files(struct, path=None, user_settings={},
     if hse == True:
         incar.update({
             'LHFCALC': True, "ALGO": "All", "HFSCREEN": 0.2,
-            "PRECFOCK": "Fast", "AEXX": 0.45})
+            "PRECFOCK": "Fast", 'NKRED': 2})#, "AEXX": 0.45})
 
     kpoints = dict_params['KPOINTS']
     kpoints.style = 'Gamma'
