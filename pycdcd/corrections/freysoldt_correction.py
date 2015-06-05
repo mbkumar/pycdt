@@ -98,8 +98,8 @@ class FreysoldtCorrection(object):
 
     def plot_hartree_pot(self):
         import matplotlib.pyplot as plt
-        fig=plt.figure()
-        ax=fig.add_subplot(3,1,1)
+        fig = plt.figure()
+        ax = fig.add_subplot(3,1,1)
         ax.set_title('Locpot planar averaged potentials')
         get_agrid = self._locpot_bulk.get_axis_grid
         get_aavg = self._locpot_bulk.get_average_along_axis
@@ -113,7 +113,7 @@ class FreysoldtCorrection(object):
             ax.plot([self._frac_coords[axis]*latt_len], [0], 'or', 
                     markersize=4.0, label="Defect site")
             ax.set_ylabel("axis "+str(axis+1))
-            if axis==0:
+            if not axis:
                 ax.legend()
         ax.set_xlabel("distance (Angstrom)")
         #plt.savefig('locpotavgplot.png')
@@ -121,21 +121,21 @@ class FreysoldtCorrection(object):
 
     def plot_hartree_pot_diff(self):
         import matplotlib.pyplot as plt
-        fig=plt.figure()
-        ax=fig.add_subplot(3,1,1)
+        fig = plt.figure()
+        ax = fig.add_subplot(3,1,1)
         ax.set_title('Locpot planar averaged potential difference')
         for axis in [0,1,2]:
             ax = fig.add_subplot(3, 1, axis+1)
-            defect_axis=self._locpot_defect.get_axis_grid(axis)
-            defect_pot=self._locpot_defect.get_average_along_axis(axis)
-            pure_pot=self._locpot_bulk.get_average_along_axis(axis)
+            defect_axis = self._locpot_defect.get_axis_grid(axis)
+            defect_pot = self._locpot_defect.get_average_along_axis(axis)
+            pure_pot = self._locpot_bulk.get_average_along_axis(axis)
             latt_len = self._lengths[axis]
             ax.plot(defect_axis,defect_pot-pure_pot,'b',
                     label='Defect-Bulk difference')
             ax.plot([self._frac_coords[axis] * latt_len], [0], 'or',
                     markersize=4.0, label='Defect site')
             ax.set_ylabel("axis "+str(axis+1))
-            if axis==0:
+            if not axis:
                 ax.legend()
         ax.set_xlabel("distance (Angstrom)")
         #plt.savefig('locpotdiffplot.png')
@@ -143,23 +143,22 @@ class FreysoldtCorrection(object):
 
     def plot_all_hartree_pot(self):
         import matplotlib.pyplot as plt
-        fig=plt.figure()
-        ax=fig.add_subplot(3,1,1)
+        fig = plt.figure()
+        ax = fig.add_subplot(3,1,1)
         ax.set_title('Locpot planar averaged potentials and difference')
         for axis in [0,1,2]:
             ax = fig.add_subplot(3, 1, axis+1)
-            defect_axis=self._locpot_defect.get_axis_grid(axis)
-            defect_pot=self._locpot_defect.get_average_along_axis(axis)
-            pure_pot=self._locpot_bulk.get_average_along_axis(axis)
-            ax.plot(defect_axis,pure_pot,'r',label="Bulk potential")
-            ax.plot(defect_axis,defect_pot,'b',label="Defect potential")
-            ax.plot(defect_axis,defect_pot-pure_pot,'k',
+            defect_axis = self._locpot_defect.get_axis_grid(axis)
+            defect_pot = self._locpot_defect.get_average_along_axis(axis)
+            pure_pot = self._locpot_bulk.get_average_along_axis(axis)
+            ax.plot(defect_axis, pure_pot, 'r', label="Bulk potential")
+            ax.plot(defect_axis, defect_pot, 'b', label="Defect potential")
+            ax.plot(defect_axis, defect_pot-pure_pot, 'k',
                     label='Defect-Bulk difference')
-            ax.plot([self._frac_coords[axis] * \
-                    self._lengths[axis]],\
-                    [0],'or',markersize=4.0,label='Defect site')
+            ax.plot([self._frac_coords[axis]*self._lengths[axis]],\
+                    [0], 'or', markersize=4.0, label='Defect site')
             ax.set_ylabel("axis "+str(axis+1))
-            if axis==0:
+            if not axis:
                 ax.legend()
         ax.set_xlabel("distance (Angstrom)")
         #plt.savefig('locpotavgdiffplot.png')
@@ -182,8 +181,8 @@ class FreysoldtCorrection(object):
         Would like final workflow to include the flag that I have put here 
         for when planar average varies by more than 0.2 eV around far region
         """
-        if self._charge==0: #don't need charge correction if charge is zero
-            return [[0,0,0],[0,0,0]]
+        if not self._charge: #don't need charge correction if charge is zero
+            return [[0,0,0],[0,0,0]] # why is it an double triplet?
         #correction from output (should include alignment once alignment 
         # has been done)
         result = []   
@@ -191,7 +190,7 @@ class FreysoldtCorrection(object):
         # if want to plot right here, then build dictionary for storing 
         # planar average values of each axis
         if print_pot_flag == 'plotfull':  
-            plotvals = {'0':{},'1':{},'2':{}}
+            plotvals = {'0': {}, '1': {}, '2': {}}
         for axis in [0,1,2]:
             print 'do axis '+str(axis+1)
             #print self._frac_coords[1:]
@@ -219,18 +218,14 @@ class FreysoldtCorrection(object):
             #result.append(float(out[0].split("\n")[12].split()[3]))
             #print "chg correction is "+str(result[-1])
 
-            ##this is hack wrap-around for when subprocess doesn't work
-            ##(which is always an issue on hopper now...)
-            cmd=''
-            for i in range(len(command)):
-                cmd+=command[i]+' '
-            cmd+=' > tmpoutput'
+            #this is hack wrap-around for when subprocess doesn't work
+            #(which is always an issue on hopper now...)
+            cmd = ' '.join(command)
+            cmd += ' > tmpoutput'
             os.system(cmd)
-            output=[]
-            f=open('tmpoutput','r')
-            for r in f.readlines():
-                output.append(r)
-            f.close()
+            
+            with open('tmpoutput') as f:
+                output = f.readlines()
             #print 'output from sxdefectalign = '+str(output)
             val =  output[-2].split()[3].strip()
             #result.append(float(output[-1].split()[3]))
@@ -242,7 +237,7 @@ class FreysoldtCorrection(object):
             x, y = [], []
             x_diff, y_diff = [], []
             with open("vline-eV.dat",'r') as f_sr: #read in potential 
-                for r in f_sr.readlines(): 
+                for r in f_sr:
                     tmp = r.split("\t")
                     if(len(tmp)<3 and not r.startswith("&")):
                        x_lr.append(float(tmp[0])/1.889725989)   # to Angstrom
@@ -330,19 +325,19 @@ class FreysoldtCorrection(object):
         if print_pot_flag == 'plotfull':  #plot all three planar averaged potentials
             import matplotlib.pyplot as plt
             import pylab
-            fig=plt.figure(figsize=(15.0,12.0))
+            fig = plt.figure(figsize=(15.0,12.0))
             print 'plot full plot'
             for axis in [0,1,2]:
                 print 'plot axis ',axis+1
-                ax=fig.add_subplot(3,1,axis+1)
+                ax = fig.add_subplot(3, 1, axis+1)
                 ax.set_ylabel('axis '+str(axis+1))
                 #pylab.hold(True)
                 vals_plot = plotvals[str(axis)]
-                ax.plot(vals_plot['xy'][0],vals_plot['xy'][1])
-                ax.plot(vals_plot['xydiff'][0],vals_plot['xydiff'][1],'r')
-                ax.plot(vals_plot['xylong'][0],vals_plot['xylong'][1],'g')
+                ax.plot(vals_plot['xy'][0], vals_plot['xy'][1])
+                ax.plot(vals_plot['xydiff'][0], vals_plot['xydiff'][1], 'r')
+                ax.plot(vals_plot['xylong'][0], vals_plot['xylong'][1], 'g')
 
-                if axis==0:
+                if not axis:
                     ax.set_title("Electrostatic planar averaged potential")
                     ax.legend(['V_defect-V_ref-V_lr','V_defect-V_ref','V_lr'])
 
@@ -353,8 +348,8 @@ class FreysoldtCorrection(object):
                     ax.plot([(fcoords-0.5)*latt_len],[0],'og',markersize=4.0)
                 else:
                     ax.plot([(fcoords+0.5)*latt_len],[0],'og',markersize=4.0)
-                plt.axhline(y=0.0,linewidth=0.8, color='black')
-            plt.savefig(os.path.join('..',"locpotgraph.png"))
+                plt.axhline(y=0.0, linewidth=0.8, color='black')
+            plt.savefig(os.path.join('..', "locpotgraph.png"))
 
         return [result,platy]
 
