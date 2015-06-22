@@ -100,16 +100,16 @@ class PostProcess(object):
             else:
                 chrg_fldrs = glob.glob(os.path.join(fldr,'charge*'))
                 for chrg_fldr in chrg_fldrs:
+                    trans_dict = loadfn(
+                            os.path.join(chrg_fldr, 'transformation.json'), 
+                            cls=MontyDecoder)
+                    chrg = trans_dict['charge']
                     vr, error_msg = get_vr_and_check_locpot(chrg_fldr)
                     if error_msg:
                         print (fldr_name, 'charge- ', chrg, error_msg)
                         print "But parsing of the rest of the calculations"
                         continue  # The successful calculations maybe useful
 
-                    trans_dict = loadfn(
-                            os.path.join(chrg_fldr, 'transformation.json'), 
-                            cls=MontyDecoder)
-                    chrg = trans_dict['charge']
                     site = trans_dict['defect_supercell_site']
                     energy = vr.final_energy
                     struct = vr.final_structure

@@ -128,7 +128,7 @@ def make_vasp_defect_files(defects, path_base, user_settings={}, hse=False):
     kpoint.write_file(os.path.join(path,"KPOINTS"))
     dict_params['POSCAR'].write_file(os.path.join(path,"POSCAR"))
     dict_params['POTCAR'].write_file(os.path.join(path,"POTCAR"))
-    dumpfn(dict_transf, os.path.join(path,'transformations.json'),
+    dumpfn(dict_transf, os.path.join(path,'transformation.json'),
            cls=MontyEncoder)
     if hse:
         incar.update({"LWAVE": True})
@@ -230,7 +230,7 @@ def make_vasp_defect_files_dos(defects, path_base, user_settings={},
             kpoint.write_file(os.path.join(path, "KPOINTS"))
             dict_params['POSCAR'].write_file(os.path.join(path, "POSCAR.orig"))
             dict_params['POTCAR'].write_file(os.path.join(path, "POTCAR"))
-            dumpfn(dict_transf, os.path.join(path, 'transformations.json'),
+            dumpfn(dict_transf, os.path.join(path, 'transformation.json'),
                    cls=MontyEncoder)
 
             # Write addition incar files for dos plots of defect levels
@@ -291,7 +291,7 @@ def make_vasp_defect_files_dos(defects, path_base, user_settings={},
     kpoint.write_file(os.path.join(path, "KPOINTS"))
     dict_params['POSCAR'].write_file(os.path.join(path, "POSCAR"))
     dict_params['POTCAR'].write_file(os.path.join(path,"POTCAR"))
-    dumpfn(dict_transf, os.path.join(path,'transformations.json'),
+    dumpfn(dict_transf, os.path.join(path,'transformation.json'),
            cls=MontyEncoder)
 
 def make_vasp_dielectric_files(struct, path=None, user_settings={}, 
