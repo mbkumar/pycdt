@@ -51,6 +51,8 @@ def make_vasp_defect_files(defects, path_base, user_settings={}, hse=False):
                     'defect_site': defect['unique_site'], 
                     'defect_supercell_site': defect['bulk_supercell_site'],
                     'charge': charge, 'supercell': s['size']}
+            if 'substitution_specie' in  defect:
+                dict_transf['substitution_specie'] = defect['substitution_specie']
 
             dict_params = MPVaspInputSet().get_all_vasp_input(s['structure'])
             incar = dict_params['INCAR']
@@ -179,8 +181,11 @@ def make_vasp_defect_files_dos(defects, path_base, user_settings={},
             dict_transf = {
                     'defect_type': defect['name'], 
                     'defect_site': defect['unique_site'], 
-                    'charge': charge, 'supercell': s['size']
-                    }
+                    'defect_supercell_site': defect['bulk_supercell_site'],
+                    'charge': charge, 'supercell': s['size']}
+            if 'substitution_specie' in  defect:
+                dict_transf['substitution_specie'] = defect['substitution_specie']
+
 
             dict_params = MPVaspInputSet().get_all_vasp_input(s['structure'])
             incar = dict_params['INCAR']
