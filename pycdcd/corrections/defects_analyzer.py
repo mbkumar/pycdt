@@ -93,7 +93,7 @@ def get_correction(defect, bulk_entry, epsilon, type='freysoldt'):
                 frac_coords, encut, latt_len, name=defect._name)
         corr_val = corr_meth.run_correction()
 
-        return corr_val 
+        return sum(corr_val)/len(corr_val) 
 
 
 class DefectsAnalyzer(object):
