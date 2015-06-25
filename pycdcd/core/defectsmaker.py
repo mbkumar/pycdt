@@ -14,10 +14,13 @@ __status__ = "Development"
 __date__ = "November 4, 2012"
 
 import copy
+from itertools import combinations
+
 from monty.string import str2unicode
 from pymatgen.core.structure import PeriodicSite
 from pymatgen.core.periodic_table import Specie, Element
 from pymatgen.symmetry.analyzer import SpacegroupAnalyzer
+from pymatgen.symmetry.structure import SymmetrizedStructure
 from pymatgen.analysis.defects.point_defects import Vacancy
 from pymatgen.analysis.bond_valence import BVAnalyzer
 from pymatgen.analysis.defects.point_defects import ValenceIonicRadiusEvaluator
@@ -296,14 +299,18 @@ class ChargedDefectsStructures(object):
         self.defects['substitutions'] += as_defs
 
         #interstitials
+        # I don't understand the logic behind generating interstitials this way
         interstitials = []
         for elt in self.struct.composition.elements:
             count = 1
             for frac_coord in interstitial_sites:
                 site = PeriodicSite(elt, frac_coord, structure.lattice)
                 interstitials.append({
-                    'name': elt.symbol+str(count)+"_inter",
+                    'name': "inter_"+elt.symbol+str(count),
                     'unique_site': site,
+                    'bulk_supercell_site':site,
+                    'site_specie': elt,
+                    'site_multiplicity':1, #! Need to determine correctly
                     'supercell': {'size': s_size,
                         'structure': self.make_interstitial(site, sc_scale)},
                     'charges': [c for c in range(
@@ -311,14 +318,19 @@ class ChargedDefectsStructures(object):
                 count = count+1
         self.defects['interstitials'] = interstitials
 
-    def make_defect_complexes(max_complex_size=0, include_vacancies=True):
+    def make_defect_complexes(max_complex_size=2, nearest_neighbor=1, 
+            include_vacancies=True):
         """
         Function to generate defect complexes
         Args:
-            max_complex_size: max. number of defects in a complex.
+            max_complex_size: 
+                Max. number of defects in a complex.
                 If zero, the max size possible is considered based 
                 on no. of subsitutions
-            include_vacancies: Include vacancies in the defect complex
+            nearest_neighbour: 
+                Upto how many nearest neighbors to be considered?
+            include_vacancies: 
+                Include vacancies in the defect complex
         """
         if not max_complex_size:
             max_complex_size = len(self.defects['substitutions'])
@@ -326,8 +338,33 @@ class ChargedDefectsStructures(object):
                 max_complex_size += 1
 
         complexes = []
+        if include_vacancies:
+            defects = self.defects['substitutions'] + self.defects['vacancies']
+        else:
+            defects = self.defects['substitutions'] 
+
+        blk_sc = self.defects['bulk']['supercell']['structure']
+        blk_symm_sc = SymmetrizedStructure(blk_sc)
         for size in range(2, max_complex_size+1):
-            continue
+            combs = combinations(defects,size)
+            for combo in combs:
+                dfct_cmplx_dict = {'defect_type': 'complex', 'number': size} 
+                sub_types = [dfct['defect_type'] for dfct in combo]
+                site_species = [dfct['site_specie'] for dfct in combo]
+                sub_species = []
+                for dfct in combo:
+                    if 'vac' in dfct['defect_type'] 
+                        sub_specie = None
+                    else:
+                        sub_specie = dfct['substitution_specie']
+                sub_species.append(sub_specie)  
+                init_sites = [dfct['unique_site'] for dfct in combo]
+                init_blk_sites = [dfct['bulk_supercell_site'] for dfct in combo]
+                blk_symm_sites = [blk_symm_sc.find_equivalent_sites(site) \
+                        for site in init_blk_sites]
+
+                
+
             
     def make_interstitial(self, target_site, sc_scale):
         sc = self.struct.copy()
