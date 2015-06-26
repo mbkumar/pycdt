@@ -117,15 +117,18 @@ class PostProcess(object):
                     site = trans_dict['defect_supercell_site']
                     energy = vr.final_energy
                     struct = vr.final_structure
-                    try:
-                        encut = vr.incar['ENCUT']
+                    try: # How to get ENCUT when not specified in INCAR?
+                        encut = vr.incar['ENCUT'] 
                     except:
                         continue
                     locpot_path = os.path.abspath(
                             os.path.join(chrg_fldr, 'LOCPOT'))
+                    comp_data = {'locpot_path': locpot_path, 'encut': encut}
+                    if 'substitution_specie' in trans_dict:
+                        comp_data['substitution_specie'] = \
+                                trans_dict['substitution_specie']
                     comp_def_entry = ComputedStructureEntry(
-                            struct, energy, 
-                            data={'locpot_path': locpot_path, 'encut': encut})
+                            struct, energy, data=comp_data)
                     parsed_defects.append(
                             ParsedDefect( 
                                 comp_def_entry, site_in_bulk=site, 
