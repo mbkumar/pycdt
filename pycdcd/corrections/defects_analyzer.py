@@ -93,7 +93,7 @@ def get_correction(defect, bulk_entry, epsilon, type='freysoldt'):
                 frac_coords, encut, latt_len, name=defect._name)
         corr_val = corr_meth.run_correction()
 
-        return corr_val 
+        return sum(corr_val)/len(corr_val) 
 
 
 class DefectsAnalyzer(object):
@@ -175,23 +175,35 @@ class DefectsAnalyzer(object):
         """
         self._formation_energies = []
         for d in self._defects:
-            multiplier = None
-            atm_blk = self._entry_bulk.composition.num_atoms
-            atm_def = d.entry.composition.num_atoms 
-            for i in [1,-1,0]:
-                if floor((atm_def+i)/atm_blk) == (atm_def+i)/atm_blk:
-                    multiplier = (atm_def+i)/atm_blk
-                    break
+            #multiplier = None
+            #atm_blk = self._entry_bulk.composition.num_atoms
+            #atm_def = d.entry.composition.num_atoms 
+            """
+            By Bharat: I don't get the need to use multiplier and
+            the complicated way of determining it below. The code below 
+            is trying to generate 1 in an complicated way. 
+            """
+            #for i in [1,-1,0]:
+            #    if floor((atm_def+i)/atm_blk) == (atm_def+i)/atm_blk:
+            #        multiplier = (atm_def+i)/atm_blk
+            #        break
+            
 
             #compensate each element in defect with the chemical potential
+            """
+            By Bharat: Again an overly complicated way of generating the 
+            multipliers for chemical potentials. And it can be lead to bugs 
+            when used for defect complexes. 
+            """
             mu_needed_coeffs = {}
             for elt in d.entry.composition.elements:
                 el_def_comp = d.entry.composition[elt] 
                 el_blk_comp = self._entry_bulk.composition[elt]
-                if el_def_comp > multiplier*el_blk_comp:
-                    mu_needed_coeffs[elt] = -1.0
-                if el_def_comp < multiplier*el_blk_comp:
-                    mu_needed_coeffs[elt] = 1.0
+                mu_needed_coeffs[elt] = el_blk_comp - el_def_comp
+                #if el_def_comp > multiplier*el_blk_comp:
+                #    mu_needed_coeffs[elt] = -1.0
+                #if el_def_comp < multiplier*el_blk_comp:
+                #    mu_needed_coeffs[elt] = 1.0
 
             sum_mus = 0.0
             for elt in mu_needed_coeffs:
@@ -199,7 +211,8 @@ class DefectsAnalyzer(object):
                 sum_mus += mu_needed_coeffs[elt] * self._mu_elts[el]
 
             self._formation_energies.append(
-                    d.entry.energy - multiplier*self._entry_bulk.energy + \
+                    d.entry.energy - self._entry_bulk.energy + \
+                    #d.entry.energy - multiplier*self._entry_bulk.energy + \
                             sum_mus + d._charge*self._e_vbm + \
                             d.charge_correction)
 

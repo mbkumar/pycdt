@@ -45,6 +45,7 @@ class PostProcess(object):
         self._root_fldr = root_fldr
         self._mpid = mpid
         self._mapi_key = mapi_key
+        self._substitution_species = set()
 
     def parse_defect_calculations(self):
         """
@@ -109,16 +110,25 @@ class PostProcess(object):
                         print (fldr_name, 'charge- ', chrg, error_msg)
                         print "But parsing of the rest of the calculations"
                         continue  # The successful calculations maybe useful
-
+                    if 'substitution_specie' in trans_dict:
+                        self._substitution_species.add(
+                                trans_dict['substitution_specie'])
+                        
                     site = trans_dict['defect_supercell_site']
                     energy = vr.final_energy
                     struct = vr.final_structure
-                    encut = vr.incar['ENCUT']
+                    try: # How to get ENCUT when not specified in INCAR?
+                        encut = vr.incar['ENCUT'] 
+                    except:
+                        continue
                     locpot_path = os.path.abspath(
                             os.path.join(chrg_fldr, 'LOCPOT'))
+                    comp_data = {'locpot_path': locpot_path, 'encut': encut}
+                    if 'substitution_specie' in trans_dict:
+                        comp_data['substitution_specie'] = \
+                                trans_dict['substitution_specie']
                     comp_def_entry = ComputedStructureEntry(
-                            struct, energy, 
-                            data={'locpot_path': locpot_path, 'encut': encut})
+                            struct, energy, data=comp_data)
                     parsed_defects.append(
                             ParsedDefect( 
                                 comp_def_entry, site_in_bulk=site, 
@@ -157,18 +167,19 @@ class PostProcess(object):
         bandgap = bs.get_band_gap()
         return (vbm, bandgap)
 
-    def get_chempot_limits(self):
+    def get_chempot_limits(self, structure=None):
         """
         Returns atomic chempots from mpid
         """
-        if not self._mapi_key:
-            with MPRester() as mp:
-                structure = mp.get_structure_by_material_id(self._mpid)
-        else:
-            with MPRester(self._mapi_key) as mp:
-                structure = mp.get_structure_by_material_id(self._mpid)
-        if  not structure:
-            raise ValueError("Could not fetch structure for atomic chempots!")
+        if not structure:
+            if not self._mapi_key:
+                with MPRester() as mp:
+                    structure = mp.get_structure_by_material_id(self._mpid)
+            else:
+                with MPRester(self._mapi_key) as mp:
+                    structure = mp.get_structure_by_material_id(self._mpid)
+            if  not structure:
+                raise ValueError("Could not fetch structure for atomic chempots!")
 
         species = structure.types_of_specie
         species_symbol = [s.symbol for s in species]
@@ -203,6 +214,23 @@ class PostProcess(object):
                 chem_lims[sp_symb]['rich'][el.symbol] = mu_lims[el][1]
                 chem_lims[sp_symb]['poor'][el.symbol] = mu_lims[el][0]
 
+        # For substitution species the values are equal to single element vals
+        for sub_el in self._substitution_species:
+            print sub_el
+            if not self._mapi_key:
+                with MPRester() as mp:
+                    entries = mp.get_entries_in_chemsys([sub_el])
+            else:
+                with MPRester(self._mapi_key) as mp:
+                    entries = mp.get_entries_in_chemsys([sub_el])
+            if  not entries:
+                raise ValueError("Could not fetch entries for atomic chempots!")
+
+            vals = [entry.energy_per_atom for entry in entries]
+            for sp_symb in chem_lims:
+                chem_lims[sp_symb]['rich'][sub_el] = min(vals)
+                chem_lims[sp_symb]['poor'][sub_el] = min(vals)
+
         #make this less confusing for binary systems...
         if len(species) == 2:
             first_specie = sorted(chem_lims.keys())[0]
@@ -210,6 +238,8 @@ class PostProcess(object):
                 if key is not first_specie:
                     del chem_lims[key]
             #chem_lims = chem_lims[chem_lims.keys()[0]]
+
+
 
         return chem_lims
 
@@ -249,9 +279,14 @@ class PostProcess(object):
                 average of the trace of the dielectric tensor
         """
 
-        vr = Vasprun(os.path.join(self._root_fldr,"dielectric","vasprun.xml"))
-        eps_ten = self._get_dielectric_tensor(vr)
+        try:
+            vr = Vasprun(os.path.join(
+                self._root_fldr,"dielectric","vasprun.xml"))
+        except:
+            print 'Parsing Dielectric calculation failed'
+            return None
 
+        eps_ten = self._get_dielectric_tensor(vr)
         return (eps_ten[0][0]+eps_ten[1][1]+eps_ten[2][2])/3.0
 
     def compile_all(self):

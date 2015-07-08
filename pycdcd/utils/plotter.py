@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-__author__ = "Geoffroy Hautier"
+__author__ = "Geoffroy Hautier, Bharat Medasani"
 __copyright__ = "Copyright 2014, The Materials Project"
 __version__ = "1.0"
 __maintainer__ = "Geoffroy Hautier"
@@ -37,7 +37,7 @@ class DefectPlotter(object):
 
         """
         if xlim is None:
-            xlim = (-0.5, self._analyzer._band_gap+1.0)
+            xlim = (-0.5, self._analyzer._band_gap+1.5)
         max_lim = xlim[1]
         min_lim = xlim[0]
         nb_steps = 10000
@@ -48,24 +48,43 @@ class DefectPlotter(object):
             y_tmp = []
             for x_step in x:
                 min = 10000
-                for i in range(len(self._analyzer._defects)):
-                    if self._analyzer._defects[i]._name == t:
+                for i, dfct in enumerate(self._analyzer._defects):
+                    if dfct._name == t:
                         val = self._analyzer._formation_energies[i] + \
-                                self._analyzer._defects[i]._charge*x_step
+                                dfct._charge*x_step
                         if val < min:
                             min = val
                 y_tmp.append(min)
             y[t] = y_tmp
-        plt = get_publication_quality_plot(12, 8)
+
+        width,height = 12,8
+        plt = get_publication_quality_plot(width,height)
         for c in y:
-            plt.plot(x, y[c], linewidth=5)
+            plt.plot(x, y[c], linewidth=3)
         plt.plot([min_lim, max_lim], [0, 0], 'k-')
-        plt.legend(y.keys())
+
+        def get_legends(types):
+            legends = []
+            for name in types:
+                for dfct in self._analyzer._defects:
+                    if name == dfct._name:
+                        sub_str = '_{'+dfct._site.species_string+'}$'
+                        if 'vac' in name:
+                            base = '$Vac'
+                        else: #'sub' in name or 'as' in name or 'antisite' in name:
+                            base = '$'+dfct.entry.data['substitution_specie']
+                        legend = base + sub_str
+                        break
+                legends.append(legend)
+            return legends
+            
+        plt.legend(get_legends(y.keys()),fontsize=2*width)
         plt.axvline(x=0.0, linestyle='--', color='k', linewidth=3)
+        plt.axvline(x=self._analyzer._band_gap, linestyle='--', color='k', linewidth=3)
         if ylim is not None:
             plt.ylim(ylim)
-        plt.xlabel("Fermi energy (eV)")
-        plt.ylabel("Defect Formation Energy (eV)")
+        plt.xlabel("Fermi energy (eV)",size=2*width)
+        plt.ylabel("Defect Formation Energy (eV)",size=2*width)
         return plt
 
     def plot_conc_temp(self, me=[1.0, 1.0, 1.0], mh=[1.0, 1.0, 1.0]):
