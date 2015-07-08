@@ -16,18 +16,21 @@ __email__ = "nerz@lbl.gov"
 __date__ = "May 1, 2015"
 
 import argparse
-#import os
-#import json
-#import glob
+
+from collections import defaultdict
+
 from monty.serialization import dumpfn
 from monty.json import MontyEncoder
 
 from pymatgen.matproj.rest import MPRester
 from pymatgen.symmetry.analyzer import SpacegroupAnalyzer
+
 from pycdcd.core.defectsmaker import ChargedDefectsStructures
 from pycdcd.utils.vasp import make_vasp_defect_files, \
-        make_vasp_dielectric_files
+                              make_vasp_dielectric_files
 from pycdcd.utils.parse_calculations import PostProcess
+from pycdcd.corrections.defects_analyzer import get_correction
+
 
 
 def print_error_message(err_str):
@@ -52,7 +55,7 @@ def generate_input_files(args):
     """
 
     # initialize variables
-    mpid = args.mpid
+    mp_id = args.mp_id
     mapi_key = args.mapi_key
     nmax = args.nmax
     oxi_state = args.oxi_state
@@ -60,7 +63,7 @@ def generate_input_files(args):
     antisites = args.antisites
 
     # error-checking
-    if not mpid:
+    if not mp_id:
         print_error_message("No Materials Project ID (MP-ID) provided!")
         return
     if nmax <= 0:
@@ -71,10 +74,10 @@ def generate_input_files(args):
     # get primitive unit cell
     if not mapi_key:
         with MPRester() as mp:
-            prim_struct = mp.get_structure_by_material_id(mpid)
+            prim_struct = mp.get_structure_by_material_id(mp_id)
     else:
         with MPRester(mapi_key) as mp:
-            prim_struct = mp.get_structure_by_material_id(mpid)
+            prim_struct = mp.get_structure_by_material_id(mp_id)
 
     # transform to conventional unit cell
     conv_struct = SpacegroupAnalyzer( 
@@ -113,6 +116,7 @@ def generate_input_files(args):
             conv_struct.composition.reduced_formula)
 
 
+
 def parse_vasp_output(args):
     """
     Parses output files from VASP calculations that aim to determine
@@ -126,17 +130,45 @@ def parse_vasp_output(args):
     """
 
     # initialize variables
-    mpid = args.mpid
+    mp_id = args.mp_id
     mapi_key = args.mapi_key
     root_fldr = args.root_fldr
-    json_file_name = args.json_file_name
+    if args.defect_data_file_name == 'None':
+        defect_data_file_name = None
+    else:
+        defect_data_file_name = args.defect_data_file_name
+    if args.corrections_file_name == 'None':
+        corrections_file_name = None
+    else:
+        corrections_file_name = args.corrections_file_name
+    plot_results = args.plot_results
 
     # error-checking
-    if not mpid:
+    if not mp_id:
         print_error_message("No Materials Project structure ID provided!")
         return
-    dumpfn(PostProcess(root_fldr, mpid, mapi_key).compile_all(), 
-            json_file_name, cls=MontyEncoder, indent=2)
+
+    # parse results to get defect data and correction terms
+    defect_data = PostProcess(root_fldr, mp_id, mapi_key).compile_all()
+    bulk = defect_data['bulk_entry']
+    defects = defect_data['defects']
+    epsilon = defect_data['epsilon']
+    corrections = defaultdict(list)
+    for defect in defects:
+        correction = get_correction(defect, bulk, epsilon)
+        defect.correction = correction
+        corrections[defect._name].append({'correction': correction,'charge':defect._charge})
+
+    # output results, if applicable
+    if defect_data_file_name is not None:
+        dumpfn(defect_data, defect_data_file_name, cls=MontyEncoder, indent=2)
+    if corrections_file_name is not None:
+        dumpfn(corrections, corrections_file_name, cls=MontyEncoder, indent=2)
+
+    # plot results, if applicable
+    if plot_results:
+        pass # go on here
+
 
 
 def main():
@@ -152,7 +184,7 @@ def main():
         Last updated: {}""".format(__version__, __date__))
 
     subparsers = parser.add_subparsers()
-    mpid_string = "Materials Project id of the structure.\nFor more info on " \
+    mp_id_string = "Materials Project id of the structure.\nFor more info on " \
         "Materials Project, please, visit www.materialsproject.org."
     mapi_string = "Your Materials Project REST API key.\nFor more info, " \
         "please, visit www.materialsproject.org/open."
@@ -171,14 +203,22 @@ def main():
     root_fldr_string = "Path (relative or absolute) to directory" \
         " in which data of charged point-defect calculations for" \
         " a particular system are to be found."
-    json_file_name_string = "Name of output file in json format.\n" \
-        "Default is \"output_defects.json\"."
+    defect_data_file_name_string = "Name of output file for defect data" \
+        " obtained from parsing VASP's files of charged-defect" \
+        " calculations in json format.\nDefault is" \
+        " \"defect_data_defects.json\"; \"None\" suppresses output."
+    corrections_file_name_string = "Name of output file for data on" \
+        " correction terms to formation energies of charged defects" \
+        " in json format.\nDefault is \"corrections.json\";" \
+        " \"None\" suppresses output."
+    not_plot_results_string = "Optional flag to indicate that results" \
+        " should not be plotted."
 
     parser_input_files = subparsers.add_parser(
             "generate_input_files",
             help="Generates Vasp input files for charged point defects.")
-    parser_input_files.add_argument("-i", "-id", "--mpid", type=str.lower,
-                                    dest="mpid", help=mpid_string)
+    parser_input_files.add_argument("-i", "-id", "--mp_id", type=str.lower,
+                                    dest="mp_id", help=mp_id_string)
     parser_input_files.add_argument("-k", "-key", "--mapi_key", default=None,
                                     dest="mapi_key", help=mapi_string)
     parser_input_files.add_argument("-n", "--nmax", type=int, default=80,
@@ -198,21 +238,28 @@ def main():
             "parse_vasp_output",
             help="Parses VASP output for calculation of formation energies of"
              " charged point defects.")
-    parser_vasp_output.add_argument("-i", "-id", "--mpid", type=str.lower,
-                                    dest="mpid", help=mpid_string)
+    parser_vasp_output.add_argument("-i", "-id", "--mp_id", type=str.lower,
+                                    dest="mp_id", help=mp_id_string)
     parser_vasp_output.add_argument("-k", "-key", "--mapi_key", default=None,
                                     dest="mapi_key", help=mapi_string)
-    parser_vasp_output.add_argument("-d", "--dir", default=None,
+    parser_vasp_output.add_argument("-d", "-dir", "--directory", default=None,
                                     dest="root_fldr", help=root_fldr_string)
-    parser_vasp_output.add_argument("-o", "--output", "-j", "-json",
-                                    "--json_file_name",
-                                    default="output_defects.json",
-                                    dest="json_file_name", 
-                                    help=json_file_name_string)
+    parser_vasp_output.add_argument("-dd", "-ddfn", "--defect_data_file_name",
+                                    default="defect_data.json",
+                                    dest="defect_data_file_name",
+                                    help=defect_data_file_name_string)
+    parser_vasp_output.add_argument("-c", "-cfn", "--corrections_file_name",
+                                    default="corrections.json",
+                                    dest="corrections_file_name",
+                                    help=corrections_file_name_string)
+    parser_vasp_output.add_argument("-np", "-npr", "--not_plot_results",
+                                    action='store_false', dest="plot_results",
+                                    help=not_plot_results_string)
     parser_vasp_output.set_defaults(func = parse_vasp_output)
 
     args = parser.parse_args()
     args.func(args)
+
 
 
 if __name__ == "__main__":
