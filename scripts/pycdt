@@ -206,7 +206,7 @@ def main():
     defect_data_file_name_string = "Name of output file for defect data" \
         " obtained from parsing VASP's files of charged-defect" \
         " calculations in json format.\nDefault is" \
-        " \"defect_data_defects.json\"; \"None\" suppresses output."
+        " \"defect_data.json\"; \"None\" suppresses output."
     corrections_file_name_string = "Name of output file for data on" \
         " correction terms to formation energies of charged defects" \
         " in json format.\nDefault is \"corrections.json\";" \
