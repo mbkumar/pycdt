@@ -156,8 +156,8 @@ def parse_vasp_output(args):
     corrections = defaultdict(list)
     for defect in defects:
         correction = get_correction(defect, bulk, epsilon)
-        defect.correction = correction
-        corrections[defect._name].append({'correction': correction,'charge':defect._charge})
+        defect.charge_correction = correction
+        corrections[defect._name].append({'charge_correction': correction,'charge':defect._charge})
 
     # output results, if applicable
     if defect_data_file_name is not None:
