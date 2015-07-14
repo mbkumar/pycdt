@@ -142,6 +142,7 @@ def parse_vasp_output(args):
     else:
         corrections_file_name = args.corrections_file_name
     plot_results = args.plot_results
+    epsilon = args.epsilon
 
     # error-checking
     if not mp_id:
@@ -152,7 +153,10 @@ def parse_vasp_output(args):
     defect_data = PostProcess(root_fldr, mp_id, mapi_key).compile_all()
     bulk = defect_data['bulk_entry']
     defects = defect_data['defects']
-    epsilon = defect_data['epsilon']
+    if epsilon is None:
+        epsilon = defect_data['epsilon']
+    else:
+        defect_data['epsilon'] = epsilon
     corrections = defaultdict(list)
     for defect in defects:
         correction = get_correction(defect, bulk, epsilon)
@@ -206,13 +210,20 @@ def main():
     defect_data_file_name_string = "Name of output file for defect data" \
         " obtained from parsing VASP's files of charged-defect" \
         " calculations in json format.\nDefault is" \
-        " \"defect_data_defects.json\"; \"None\" suppresses output."
+        " \"defect_data.json\"; \"None\" suppresses output."
     corrections_file_name_string = "Name of output file for data on" \
         " correction terms to formation energies of charged defects" \
         " in json format.\nDefault is \"corrections.json\";" \
         " \"None\" suppresses output."
     not_plot_results_string = "Optional flag to indicate that results" \
         " should not be plotted."
+    epsilon_string = "Optional: provide a dielectric constant to be" \
+        " used in the correction terms of the defect-formation energies." \
+        " If not provided, the dielectric" \
+        " constant is extracted from the corresponding VASP calculation." \
+        " Note that this evaluation script expects the dielectric" \
+        " constant calculation to have been performed to properly analyze" \
+        " the data."
 
     parser_input_files = subparsers.add_parser(
             "generate_input_files",
@@ -255,6 +266,9 @@ def main():
     parser_vasp_output.add_argument("-np", "-npr", "--not_plot_results",
                                     action='store_false', dest="plot_results",
                                     help=not_plot_results_string)
+    parser_vasp_output.add_argument("-e", "-eps", "--epsilon",
+                                    "--dielectric_constant", default=None,
+                                    dest="epsilon", help=epsilon_string)
     parser_vasp_output.set_defaults(func = parse_vasp_output)
 
     args = parser.parse_args()
