@@ -212,7 +212,7 @@ def make_vasp_defect_files_dos(defects, path_base, user_settings={},
             if charge != 0:
                 incar['NELECT'] = sum_elec-charge
 
-            kpoint=dict_params['KPOINTS'].monkhorst_automatic()	
+            kpoint=dict_params['KPOINTS'].monkhorst_automatic()		#I think we need better than 222 grid. should use automatic_density with 1000 /atom?
 
             path = os.path.join(
                     path_base, defect['name'], "charge_"+str(charge))
@@ -331,8 +331,7 @@ def make_vasp_dielectric_files(struct, path=None, user_settings={},
             'LHFCALC': True, "ALGO": "All", "HFSCREEN": 0.2,
             "PRECFOCK": "Fast", 'NKRED': 2})#, "AEXX": 0.45})
 
-    kpoints = dict_params['KPOINTS']
-    kpoints.style = 'Gamma'
+    kpoints = dict_params['KPOINTS'].automatic_density(struct,1000,force_gamma=True)
 
     if not path:
         path_base = struct.composition.reduced_formula
