@@ -79,7 +79,7 @@ def make_vasp_defect_files(defects, path_base, user_settings={}, hse=False):
             if charge != 0:
                 incar['NELECT'] = sum_elec - charge
 
-            kpoint=Kpoints.monkhorst_automatic()
+            kpoint=dict_params['KPOINTS'].monkhorst_automatic()
 
             path=os.path.join(path_base,defect['name'],"charge_"+str(charge))
             try:
@@ -121,7 +121,7 @@ def make_vasp_defect_files(defects, path_base, user_settings={}, hse=False):
     #    incar.update({
     #        'LHFCALC': True, "ALGO": "All", "HFSCREEN": 0.2, "AEXX": 0.45, 
     #        "PRECFOCK": "Fast", 'NKRED': 2})
-    kpoint = Kpoints.monkhorst_automatic()
+    kpoint=dict_params['KPOINTS'].monkhorst_automatic()
     path = os.path.join(path_base,'bulk')
     try:
         os.makedirs(path)
@@ -212,7 +212,7 @@ def make_vasp_defect_files_dos(defects, path_base, user_settings={},
             if charge != 0:
                 incar['NELECT'] = sum_elec-charge
 
-            kpoint = Kpoints.monkhorst_automatic()
+            kpoint=dict_params['KPOINTS'].monkhorst_automatic()	
 
             path = os.path.join(
                     path_base, defect['name'], "charge_"+str(charge))
@@ -275,7 +275,7 @@ def make_vasp_defect_files_dos(defects, path_base, user_settings={},
     #    incar.update({
     #        'LHFCALC': True, "ALGO": "All", "HFSCREEN": 0.2,
     #        "PRECFOCK": "Fast", "AEXX": 0.45})
-    kpoint=Kpoints.monkhorst_automatic()
+    kpoint=dict_params['KPOINTS'].monkhorst_automatic()
     path=os.path.join(path_base, 'bulk')
     try:
         os.makedirs(path)
