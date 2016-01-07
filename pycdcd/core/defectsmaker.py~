@@ -366,19 +366,18 @@ class ChargedDefectsStructures(object):
         self.defects['substitutions'] += as_defs
 
         #interstitials
-	#if (not self.interstitial_sites and self.charge_states=='liberal'):
+	if (not self.interstitial_sites and self.charge_states=='liberal'):
 		
-	##THIS IS STRICTLY FOR DANNY TESTING INTERSTITIAL AUTOMATION
-	#from pymatgen.analysis.defects.point_defects import Interstitial as Inter
-	#from pymatgen.matproj.rest import MPRester
-	#from pymatgen.core.periodic_table import Element
-	#mp =MPRester()
-	#struct=mp.get_structure_by_material_id('mp-2231') 
-	#valdic={'Sn':2,'S':-2}
-	#radi={}
-	#for j in valdic.keys():
-	#radi[j]=Element(j).atomic_radius
-	#s=Inter(struct,valdic,radi)
+from pymatgen.analysis.defects.point_defects import Interstitial as Inter
+from pymatgen.matproj.rest import MPRester
+from pymatgen.core.periodic_table import Element
+mp =MPRester()
+struct=mp.get_structure_by_material_id('mp-2231') 
+valdic={'Sn':2,'S':-2}
+radi={}
+for j in valdic.keys():
+	radi[j]=Element(j).atomic_radius
+s=Inter(struct,valdic,radi)
 
         interstitials = []
         for elt in self.struct.composition.elements:

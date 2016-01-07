@@ -1,0 +1,280 @@
+#!/Users/nisse/code/pymatgen/python2.7_devSIAs/bin/python
+
+from __future__ import division, print_function, unicode_literals
+
+"""
+A script with tools for computing formation energies
+of charged point defects, supporting multiple correction
+schemes.
+"""
+
+__author__ = "Nils E. R. Zimmermann, Bharat Medasani"
+__copyright__ = "Copyright 2012, The Materials Project"
+__version__ = "1"
+__maintainer__ = "Nils E. R. Zimmermann"
+__email__ = "nerz@lbl.gov"
+__date__ = "May 1, 2015"
+
+import argparse
+
+from collections import defaultdict
+
+from monty.serialization import dumpfn
+from monty.json import MontyEncoder
+
+from pymatgen.matproj.rest import MPRester
+from pymatgen.symmetry.analyzer import SpacegroupAnalyzer
+
+from pycdcd.core.defectsmaker import ChargedDefectsStructures
+from pycdcd.utils.vasp import make_vasp_defect_files, \
+                              make_vasp_dielectric_files
+from pycdcd.utils.parse_calculations import PostProcess
+from pycdcd.corrections.defects_analyzer import get_correction
+
+
+
+def print_error_message(err_str):
+    print("\n=================================================================="
+        "=============\n\nError: "+err_str)
+    print("\n================================================================"
+        "===============\n")
+
+
+def generate_input_files(args):
+    """
+    Generates input files for VASP calculations that aim to determine
+    formation energies of charged point defects by (possibly) applying
+    correction terms (supported so-far: correction due to Freysoldt
+    et al., Phys. Rev. Lett., 2009).
+    The primitive unit cell is obtained from the MP ID provided during
+    script call.  
+
+    Args:
+        args (Namespace): contains the parsed command-line arguments for
+            this command.
+    """
+
+    # initialize variables
+    mp_id = args.mp_id
+    mapi_key = args.mapi_key
+    nmax = args.nmax
+    oxi_state = args.oxi_state
+    oxi_range = args.oxi_range
+    antisites = args.antisites
+
+    # error-checking
+    if not mp_id:
+        print_error_message("No Materials Project ID (MP-ID) provided!")
+        return
+    if nmax <= 0:
+        print_error_message("maximal number of atoms per supercell"
+            " must be larger than zero!")
+        return
+
+    # get primitive unit cell
+    if not mapi_key:
+        with MPRester() as mp:
+            prim_struct = mp.get_structure_by_material_id(mp_id)
+    else:
+        with MPRester(mapi_key) as mp:
+            prim_struct = mp.get_structure_by_material_id(mp_id)
+
+    # transform to conventional unit cell
+    conv_struct = SpacegroupAnalyzer( 
+            prim_struct).get_conventional_standard_structure()
+
+    make_vasp_dielectric_files(prim_struct)
+
+    # manually set oxidation states if those were provided
+    oxi_state_dict = {}
+    if oxi_state:
+        for i in range(len(oxi_state)):
+            oxi_state_dict[oxi_state[i][0]] = int(oxi_state[i][1])
+        if len(oxi_state_dict) != conv_struct.ntypesp:
+            print_error_message("number of oxidation states"
+                " provided does not match number of species in structure!")
+            return
+
+    # manually set oxidation-state ranges if those were provided
+    oxi_range_dict = {}
+    if oxi_range:
+        for i in range(len(oxi_range)):
+            oxi_range_dict[oxi_range[i][0]] = tuple(
+                    [int(oxi_range[i][1]), int(oxi_range[i][2])])
+        if len(oxi_range_dict) != conv_struct.ntypesp:
+            print_error_message("number of distinct oxidation ranges"
+                " provided does not match number of species in structure!")
+            return
+
+    # finally, generate VASP input files for defect calculations
+    def_structs = ChargedDefectsStructures(
+            conv_struct, max_min_oxi=oxi_range_dict, 
+            oxi_states=oxi_state_dict, antisites_flag=antisites,
+            cellmax=nmax)
+    make_vasp_defect_files(
+            def_structs.defects,
+            conv_struct.composition.reduced_formula)
+
+
+
+def parse_vasp_output(args):
+    """
+    Parses output files from VASP calculations that aim to determine
+    formation energies of charged point defects by (possibly) applying
+    correction terms (supported so-far: correction due to Freysoldt
+    et al., Phys. Rev. Lett., 2009).
+
+    Args:
+        args (Namespace): contains the parsed command-line arguments for
+            this command.
+    """
+
+    # initialize variables
+    mp_id = args.mp_id
+    mapi_key = args.mapi_key
+    root_fldr = args.root_fldr
+    if args.defect_data_file_name == 'None':
+        defect_data_file_name = None
+    else:
+        defect_data_file_name = args.defect_data_file_name
+    if args.corrections_file_name == 'None':
+        corrections_file_name = None
+    else:
+        corrections_file_name = args.corrections_file_name
+    plot_results = args.plot_results
+    epsilon = args.epsilon
+
+    # error-checking
+    if not mp_id:
+        print_error_message("No Materials Project structure ID provided!")
+        return
+
+    # parse results to get defect data and correction terms
+    defect_data = PostProcess(root_fldr, mp_id, mapi_key).compile_all()
+    bulk = defect_data['bulk_entry']
+    defects = defect_data['defects']
+    if epsilon is None:
+        epsilon = defect_data['epsilon']
+    else:
+        defect_data['epsilon'] = epsilon
+    corrections = defaultdict(list)
+    for defect in defects:
+        correction = get_correction(defect, bulk, epsilon)
+        defect.charge_correction = correction
+        corrections[defect._name].append({'charge_correction': correction,'charge':defect._charge})
+
+    # output results, if applicable
+    if defect_data_file_name is not None:
+        dumpfn(defect_data, defect_data_file_name, cls=MontyEncoder, indent=2)
+    if corrections_file_name is not None:
+        dumpfn(corrections, corrections_file_name, cls=MontyEncoder, indent=2)
+
+    # plot results, if applicable
+    if plot_results:
+        pass # go on here
+
+
+
+def main():
+    parser = argparse.ArgumentParser(description="""
+        PyCDT is a script that generates vasp input files, parses vasp output
+        files, and computes the formation energy of charged defects.
+        This script works based on several sub-commands with their own options.
+        To see the options for the sub-commands, type
+        "pycdt sub-command -h".""",
+        epilog="""
+        Authors: N. E. R. Zimmermann, B. Medasani, D. Broberg, G. Hautier
+        Version: {}
+        Last updated: {}""".format(__version__, __date__))
+
+    subparsers = parser.add_subparsers()
+    mp_id_string = "Materials Project id of the structure.\nFor more info on " \
+        "Materials Project, please, visit www.materialsproject.org."
+    mapi_string = "Your Materials Project REST API key.\nFor more info, " \
+        "please, visit www.materialsproject.org/open."
+    nmax_string = "Maximum number of atoms in supercell.\nThe default is" \
+        "128.\nKeep in mind that the number of atoms in the supercell may" \
+        "vary from the provided number including the default."
+    oxi_state_string = "Oxidation state for an element.\nTwo arguments" \
+        " are expected: the element type for which the oxidation state is" \
+        " to be specified and the oxidation state (e.g., --oxi_state As -3)."
+    oxi_range_string = "Oxidation range for an element.\nThree arguments" \
+        " are expected: the element type for which the oxidation state range is" \
+        " to be specified as well as the lower and the upper limit of the" \
+        " range (e.g., --oxi_range As -3 5)."
+    no_antisites_string = "Optional flag to indicate that anti-site defects" \
+        "should not be generated."
+    root_fldr_string = "Path (relative or absolute) to directory" \
+        " in which data of charged point-defect calculations for" \
+        " a particular system are to be found."
+    defect_data_file_name_string = "Name of output file for defect data" \
+        " obtained from parsing VASP's files of charged-defect" \
+        " calculations in json format.\nDefault is" \
+        " \"defect_data.json\"; \"None\" suppresses output."
+    corrections_file_name_string = "Name of output file for data on" \
+        " correction terms to formation energies of charged defects" \
+        " in json format.\nDefault is \"corrections.json\";" \
+        " \"None\" suppresses output."
+    not_plot_results_string = "Optional flag to indicate that results" \
+        " should not be plotted."
+    epsilon_string = "Optional: provide a dielectric constant to be" \
+        " used in the correction terms of the defect-formation energies." \
+        " If not provided, the dielectric" \
+        " constant is extracted from the corresponding VASP calculation." \
+        " Note that this evaluation script expects the dielectric" \
+        " constant calculation to have been performed to properly analyze" \
+        " the data."
+
+    parser_input_files = subparsers.add_parser(
+            "generate_input_files",
+            help="Generates Vasp input files for charged point defects.")
+    parser_input_files.add_argument("-i", "-id", "--mp_id", type=str.lower,
+                                    dest="mp_id", help=mp_id_string)
+    parser_input_files.add_argument("-k", "-key", "--mapi_key", default=None,
+                                    dest="mapi_key", help=mapi_string)
+    parser_input_files.add_argument("-n", "--nmax", type=int, default=80,
+                                    dest="nmax", help=nmax_string)
+    parser_input_files.add_argument("-or", "--oxi_range", action='append',
+                                    type=str, nargs=3, dest="oxi_range",
+                                    help=oxi_range_string)
+    parser_input_files.add_argument("-os", "--oxi_state", action='append',
+                                    type=str, nargs=2, dest="oxi_state",
+                                    help=oxi_state_string)
+    parser_input_files.add_argument("-noa", "--no_antisites",
+                                    action='store_false', dest="antisites",
+                                    help=no_antisites_string)
+    parser_input_files.set_defaults(func=generate_input_files)
+
+    parser_vasp_output = subparsers.add_parser(
+            "parse_vasp_output",
+            help="Parses VASP output for calculation of formation energies of"
+             " charged point defects.")
+    parser_vasp_output.add_argument("-i", "-id", "--mp_id", type=str.lower,
+                                    dest="mp_id", help=mp_id_string)
+    parser_vasp_output.add_argument("-k", "-key", "--mapi_key", default=None,
+                                    dest="mapi_key", help=mapi_string)
+    parser_vasp_output.add_argument("-d", "-dir", "--directory", default=None,
+                                    dest="root_fldr", help=root_fldr_string)
+    parser_vasp_output.add_argument("-dd", "-ddfn", "--defect_data_file_name",
+                                    default="defect_data.json",
+                                    dest="defect_data_file_name",
+                                    help=defect_data_file_name_string)
+    parser_vasp_output.add_argument("-c", "-cfn", "--corrections_file_name",
+                                    default="corrections.json",
+                                    dest="corrections_file_name",
+                                    help=corrections_file_name_string)
+    parser_vasp_output.add_argument("-np", "-npr", "--not_plot_results",
+                                    action='store_false', dest="plot_results",
+                                    help=not_plot_results_string)
+    parser_vasp_output.add_argument("-e", "-eps", "--epsilon",
+                                    "--dielectric_constant", default=None,
+                                    dest="epsilon", help=epsilon_string)
+    parser_vasp_output.set_defaults(func = parse_vasp_output)
+
+    args = parser.parse_args()
+    args.func(args)
+
+
+
+if __name__ == "__main__":
+    main()
