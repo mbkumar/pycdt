@@ -160,7 +160,7 @@ class ChargedDefectsStructures(object):
                 'name': 'bulk',
                 'supercell': {'size': sc_scale, 'structure': sc}}
 
-        if not max_min_oxi: #might need to include exception for when this exists but doesnt include all the species that are being sampled...
+        if not max_min_oxi: 
             max_min_oxi = {}
             for s in struct_species:
                 if isinstance(s, Specie):
@@ -181,13 +181,14 @@ class ChargedDefectsStructures(object):
         print 'max/min oxidation states=',max_min_oxi
         self.max_min_oxi = max_min_oxi
 	
-	if self.charge_states=='liberal': #check that all subspecies exist for all species in bulk structure (sometimes surprises can happen...Bruneval argument)
+	if self.charge_states=='liberal': #check that all substitutions exist for all species 
 		subelts=[]
 		for s, subspecies in self.substitutions.items():
 			for j in subspecies:
 				subelts.append(j)
 		subeltlis=list(set(subelts))
-		warnlist=['\nWARNING - because of liberal setting, will make sure all substitution elements are tried on each native element']
+		warnlist=['\nWARNING - because of liberal setting, \
+			will make sure all substitution elements are tried on each native element']
 		for s,subspecies in self.substitutions.items():
 			tmp=[]
 			for j in subeltlis:
@@ -198,7 +199,7 @@ class ChargedDefectsStructures(object):
 				warnlist.append(str(tmp)+' added to substitution list of '+str(s))
 		if len(warnlist)!=1:
 			for j in warnlist: print j			
-	print 'final sub dictionary=',self.substitutions,'\n'
+		print 'final sub dictionary=',self.substitutions,'\n'
 
         vacancies = []
         as_defs = []
@@ -222,7 +223,7 @@ class ChargedDefectsStructures(object):
             vac_oxi_state = self.oxi_states[str2unicode(vac_symbol)]
             if vac_oxi_state < 0:
                 min_oxi = min(vac_oxi_state, self.max_min_oxi[vac_symbol][0])
-		if self.charge_states=='liberal':	#Bruneval argument...
+		if self.charge_states=='liberal':	
 			max_oxi = 2
 		else:
                 	max_oxi = 0
@@ -259,32 +260,15 @@ class ChargedDefectsStructures(object):
                     else:
                         oxi_max = 0
                         oxi_min = min(self.max_min_oxi[as_symbol][0],0)
-                    if self.charge_states=='liberal' and oxi_min==oxi_max: # so this would only be for case where this is only one specie? Wouldnt that just be a substitution? I think we should delete this first if statement but leave next two else statements
-                        print 'oxi=', oxi_min,', vac=', vac_oxi_state
+                    if self.charge_states=='liberal' and oxi_min==oxi_max:
                         if oxi_min - vac_oxi_state > 0:
-                            charges = list(range(oxi_min-vac_oxi_state+1))
-                            print 'charges for ',as_symbol,' on ', \
-				vac_symbol,'=',charges
+                            charges = list(range(-1,oxi_min-vac_oxi_state+1))
                         else:
                             charges = list(range(oxi_min-vac_oxi_state-1,1))
-                            print 'charges for ',as_symbol,' on ', \
-				vac_symbol,'=',charges
-                    elif self.charge_states=='liberal':
-			tmpchglist=[]
-			asrange=max_min_oxi[as_symbol]
-			vacrange=max_min_oxi[vac_symbol]
-                        for u in range(asrange[0],asrange[1]+1):
-				for v in range(vacrange[0],vacrange[1]+1):
-					tmpchg=u-v
-					if abs(tmpchg)<5:  #beyond +/-5 is too large 
-						tmpchglist.append(tmpchg)
-			charges=list(set(tmpchglist))
-			print 'charges for ',as_symbol,' on ', \
-				vac_symbol,'=',charges
                     else:
                         charges = [c - vac_oxi_state for c in range(
                             oxi_min, oxi_max+1)]
-			print 'charges for ',as_symbol,' on ', \
+		    print 'charges for ',as_symbol,' on ', \
 				vac_symbol,'=',charges
 
                     as_defs.append({
@@ -305,48 +289,20 @@ class ChargedDefectsStructures(object):
                     sub_sc = vac_sc.copy()
                     sub_sc.append(subspecie_symbol, vac_sc_site.frac_coords)
                     if vac_oxi_state > 0:
-			if self.charge_states=='liberal':
-				oxi_min = -1
-                        	oxi_max = max(self.max_min_oxi[subspecie_symbol][1],1)
-			else:
-                		oxi_min = 0
-                        	oxi_max = max(self.max_min_oxi[subspecie_symbol][1],0)
+                        oxi_max = max(self.max_min_oxi[subspecie_symbol][1],0)
+                        oxi_min = 0
                     else:
-			if self.charge_states=='liberal':
-				oxi_max = 1
-                        	oxi_min = min(self.max_min_oxi[subspecie_symbol][1],-1)
-			else:
-                		oxi_max = 0
-                        	oxi_min = min(self.max_min_oxi[subspecie_symbol][1],0)
-                    if self.charge_states=='liberal' and oxi_min==oxi_max: #again, not sure why oxi_min==oxi_max needs to be true
-                        print 'oxi', 'vac', oxi_min, vac_oxi_state
+                        oxi_max = 0
+                        oxi_min = min(self.max_min_oxi[subspecie_symbol][0],0)
+                    if self.charge_states=='liberal' and oxi_min==oxi_max:
                         if oxi_min - vac_oxi_state > 0:
-                            charges = list(range(oxi_min-vac_oxi_state+1))
+                            charges = list(range(-1,oxi_min-vac_oxi_state+1))
                         else:
                             charges = list(range(oxi_min-vac_oxi_state-1,1))
-			if self.charge_states=='liberal':
-				if 0 not in charges: charges.append(0)
-                        print 'charges for ',subspecie_symbol,' on',vac_symbol, \
-				' substitution=',charges
-                    elif self.charge_states=='liberal': #this is the liberal setting I prefer for all cases
-			tmpchglist=[]
-			#subrange=max_min_oxi[subspecie_symbol]
-			subrange=(oxi_min,oxi_max) 
-			for u in range(subrange[0],subrange[1]+1):
-					tmpchg=u-vac_oxi_state
-					if abs(tmpchg)<5:  #beyond +/-5 is too large 
-						tmpchglist.append(tmpchg)
-			charges=list(set(tmpchglist))
-			if self.charge_states=='liberal':
-				if 0 not in charges: charges.append(0)
-			print 'charges for ',subspecie_symbol,' on ', \
-				vac_symbol,'=',charges
                     else:
                         charges = [c - vac_oxi_state for c in range(
                             oxi_min, oxi_max+1)]
-			if self.charge_states=='liberal':
-				if 0 not in charges: charges.append(0)
-                        print 'charges for ',subspecie_symbol,' on',vac_symbol, \
+                    print 'charges for ',subspecie_symbol,' on',vac_symbol, \
 				' substitution=',charges
 
                     sub_defs.append({
