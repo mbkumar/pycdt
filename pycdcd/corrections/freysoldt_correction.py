@@ -16,7 +16,8 @@ __date__ = "April 24, 2015"
 import subprocess
 import os
 import numpy as np
-from pymatgen.io.vaspio import Locpot
+
+from pymatgen.io.vasp.outputs import Locpot
 from monty.tempfile import ScratchDir
 
 

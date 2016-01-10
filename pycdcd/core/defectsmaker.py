@@ -14,6 +14,7 @@ __status__ = "Development"
 __date__ = "Janurary 6, 2016"
 
 import copy
+
 from monty.string import str2unicode
 from pymatgen.core.structure import PeriodicSite
 from pymatgen.core.periodic_table import Specie, Element
