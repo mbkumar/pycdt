@@ -16,7 +16,7 @@ __date__ = "April 24, 2015"
 import subprocess
 import os
 import numpy as np
-
+from pymatgen.io.vaspio import Locpot
 from monty.tempfile import ScratchDir
 
 
@@ -29,7 +29,7 @@ class FreysoldtCorrection(object):
     """
     
     def __init__(self, locpot_bulk_path, locpot_defect_path, charge, epsilon, 
-                 site_frac_coords, encut, lengths, name=''):
+                 site_frac_coords, encut, lengths=None, name=''):
         """
         Args:
             locpot_bulk: 
@@ -55,7 +55,12 @@ class FreysoldtCorrection(object):
         self._epsilon = epsilon 
         self._frac_coords = site_frac_coords   
         self._encut = encut
-        self._lengths = lengths
+        if not lengths:
+            struct=Locpot.from_file(locpot_bulk_path)
+            self._lengths=struct.structure.lattice.abc
+            print 'had to import lengths, if want to speed up set lengths='+str(self._lengths)
+        else:
+            self._lengths = lengths
         self._name = name
         
     def prepare_files(self):
@@ -80,7 +85,7 @@ class FreysoldtCorrection(object):
             #print cmd
             #os.system(cmd)
         path, name = os.path.split(self._locpot_defect)
-        mod_defect_locpot = os.path.join(path, name+'_vref')
+        mod_defect_locpot = os.path.join(path, name+'_vdef')
         self.mod_defect_locpot = mod_defect_locpot
         if not os.path.exists(mod_defect_locpot):
             print 'prep defect Locpot'
@@ -97,18 +102,22 @@ class FreysoldtCorrection(object):
         print 'locpots prepared for sxdefectalign'
 
     def plot_hartree_pot(self):
+        #plot planar averages of bulk and defect (good for seeing global changes)
         import matplotlib.pyplot as plt
         fig = plt.figure()
         ax = fig.add_subplot(3,1,1)
         ax.set_title('Locpot planar averaged potentials')
-        get_agrid = self._locpot_bulk.get_axis_grid
-        get_aavg = self._locpot_bulk.get_average_along_axis
+        bulkloc=Locpot.from_file(self._locpot_bulk)
+        defloc=Locpot.from_file(self._locpot_bulk)
+        get_agrid = bulkloc.get_axis_grid
+        get_baavg = bulkloc.get_average_along_axis
+        get_daavg = defloc.get_average_along_axis
         for axis in [0,1,2]:
             ax = fig.add_subplot(3, 1, axis+1)
             latt_len = self._lengths[axis]
-            ax.plot(get_agrid(axis),get_aavg(axis),'r',
+            ax.plot(get_agrid(axis),get_baavg(axis),'r',
                     label="Bulk potential")
-            ax.plot(get_agrid(axis), get_aavg(axis),'b',
+            ax.plot(get_agrid(axis), get_daavg(axis),'b',
                     label="Defect potential")
             ax.plot([self._frac_coords[axis]*latt_len], [0], 'or', 
                     markersize=4.0, label="Defect site")
@@ -120,15 +129,18 @@ class FreysoldtCorrection(object):
         plt.show()
 
     def plot_hartree_pot_diff(self):
+        #only plot the difference in planar averaged potentials
         import matplotlib.pyplot as plt
         fig = plt.figure()
         ax = fig.add_subplot(3,1,1)
         ax.set_title('Locpot planar averaged potential difference')
+        bulkloc=Locpot.from_file(self._locpot_bulk)
+        defloc=Locpot.from_file(self._locpot_defect)
         for axis in [0,1,2]:
             ax = fig.add_subplot(3, 1, axis+1)
-            defect_axis = self._locpot_defect.get_axis_grid(axis)
-            defect_pot = self._locpot_defect.get_average_along_axis(axis)
-            pure_pot = self._locpot_bulk.get_average_along_axis(axis)
+            defect_axis = defloc.get_axis_grid(axis)
+            defect_pot = defloc.get_average_along_axis(axis)
+            pure_pot = bulkloc.get_average_along_axis(axis)
             latt_len = self._lengths[axis]
             ax.plot(defect_axis,defect_pot-pure_pot,'b',
                     label='Defect-Bulk difference')
@@ -142,15 +154,18 @@ class FreysoldtCorrection(object):
         plt.show()
 
     def plot_all_hartree_pot(self):
+        #plot planar averaged locpots, along with the difference for each axis
         import matplotlib.pyplot as plt
         fig = plt.figure()
         ax = fig.add_subplot(3,1,1)
         ax.set_title('Locpot planar averaged potentials and difference')
+        bulkloc=Locpot.from_file(self._locpot_bulk)
+        defloc=Locpot.from_file(self._locpot_defect)
         for axis in [0,1,2]:
             ax = fig.add_subplot(3, 1, axis+1)
-            defect_axis = self._locpot_defect.get_axis_grid(axis)
-            defect_pot = self._locpot_defect.get_average_along_axis(axis)
-            pure_pot = self._locpot_bulk.get_average_along_axis(axis)
+            defect_axis = defloc.get_axis_grid(axis)
+            defect_pot = defloc.get_average_along_axis(axis)
+            pure_pot = bulkloc.get_average_along_axis(axis)
             ax.plot(defect_axis, pure_pot, 'r', label="Bulk potential")
             ax.plot(defect_axis, defect_pot, 'b', label="Defect potential")
             ax.plot(defect_axis, defect_pot-pure_pot, 'k',
