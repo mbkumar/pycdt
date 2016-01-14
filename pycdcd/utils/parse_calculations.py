@@ -21,7 +21,7 @@ from argparse import ArgumentParser
 from monty.serialization import loadfn, dumpfn
 from monty.json import MontyEncoder, MontyDecoder
 from pymatgen.matproj.rest import MPRester
-from pymatgen.io.vaspio.vasp_output import Vasprun
+from pymatgen.io.vasp.outputs import Vasprun
 from pymatgen.electronic_structure.bandstructure import BandStructure
 from pymatgen.entries.computed_entries import ComputedStructureEntry
 from pycdcd.corrections.defects_analyzer import ParsedDefect, DefectsAnalyzer

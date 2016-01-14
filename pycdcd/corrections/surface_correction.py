@@ -14,9 +14,10 @@ __author__ = "Bharat Medasani"
 import math
 
 from numpy import array, linalg, ones
+
 from pymatgen.symmetry.analyzer import SymmetryAnalyzer
-from pymatgen.io.vaspio_set import MPGGAVaspInputSet
-from pymargen.io.vaspio.vasp_input import Potcar
+from pymatgen.io.vasp.sets import MPGGAVaspInputSet
+from pymargen.io.vasp.inputs import Potcar
 
 ergpercmsq_to_evperangsq = 6.24150934e-5
 

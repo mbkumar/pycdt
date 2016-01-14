@@ -15,7 +15,8 @@ __date__ = "August 11, 2015"
 
 import os
 import numpy as np
-from pymatgen.io.vaspio import Locpot
+
+from pymatgen.io.vasp.outputs import Locpot
 import matplotlib.pyplot as plt
 
 

@@ -12,8 +12,8 @@ __email__ = "geoffroy@uclouvain.be"
 __status__ = "Development"
 __date__ = "November 4, 2012"
 
-from pymatgen.io.vaspio.vasp_input import Kpoints
-from pymatgen.io.vaspio_set import MPVaspInputSet
+from pymatgen.io.vasp.inputs import Kpoints
+from pymatgen.io.vasp.sets import MPVaspInputSet
 from monty.serialization import loadfn, dumpfn
 from monty.json import MontyDecoder, MontyEncoder
 

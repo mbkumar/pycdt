@@ -13,7 +13,7 @@ from math import sqrt, floor, pi, exp
 
 from pymatgen.core.periodic_table import Element
 from pymatgen.core.structure import PeriodicSite
-from pymatgen.io.vaspio.vasp_output import Locpot
+from pymatgen.io.vasp.outputs import Locpot
 from pymatgen.entries.computed_entries import ComputedStructureEntry
 from pymatgen.symmetry.analyzer import SpacegroupAnalyzer
 from pycdcd.corrections.freysoldt_correction import FreysoldtCorrection
