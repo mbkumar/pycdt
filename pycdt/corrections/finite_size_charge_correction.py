@@ -25,14 +25,27 @@ import math
 
 norm = np.linalg.norm  # define globally
 
-def energyval(a):
-    # input vector is a recip vector(units of 1/A).
-    # convert to energy [eV] via hbar*k^2/2m
-    return 3.80986 * np.dot(a,a)
+def k_to_eV(g):
+    """
+    Convert a k-vector to energy [eV] via hbar*k^2/2m
+    Args:
+        a: Reciprocal vector (units of 1/A).
+
+    Returns:
+        (double) Energy in eV
+    """
+    return 3.80986 * np.dot(g,g)
 
 
-def gengcut(encut):
-    # latt vectors in 1/bohr, encut=eV
+def eV_to_k(energy):
+    """
+    Convert energy to reciprocal vector magnitude k via hbar*k^2/2m
+    Args:
+        a: Energy in eV.
+
+    Returns:
+        (double) Reciprocal vector magnitude (units of 1/Bohr).
+    """
     return math.sqrt(encut/3.80986)*1.8897
 
 
@@ -75,33 +88,38 @@ def genrecip(a1, a2, a3, encut, gcutflag=False):
     return recip, gcut  #output is 1/bohr recip and 1/bohr gcut
 
 
-def genrecip1(a1, a2, a3, gcut):
-    # latt vectors in 1/bohr, encut=eV
-    # generate reciprocal lattice vectors with value less than encut
-    # define recip vectors first, (units of 1/angstrom).
-    # gcut flag =True just quits and gives you gcut rather than computing all reciprocal lattice vectors
-    vol = np.dot(a1, np.cross(a2, a3))  # 1/bohr^3
-    b1 = (2 * np.pi / vol) * np.cross(a2, a3)  # units 1/bohr
+def generate_reciprocal_vectors(a1, a2, a3, gcut):
+    """
+    Generate reciprocal vectors within the cutoff along the specied
+    lattice vectors. 
+    Args:
+        a1: Lattice vector a (in Bohrs)
+        a2: Lattice vector b (in Bohrs)
+        a3: Lattice vector c (in Bohrs)
+        gcut: Reciprocal vector cutoff
+
+    Returns:
+        [[g1^2], [g2^2], ...] Square of reciprocal vectors (1/Bohr)^2 
+        determined by a1, a2, a3 and whose magntidue is less than gcut^2.
+    """
+    vol = np.dot(a1, np.cross(a2, a3))  
+    b1 = (2 * np.pi / vol) * np.cross(a2, a3)  
     b2 = (2 * np.pi / vol) * np.cross(a3, a1)
     b3 = (2 * np.pi / vol) * np.cross(a1, a2)
-    # create list of recip space vectors that satisfy |i*b1+j*b2+k*b3|<=encut
-    #start by enumerating to find max i that doesn't upset the encut condition
-    #print 'value of smallest b vec is '+str(min(mod(b1),mod(b2),mod(b3)))
-    tol = int(math.ceil(gcut/min(norm(b1), norm(b2), norm(b3))))
+
+    # Max (i,j,k) that doesn't upset the condition |i*b1+j*b2+k*b3|<=gcut
+    max_index = int(math.ceil(gcut/min(norm(b1), norm(b2), norm(b3))))
     gcut2 = gcut*gcut
-    print ('tol', tol)
-    #now look though all options for recip vectors to see what vectors are less than energy val
     recip = []
-    for i in range(-tol, tol+1):
-        for j in range(-tol, tol+1):
-            for k in range(-tol, tol+1):
+    for i in range(-max_index, max_index+1):
+        for j in range(-max_index, max_index+1):
+            for k in range(-max_index, max_index+1):
                 vec = (i*b1 + j*b2 + k*b3)
                 vec2 = np.dot(vec,vec)
-                if (vec2 <= gcut2 and vec2 != 0):
+                if (vec2 <= gcut2 and vec2 != 0.0):
                     recip.append(vec2)
     return recip
 
-# SPECIFIC TOOLS FOR FREYSOLDT CORRECTION CODE
 
 class QModel():
     """
@@ -109,17 +127,16 @@ class QModel():
     A combination of exponential tail and gaussian distribution is used.
     q_model = q[x N_gamma exp(-r/gamma) + (1-x) N_beta exp(-r^2/beta^2)]
     By default, gaussian distribution with 1 Bohr width is assumed.
-    If defect charge is more delocalized, model with exponential tail can be better approximation
+    If defect charge is more delocalized, exponential tail is needed.
     """
-
     def __init__(self, beta=1.0, expnorm=0.0, gamma=1.0):
         """
         Args:
             beta: Gaussian decay constant. Default value is 1 Bohr.
-                  For diamond, 2 Bohr is more appropriate.
-            expnorm: Tail weight for the exponential in the range of [0-1].
-                    Default is 0.0.
-                    For diamond ideal value is around 0.54-0.6
+                  When delocalized (eg. diamond), 2 Bohr is more appropriate.
+            expnorm: Weight for the exponential tail in the range of [0-1].
+                     Default is 0.0 indicating no tail .
+                     For delocalized charges ideal value is around 0.54-0.6.
             gamma: Exponential decay constant
         """
         self.beta2 = beta * beta
@@ -133,6 +150,9 @@ class QModel():
         Model charge density at the input reciprocal vector.
         Args:
             g2: Square of reciprocal vector
+
+        Returns:
+            Charge density at the reciprocal vector magnitude
         """
         return self.x/np.sqrt(1+self.gamma2*g2) + \
                (1-self.x)*np.exp(-0.25*self.beta2*g2)
@@ -140,13 +160,12 @@ class QModel():
     def rho_rec_limit0(self):
         """
         Model charge density close to reciprocal vector 0 .
-        rho_rec(G->0) -> 1 + rho_rec_limit0 * G^2
+        rho_rec(g->0) -> 1 + rho_rec_limit0 * g^2
         """
         return -2*self.gamma2*self.x - 0.25*self.beta2*(1-self.x)
 
 
-# Specific Tools for Kumagai Code
-def Kumagai_Init(s1, dieltens, sil=True):
+def kumagai_init(s1, dieltens, sil=True):
     angset = s1.lattice.get_cartesian_coords(1)
     if not sil:
         print 'defect lattice constants are (in angstroms)' + str(angset)
@@ -172,7 +191,7 @@ def Kumagai_Init(s1, dieltens, sil=True):
     return angset, bohrset, vol, determ, invdiel
 
 
-def PCenergy(a1, a2, a3, dieltens, invdiel, q, madetol, r, silence, optgam=False):
+def get_pc_energy(a1, a2, a3, dieltens, invdiel, q, madetol, r, silence, optgam=False):
     # if r=[0,0,0] return PCenergy, otherwise return the potential energy part
     # if gamma has already been optimized, then set optgam to the optimized gamma
     determ = np.linalg.det(dieltens)
@@ -486,7 +505,7 @@ class ChargeCorrection(object):
         converge = []
         while (flag != 1):
             eiso = 1.
-            gcut = gengcut( encut1)  #gcut is in units of 1/A
+            gcut = eV_to_k(encut1)  #gcut is in units of 1/A
             g = step  #initalize
             while g < (gcut + step):
                 #simpson integration
@@ -514,8 +533,8 @@ class ChargeCorrection(object):
         while flag != 1:
             eper = 0.0
             #recip, gcut = genrecip(a1, a2, a3, encut1)
-            gcut1 = gengcut(encut1)
-            recip1 = genrecip1(a1, a2, a3, gcut1)
+            gcut1 = eV_to_k(encut1)
+            recip1 = generate_reciprocal_vectors(a1, a2, a3, gcut1)
             #print ('recip lens', len(recip), len(recip1))
             for g2 in recip1:
                 #g2 = norm(i) ** 2.
@@ -703,23 +722,11 @@ class ChargeCorrection(object):
         pureavg = v1.get_average_along_axis(self._axis)  #eV
         defavg = v2.get_average_along_axis(self._axis)  #eV
 
-        #ap = v1.structure.lattice.get_cartesian_coords(1)  #angstrom
-        #[a1, a2, a3] = ap * 1.889716  #converts latt consts to bohr
-        #print ('a1, a2, a3', a1, a2, a3)
-        matr = v1.structure.lattice.matrix
-        print matr
         latt = v1.structure.lattice
-        a1 = latt.a * 1.889716 
-        a2 = latt.b * 1.889716 
-        a3 = latt.c * 1.889716 
-        print ('a1, a2, a3', a1, a2, a3)
-
-
         reci_latt = latt.reciprocal_lattice
         dg = reci_latt.abc[self._axis]
         print ('dg', dg)
         v_G = np.empty(len(x), np.dtype('c16'))
-        #v_R = np.empty(len(x), np.dtype('c16'))
         epsilon = self._dielectricconst
         v_G[0] = 4*np.pi * self._q /epsilon * self._q_model.rho_rec_limit0()
         for i in range(1,nx):
@@ -737,15 +744,13 @@ class ChargeCorrection(object):
         v_R /= latt.volume
 
 
-
-
         #if not self._silence:
         #    print 'calculate lr part along planar avg axis'
         #    print 'first get g-vectors for encut=', str(self._encut)
 #
-        imagpart = v_R_imag.max()
-        if abs(imagpart) > self._madetol:
-            print 'imaginary part found to be ', str(imagpart), ' this is an issue'
+        max_imag_vr = v_R_imag.max()
+        if abs(max_imag_vr) > self._madetol:
+            print 'imaginary part found to be ', imagpart, ' this is an issue'
             sys.exit()
         #xavg_eV = xavg * 27.2114  #convert hartree to eV
         #avggrid.append(-self._q * xavg_eV)
@@ -794,7 +799,8 @@ class ChargeCorrection(object):
             plt.savefig(str(self._deflocpot[:-6]) + 'FreyplnravgPlot.png')
 
         #return self._q * C  #pot align energy correction (eV), add to the energy output of PCfrey
-    def RunKumagai(self, title=None, vb=None, vd=None):
+
+    def kumagai_correction(self, title=None, vb=None, vd=None):
         #runs correction. If you want a plot of potential averaging process set title to name of defect
         #vb and vd are preloaded locpot objects for speeding this up.
         if not self._silence:
@@ -810,16 +816,17 @@ class ChargeCorrection(object):
                 print 'Load defect locpot'
             vd = Locpot.from_file(self._deflocpot)
         print '\nRun PC energy'
-        PCen, optgam = self.KumagaiPC(vb.structure)
-        print '\nPC calc done, correction =', round(PCen, 4), ' optimized gamma found to be: ', round(optgam, 4)
+        energy_pc, optgam = self.kumaga_pc(vb.structure)
+        print '\nPC calc done, correction =', round(energy_pc, 4), \
+                ' optimized gamma found to be: ', round(optgam, 4)
         print 'Now run potenttial alignment script'
-        potalign = self.Kumagaipotalign(vb, vd, optgam=optgam, title=title)
+        potalign = self.kumagai_potalign(vb, vd, optgam=optgam, title=title)
         print '\n\nAlright so the corrections are:'
         print 'PCenergy = ', round(PCen, 5), '  potential alignment = ', round(potalign, 5)
-        print 'TOTAL Kumagai correction = ', round(PCen - potalign, 5)
-        return round(PCen - potalign, 5)
+        print 'TOTAL Kumagai correction = ', round(energy_pc - potalign, 5)
+        return round(energy_pc - potalign, 5)
 
-    def KumagaiPC(self, s1=None):
+    def kumagai_pc(self, s1=None):
         #note that this ony needs structure info, not locpot info;
         # so s1=structure object speeds this calculation up alot
         if not s1:
@@ -827,20 +834,22 @@ class ChargeCorrection(object):
             tmp = Locpot.from_file(self._purelocpot)
             s1 = tmp.structure
         print 'run Kumagai PC calculation'
-        angset, [a1, a2, a3], vol, determ, invdiel = Kumagai_Init(s1, self._dieltens, sil=self._silence)
+        angset, [a1, a2, a3], vol, determ, invdiel = kumagai_init(
+                s1, self._dieltens, sil=self._silence)
 
         #get aniso PCenergy (equation 8 from kumagai paper)
-        PCen, optgamma = PCenergy(a1, a2, a3, self._dieltens, invdiel, self._q,
-                                  self._madetol, [0., 0., 0.], self._silence)  #returns PCenergy in eV
+        energy_pc, optgamma = get_pc_energy(
+                a1, a2, a3, self._dieltens, invdiel, self._q, 
+                self._madetol, [0., 0., 0.], self._silence)  #returns PCenergy in eV
 
         if not self._silence:
-            print 'PC energy determined to be ' + str(PCen) + ' eV (' + str(
-                PCen / 27.2114) + ' Hartree)'  #27.2114 eV/1 hartree
+            print 'PC energy determined to be ', energy_pc, ' eV (', \
+                    energy_pc/27.2114, ' Hartree)'  #27.2114 eV/1 hartree
             print 'Optimized Gamma found to be ' + str(optgamma)
 
-        return PCen, optgamma  #PC energy in eV
+        return energy_pc, optgamma  #PC energy in eV
 
-    def Kumagaipotalign(self, v1=None, v2=None, optgam=False, title=False):
+    def kumagai_potalign(self, v1=None, v2=None, optgam=False, title=False):
         #v1 is bulk locpot object, v2 is defect locpot object
         #Note this accounts for defects not at origin
         #if no optimized gamma chooses gamma s.t. gamma*L=5 (some paper said this is optimal)
@@ -854,11 +863,12 @@ class ChargeCorrection(object):
             print 'load defect locpot object'
             v2 = Locpot.from_file(self._deflocpot)
 
-        angset, [a1, a2, a3], vol, determ, invdiel = Kumagai_Init(v1.structure, self._dieltens, sil=self._silence)
+        angset, [a1, a2, a3], vol, determ, invdiel = kumagai_init(
+                v1.structure, self._dieltens, sil=self._silence)
 
         if not optgam:
-            gamma = round(5. / (vol ** (1 / 3.)), 3)
-            print 'gamma has not been optimized for Kumagai calc. Setting gamma to ' + str(gamma)
+            gamma = round(5./(vol ** (1/3.)), 3)
+            print 'gamma not optimized for Kumagai calc. Setting gamma to ', gamma
         else:
             gamma = optgam
 
@@ -998,7 +1008,7 @@ class ChargeCorrection(object):
 
         return self._q * np.mean(forcorrection)
 
-    def Madelungcorr(self, s1=None):
+    def madelung_corr(self, s1=None):
         #NOT DONE
 
         if not s1:

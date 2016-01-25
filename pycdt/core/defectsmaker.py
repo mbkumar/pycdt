@@ -21,9 +21,14 @@ from pymatgen.core.periodic_table import Specie, Element
 from pymatgen.symmetry.analyzer import SpacegroupAnalyzer
 from pymatgen.analysis.defects.point_defects import Vacancy
 from pymatgen.analysis.bond_valence import BVAnalyzer
-from pymatgen.analysis.defects.point_defects import ValenceIonicRadiusEvaluator
+from pymatgen.analysis.defects.point_defects import \
+        ValenceIonicRadiusEvaluator
 
 def get_sc_scale(inp_struct, final_site_no):
+    """
+    Get the scaling to generate supercells with atoms less than the 
+    final_site_no.
+    """
     lengths = inp_struct.lattice.abc
     no_sites = inp_struct.num_sites
     mult = (final_site_no/no_sites*lengths[0]*lengths[1]*lengths[2]) ** (1/3)
@@ -38,6 +43,10 @@ def get_sc_scale(inp_struct, final_site_no):
     return num_mult
 
 def get_optimized_sc_scale(inp_struct, final_site_no):
+    """
+    Get the optimal scaling to generate supercells with atoms less than
+    the final_site_no.
+    """
     print 'number of sites in bulk cell=',inp_struct.num_sites,\
 	  '\nnumber of sites in final super cell=', final_site_no
     target_site = inp_struct.sites[0]
@@ -182,14 +191,15 @@ class ChargedDefectsStructures(object):
         print 'max/min oxidation states=',max_min_oxi
         self.max_min_oxi = max_min_oxi
 	
-	if self.charge_states=='liberal': #check that all substitutions exist for all species 
+	if self.charge_states=='liberal': 
+        #check that all substitutions exist for all species 
 		subelts=[]
 		for s, subspecies in self.substitutions.items():
 			for j in subspecies:
 				subelts.append(j)
 		subeltlis=list(set(subelts))
 		warnlist=['\nWARNING - because of liberal setting, \
-			will make sure all substitution elements are tried on each native element']
+			all substitution elements are tried on each native element']
 		for s,subspecies in self.substitutions.items():
 			tmp=[]
 			for j in subeltlis:

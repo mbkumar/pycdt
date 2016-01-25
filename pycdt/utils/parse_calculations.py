@@ -243,28 +243,6 @@ class PostProcess(object):
 
         return chem_lims
 
-    def _get_dielectric_tensor(self, vrun):
-        """
-        Parses the "vasprun.xml" file in subdirectory "dielec" of root
-        directory root_fldr and returns the dielectric tensor.
-
-        Args:
-            vrun: 
-                Vasprun object of the dielectric calculation
-        Returns:
-            eps (3x3 float matrix):
-                dielectric tensor
-        """
-
-        eps_ion = vrun.epsilon_ionic
-        eps_stat = vrun.epsilon_static
-
-        eps = []
-        for i in range(len(eps_ion)):
-            eps.append([e[0]+e[1] for e in zip(eps_ion[i],eps_stat[i])])
-
-        return eps
-
     def parse_dielectric_calculation(self):
         """
         Parses the "vasprun.xml" file in subdirectory "dielectric" of 
@@ -286,8 +264,14 @@ class PostProcess(object):
             print 'Parsing Dielectric calculation failed'
             return None
 
-        eps_ten = self._get_dielectric_tensor(vr)
-        return eps_ten
+        eps_ion = vrun.epsilon_ionic
+        eps_stat = vrun.epsilon_static
+
+        eps = []
+        for i in range(len(eps_ion)):
+            eps.append([e[0]+e[1] for e in zip(eps_ion[i],eps_stat[i])])
+
+        return eps
 
     def compile_all(self):
         """
