@@ -17,6 +17,7 @@ from pymatgen.io.vasp.outputs import Locpot
 from pymatgen.entries.computed_entries import ComputedStructureEntry
 from pymatgen.symmetry.analyzer import SpacegroupAnalyzer
 from pycdcd.corrections.freysoldt_correction import FreysoldtCorrection
+from pycdcd.corrections.finite_size_charge_correction import ChargeCorrection
 
 #some constants
 kb = 8.6173324e-5
@@ -94,6 +95,44 @@ def get_correction(defect, bulk_entry, epsilon, type='freysoldt'):
         corr_val = corr_meth.run_correction()
 
         return sum(corr_val)/len(corr_val) 
+
+
+def get_correction_new(defect, bulk_entry, epsilon_tensor, type='freysoldt'):
+    """
+    --------------------------------------------------------------
+    TODO: Use the ChargeCorrection class for freysoldt method also
+    --------------------------------------------------------------
+    Function to compute the correction for each defect.
+    Args:
+        defect: ParsedDefect object
+        bulk_entry: ComputedStructureEntry corresponding to bulk
+        epsilon_tensor: Dielectric tenson
+        type: 
+            "freysoldt": Freysoldt correction for isotropic crystals
+            "kumagai": modified Freysoldt or Kumagai for anisotropic crystals
+    """
+    locpot_path_blk = bulk_entry.data['locpot_path']
+    locpot_path_def = defect.entry.data['locpot_path']
+    charge = defect._charge
+    encut = defect.entry.data['encut']
+    latt_len = defect.entry.structure.lattice.abc
+    if type == 'freysoldt':
+        #locpot_blk = Locpot.from_file(locpot_path_blk)
+        #locpot_defect = Locpot.from_file(locpot_path_def)
+        epsilon = sum([epsilon_tensor[i][i] for i in range(3)])/3.0
+        frac_coords = defect._site.frac_coords
+        corr_meth = FreysoldtCorrection(
+                locpot_path_blk, locpot_path_def, charge, epsilon, 
+                frac_coords, encut, latt_len, name=defect._name)
+        corr_val = corr_meth.run_correction()
+
+        return sum(corr_val)/len(corr_val) 
+    elif type == "kumagai":
+        corr_meth = ChargeCorrection(0, epsilon_tensor, locpot_path_blk, 
+                locpot_path_def, charge, encut, madetol=0.0001, 
+                silence=False, q_model=None)
+        corr_val = corr_meth.RunKumagai()
+        return corr_val
 
 
 class DefectsAnalyzer(object):

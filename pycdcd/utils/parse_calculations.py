@@ -287,7 +287,7 @@ class PostProcess(object):
             return None
 
         eps_ten = self._get_dielectric_tensor(vr)
-        return (eps_ten[0][0]+eps_ten[1][1]+eps_ten[2][2])/3.0
+        return eps_ten
 
     def compile_all(self):
         """
