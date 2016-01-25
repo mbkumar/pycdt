@@ -1,12 +1,12 @@
 =====
-pycdcd
+pycdt
 =====
 
 Corrections to DFT calculation for point defects in solids
 
 Requirements
 ------------
-pycdcd requires pymatgen and sxdefectalign packages.
+pycdt requires pymatgen and optionally sxdefectalign packages.
 
 Source Code
 ------------
@@ -14,15 +14,15 @@ If not available already, use the following steps.
 
 #. Install `git <http://git-scm.com>`_, if not already packaged with your system.
 
-#. Download the pydii source code using the command::
+#. Download the pycdt source code using the command::
 
-    git clone https://github.com/mbkumar/pycdcd.git
+    git clone https://github.com/mbkumar/pycdt.git
 
 Installation
 ------------
-#. Navigate to pycdcd root directory::
+#. Navigate to pycdt root directory::
 
-    cd pycdcd
+    cd pycdt
 
 #. Install the code, using the command::
 
@@ -33,19 +33,19 @@ Access to root may be needed if ``virtualenv`` is not used.
 
 # The package can be installed at non-standard locations using the command::
 
-    python setup.py install --prefix PYCDCD_ROOTDIR
+    python setup.py install --prefix PYCDT_ROOTDIR
 
-where PYCDCD_ROOTDIR is your choice of directory. In UNIX/Linux environments,
-add PYCDCD_ROOTDIR to PATH and PYTHONPATH variables by the following commands::
+where PYCDT_ROOTDIR is your choice of directory. In UNIX/Linux environments,
+add PYCDT_ROOTDIR to PATH and PYTHONPATH variables by the following commands::
     
-    export PATH=$PATH:PYCDCD_ROOTDIR
-    export PYTHONPATH=$PYTHONPATH:PYCDCD_ROOTDIR
+    export PATH=$PATH:PYCDT_ROOTDIR
+    export PYTHONPATH=$PYTHONPATH:PYCDT_ROOTDIR
 
 
 Examples
 --------
 
-From the pycdcd, go to examples folder by typing::
+From the pycdt root folder, go to examples folder by typing::
 
     cd examples
 
