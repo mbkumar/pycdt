@@ -19,8 +19,8 @@ import argparse
 
 from collections import defaultdict
 
-from monty.serialization import dumpfn
-from monty.json import MontyEncoder
+from monty.serialization import dumpfn, loadfn
+from monty.json import MontyEncoder, MontyDecoder
 
 from pymatgen.matproj.rest import MPRester
 from pymatgen.symmetry.analyzer import SpacegroupAnalyzer
@@ -56,15 +56,18 @@ def generate_input_files(args):
 
     # initialize variables
     mp_id = args.mp_id
+    struct_file = args.struct_file
     mapi_key = args.mapi_key
     nmax = args.nmax
     oxi_state = args.oxi_state
     oxi_range = args.oxi_range
     antisites = args.antisites
+    settings = loadfn(args.input_settings_file)
 
     # error-checking
-    if not mp_id:
-        print_error_message("No Materials Project ID (MP-ID) provided!")
+    if not struct_file and not mp_id:
+        print_error_message("Neither structure, nor Materials Project " \
+                            + "ID (MP-ID) provided!")
         return
     if nmax <= 0:
         print_error_message("maximal number of atoms per supercell"
@@ -72,18 +75,21 @@ def generate_input_files(args):
         return
 
     # get primitive unit cell
-    if not mapi_key:
-        with MPRester() as mp:
-            prim_struct = mp.get_structure_by_material_id(mp_id)
+    if mpid_id:
+        if not mapi_key:
+            with MPRester() as mp:
+                prim_struct = mp.get_structure_by_material_id(mp_id)
+        else:
+            with MPRester(mapi_key) as mp:
+                prim_struct = mp.get_structure_by_material_id(mp_id)
+
+        # transform to conventional unit cell
+        conv_struct = SpacegroupAnalyzer( 
+                prim_struct).get_conventional_standard_structure()
+        make_vasp_dielectric_files(prim_struct)
     else:
-        with MPRester(mapi_key) as mp:
-            prim_struct = mp.get_structure_by_material_id(mp_id)
-
-    # transform to conventional unit cell
-    conv_struct = SpacegroupAnalyzer( 
-            prim_struct).get_conventional_standard_structure()
-
-    make_vasp_dielectric_files(prim_struct)
+        conv_struct = Structure.from_file(struct_file)
+        make_vasp_dielectric_files(conv_struct, user_settings=settings)
 
     # manually set oxidation states if those were provided
     oxi_state_dict = {}
@@ -113,7 +119,8 @@ def generate_input_files(args):
             cellmax=nmax)
     make_vasp_defect_files(
             def_structs.defects,
-            conv_struct.composition.reduced_formula)
+            conv_struct.composition.reduced_formula, 
+            user_settings=settings)
 
 
 
@@ -151,6 +158,8 @@ def parse_vasp_output(args):
 
     # parse results to get defect data and correction terms
     defect_data = PostProcess(root_fldr, mp_id, mapi_key).compile_all()
+    if defect_data_file_name is not None:
+        dumpfn(defect_data, defect_data_file_name, cls=MontyEncoder, indent=2)
     bulk = defect_data['bulk_entry']
     defects = defect_data['defects']
     if epsilon is None:
@@ -164,8 +173,6 @@ def parse_vasp_output(args):
         corrections[defect._name].append({'charge_correction': correction,'charge':defect._charge})
 
     # output results, if applicable
-    if defect_data_file_name is not None:
-        dumpfn(defect_data, defect_data_file_name, cls=MontyEncoder, indent=2)
     if corrections_file_name is not None:
         dumpfn(corrections, corrections_file_name, cls=MontyEncoder, indent=2)
 
@@ -188,6 +195,9 @@ def main():
         Last updated: {}""".format(__version__, __date__))
 
     subparsers = parser.add_subparsers()
+    struct_string = "Input structure. Can accept multiple file formats. " \
+        "Supported formats include CIF, POSCAR/CONTCAR, CHGCAR, LOCPOT, "\
+        "vasprun.xml, CSSR, Netcdf and pymatgen's JSON serialized structures."
     mp_id_string = "Materials Project id of the structure.\nFor more info on " \
         "Materials Project, please, visit www.materialsproject.org."
     mapi_string = "Your Materials Project REST API key.\nFor more info, " \
@@ -204,6 +214,8 @@ def main():
         " range (e.g., --oxi_range As -3 5)."
     no_antisites_string = "Optional flag to indicate that anti-site defects" \
         "should not be generated."
+    input_settings = "Supply VASP input settings for INCAR, KPOINTS in" \
+        "the specified YAML/JSON file."
     root_fldr_string = "Path (relative or absolute) to directory" \
         " in which data of charged point-defect calculations for" \
         " a particular system are to be found."
@@ -228,8 +240,11 @@ def main():
     parser_input_files = subparsers.add_parser(
             "generate_input_files",
             help="Generates Vasp input files for charged point defects.")
-    parser_input_files.add_argument("-i", "-id", "--mp_id", type=str.lower,
-                                    dest="mp_id", help=mp_id_string)
+    parser_input_files.add_argument("-s", "--structure_file", default=None, 
+                                    dest="struct_file", help=struct_string) 
+    parser_input_files.add_argument("-i", "-id", "--mp_id", default=None,
+                                    type=str.lower, dest="mp_id", 
+                                    help=mp_id_string)
     parser_input_files.add_argument("-k", "-key", "--mapi_key", default=None,
                                     dest="mapi_key", help=mapi_string)
     parser_input_files.add_argument("-n", "--nmax", type=int, default=80,
@@ -243,6 +258,9 @@ def main():
     parser_input_files.add_argument("-noa", "--no_antisites",
                                     action='store_false', dest="antisites",
                                     help=no_antisites_string)
+    parser_input_files.add_argument("-is", "--input_settings_file", default=None
+                                    type=str, dest="input_settings_file",
+                                    help=input_settings_string)
     parser_input_files.set_defaults(func=generate_input_files)
 
     parser_vasp_output = subparsers.add_parser(
