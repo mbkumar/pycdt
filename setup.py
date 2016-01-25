@@ -10,14 +10,14 @@ def readme():
         return f.read()
 
 setup(
-        name="pycdcd",
+        name="pycdt",
         packages=find_packages(),
         version="0.0.1",
         install_requires=["pymatgen>=3.0.6", "numpy>=1.8"],
-        author="Bharat Medasani",
+        author="Danny Broberg, Bharat Medasani, Nils Zimmerman",
         author_email="mbkumar@gmail.com",
         #url="http://github.com/mbkumar/pycdcd",
-        description="PyCDCD is a python package to facilitate "
+        description="PyCDT is a python package to facilitate "
                   "DFT calculations for point defects in solids",
         long_description=readme(),
         classifiers=[
