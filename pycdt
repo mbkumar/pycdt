@@ -151,6 +151,9 @@ def parse_vasp_output(args):
 
     # parse results to get defect data and correction terms
     defect_data = PostProcess(root_fldr, mp_id, mapi_key).compile_all()
+    if defect_data_file_name is not None:
+        dumpfn(defect_data, defect_data_file_name, cls=MontyEncoder, indent=2)
+
     bulk = defect_data['bulk_entry']
     defects = defect_data['defects']
     if epsilon is None:
@@ -164,8 +167,6 @@ def parse_vasp_output(args):
         corrections[defect._name].append({'charge_correction': correction,'charge':defect._charge})
 
     # output results, if applicable
-    if defect_data_file_name is not None:
-        dumpfn(defect_data, defect_data_file_name, cls=MontyEncoder, indent=2)
     if corrections_file_name is not None:
         dumpfn(corrections, corrections_file_name, cls=MontyEncoder, indent=2)
 
