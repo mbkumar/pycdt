@@ -542,7 +542,7 @@ class ChargeCorrection(object):
         return [PCfreycorr, eiso, eper,
                 eper - eiso]  #first term is PC energy in eV (add to potential correction for frey correction), last three are in hartree
 
-    def freysoldt_potalign(self, title=None,  widthsample=1.):
+    def freysoldt_potalign_old(self, title=None,  widthsample=1.):
         #NOTE this hasnt been coded for arbitrary defect position yet...
         #title is for name of plot, if you dont care about plot then leave it as None
         #widthsample is the width of the region in between defects where the potential alignment correction is averaged
@@ -673,6 +673,127 @@ class ChargeCorrection(object):
 
         return self._q * C  #pot align energy correction (eV), add to the energy output of PCfrey
 
+    def freysoldt_potalign(self, title=None,  widthsample=1.):
+        #NOTE this hasnt been coded for arbitrary defect position yet...
+        #title is for name of plot, if you dont care about plot then leave it as None
+        #widthsample is the width of the region in between defects where the potential alignment correction is averaged
+        begin = time.time()  # for testing
+        v1 = Locpot.from_file(self._purelocpot)
+        v2 = Locpot.from_file(self._deflocpot)
+        tmp1 = time.time()
+        print 'locpots loaded in ', str(round(tmp1 - begin, 2)), ' secs'
+
+        ind = []  #stores axes besides self._axis
+        for i in range(3):
+            if self._axis == i:
+                continue
+            else:
+                ind.append(i)
+
+        x = np.array(v1.get_axis_grid(self._axis))  #angstrom
+        nx = len(x)
+        print ('len x', len(x), x[-1], x[1]-x[0])
+        xbohr = 1.889716 * x
+        yz = [np.array(v1.get_axis_grid(ind[0])), 
+              np.array(v1.get_axis_grid(ind[1]))]  #this is grid to average over for each "x-point" but setup so it works for any axis
+        print ('maxyz', yz[0][-1], yz[1][-1])
+        yzbohr = [1.889716*yz[0], 1.889716*yz[1]]
+        print 'run Freysoldt potential alignment method'
+        #perform potential alignment part
+        pureavg = v1.get_average_along_axis(self._axis)  #eV
+        defavg = v2.get_average_along_axis(self._axis)  #eV
+
+        #ap = v1.structure.lattice.get_cartesian_coords(1)  #angstrom
+        #[a1, a2, a3] = ap * 1.889716  #converts latt consts to bohr
+        #print ('a1, a2, a3', a1, a2, a3)
+        matr = v1.structure.lattice.matrix
+        print matr
+        latt = v1.structure.lattice
+        a1 = latt.a * 1.889716 
+        a2 = latt.b * 1.889716 
+        a3 = latt.c * 1.889716 
+        print ('a1, a2, a3', a1, a2, a3)
+
+
+        reci_latt = latt.reciprocal_lattice
+        dg = reci_latt.abc[self._axis]
+        print ('dg', dg)
+        v_G = np.empty(len(x), np.dtype('c16'))
+        #v_R = np.empty(len(x), np.dtype('c16'))
+        epsilon = self._dielectricconst
+        v_G[0] = 4*np.pi * self._q /epsilon * self._q_model.rho_rec_limit0()
+        for i in range(1,nx):
+            if (2*i < nx):
+                g = i * dg
+            else:
+                g = (i-nx) * dg
+            g2 = g*g
+            v_G[i] = 4*np.pi / (epsilon * g2) * self._q * self._q_model.rho_rec(g2)
+        if not (nx % 2):
+            v_G[nx/2] = 0
+        v_R = np.fft.fft(v_G)
+        v_R_imag = np.imag(v_R)
+        v_R = np.real(v_R)
+        v_R /= latt.volume
+
+
+
+
+        #if not self._silence:
+        #    print 'calculate lr part along planar avg axis'
+        #    print 'first get g-vectors for encut=', str(self._encut)
+#
+        imagpart = v_R_imag.max()
+        if abs(imagpart) > self._madetol:
+            print 'imaginary part found to be ', str(imagpart), ' this is an issue'
+            sys.exit()
+        #xavg_eV = xavg * 27.2114  #convert hartree to eV
+        #avggrid.append(-self._q * xavg_eV)
+        #if not self._silence:
+        #    print 'average potential value = ' + str(avggrid[-1])
+        #    tmp1 = time.time()
+        #    print 'done in ', str(round(tmp1 - tmp0, 2)), ' secs'
+        #    print '-------------------------------------------------'
+
+        #short = (defavg - pureavg - avggrid)
+        #checkdis = int((widthsample / 2) / x[1])  #index window for getting potential alignment correction
+        #mid = len(short) / 2
+        #tmppot = [short[i] for i in range(mid - checkdis, mid + checkdis)]
+
+        #C = np.mean(tmppot)
+        #Cquik = short[mid]  #this just uses mid point rather than average
+        #finalshift = [short[j] - C for j in range(len(avggrid))]
+        #if not self._silence:
+        #    print 'C value is averaged to be ' + str(C) + ' eV, or ' + str(C / 27.2114) + ' Hartree, ' \
+        #                                                                                  'or quicker C value (value directly between defects) =' + str(
+        #        Cquik) + ' eV'
+        #    print 'calculate shifted short range pot'
+        #    print 'I think corresponds to an alignment like term of ' + str(sum(finalshift) * x[1]) + \
+        #          ' where we multiply by first entry in grid to get rectangular integration? '
+        #    print 'will use C value ', float(self._q) * C, ' instead'
+        #tmp1 = time.time()
+        #if not self._silence:
+        #    print 'Pot. align correction is (eV) : ' + str(float(self._q) * float(C)) + \
+        #          ' done in ' + str(round(tmp1 - tmp0, 2)) + ' secs'
+        #end = time.time()
+        #print 'full code took ', str(round(end - begin, 2)), ' secs'
+        if title:
+            plt.figure(1)
+            plt.clf()
+            plt.plot(x, v_R, c="green", zorder=1, label="long range from model")
+            #plt.plot(x, defavg - pureavg, c="red", label="DFT locpot diff")
+            #plt.plot(x, short, c="blue", label="short range locpot")
+            #plt.plot(x, finalshift, c="purple", label="short range shifted by C")
+            #plt.xlabel('planar average along axis ' + str(self._axis))
+            #plt.plot(x, v_R, c='black', label='DFT potential')
+            plt.ylabel('Potential')
+            plt.legend(loc=9)
+            plt.axhline(y=0, linewidth=0.2, color='black')
+            #plt.axhline(y=C, linewidth=0.2, color='black')
+            plt.title(str(title) + ' defect potential')
+            plt.savefig(str(self._deflocpot[:-6]) + 'FreyplnravgPlot.png')
+
+        #return self._q * C  #pot align energy correction (eV), add to the energy output of PCfrey
     def RunKumagai(self, title=None, vb=None, vd=None):
         #runs correction. If you want a plot of potential averaging process set title to name of defect
         #vb and vd are preloaded locpot objects for speeding this up.
