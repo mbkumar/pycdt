@@ -24,9 +24,10 @@ from pymatgen.matproj.rest import MPRester
 from pymatgen.io.vasp.outputs import Vasprun
 from pymatgen.electronic_structure.bandstructure import BandStructure
 from pymatgen.entries.computed_entries import ComputedStructureEntry
-from pycdcd.corrections.defects_analyzer import ParsedDefect, DefectsAnalyzer
 from pymatgen.phasediagram.pdmaker import PhaseDiagram
 from pymatgen.phasediagram.pdanalyzer import PDAnalyzer
+
+from pycdt.corrections.defects_analyzer import ParsedDefect, DefectsAnalyzer
 
 
 class PostProcess(object):
@@ -82,6 +83,22 @@ class PostProcess(object):
 
             return (vr, None)
 
+        def get_encut_from_potcar(fldr):
+            potcar_file = os.path.join(fldr,'POTCAR')
+            if not os.path.exists(potcar_file):
+                error_msg = ": Failure, POTCAR file."
+                return (None, error_msg) #Further processing is not useful
+
+            try:
+                potcar = Potcar.from_file(potcar_file)
+            except:
+                error_msg = ": Failure, couldn't read POTCAR file."
+                return (None, error_msg)
+
+            encut = max(ptcr_sngl.enmax for ptcr_sngl in potcar)
+            return encut, None
+
+
         for fldr in subfolders:
             fldr_name = os.path.split(fldr)[1]
             fldr_fields = fldr_name.split("_")
@@ -100,6 +117,7 @@ class PostProcess(object):
                         data={'locpot_path':bulk_locpot_path})
             else:
                 chrg_fldrs = glob.glob(os.path.join(fldr,'charge*'))
+                print ('charge folders', chrg_fldrs)
                 for chrg_fldr in chrg_fldrs:
                     trans_dict = loadfn(
                             os.path.join(chrg_fldr, 'transformation.json'), 
@@ -117,10 +135,16 @@ class PostProcess(object):
                     site = trans_dict['defect_supercell_site']
                     energy = vr.final_energy
                     struct = vr.final_structure
-                    try: # How to get ENCUT when not specified in INCAR?
+                    try: 
                         encut = vr.incar['ENCUT'] 
-                    except:
-                        continue
+                    except: # ENCUT not specified in INCAR. Read from POTCAR
+                        try:
+                            encut = get_encut_from_potcar(chrg_fldr)
+                        except:
+                            print (fldr_name, 'Not able to determine ENCUT') 
+                            print "But parsing of the rest of the calculations"
+                            continue
+
                     locpot_path = os.path.abspath(
                             os.path.join(chrg_fldr, 'LOCPOT'))
                     comp_data = {'locpot_path': locpot_path, 'encut': encut}
@@ -264,8 +288,8 @@ class PostProcess(object):
             print 'Parsing Dielectric calculation failed'
             return None
 
-        eps_ion = vrun.epsilon_ionic
-        eps_stat = vrun.epsilon_static
+        eps_ion = vr.epsilon_ionic
+        eps_stat = vr.epsilon_static
 
         eps = []
         for i in range(len(eps_ion)):
