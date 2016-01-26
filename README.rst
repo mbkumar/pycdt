@@ -1,12 +1,12 @@
 =====
-pycdt
+PyCDT
 =====
 
-Corrections to DFT calculation for point defects in solids
+Python Charge Defects Tool for processing the DFT calculations of charged point defects in solids
 
 Requirements
 ------------
-pycdt requires pymatgen and optionally sxdefectalign packages.
+PyCDT requires pymatgen and optionally sxdefectalign packages.
 
 Source Code
 ------------
