@@ -850,7 +850,7 @@ class ChargeCorrection(object):
         print 'Now run potenttial alignment script'
         potalign = self.kumagai_potalign(vb, vd, optgam=optgam, title=title)
         print '\n\nAlright so the corrections are:'
-        print 'PCenergy = ', round(PCen, 5), '  potential alignment = ', round(potalign, 5)
+        print 'PCenergy = ', round(energy_pc, 5), '  potential alignment = ', round(potalign, 5)
         print 'TOTAL Kumagai correction = ', round(energy_pc - potalign, 5)
         return round(energy_pc - potalign, 5)
 
