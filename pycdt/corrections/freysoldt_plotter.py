@@ -48,7 +48,7 @@ class FreysoldtPlot(object):
     def plot_hartree_pot(self):
         #plot planar averages of bulk and defect (good for seeing global changes)
         if not self._locpot_bulk:
-            print 'did not feed path to locpot file! Need this for plotting hartree pot'
+            print('did not feed path to locpot file! Need this for plotting hartree pot')
             return
         import matplotlib.pyplot as plt
         fig = plt.figure()
@@ -78,7 +78,7 @@ class FreysoldtPlot(object):
     def plot_hartree_pot_diff(self):
         #only plot the difference in planar averaged potentials
         if not self._locpot_bulk:
-            print 'did not feed path to locpot file! Need this for plotting hartree pot diff'
+            print('did not feed path to locpot file! Need this for plotting hartree pot diff')
             return
         import matplotlib.pyplot as plt
         fig = plt.figure()
@@ -106,7 +106,7 @@ class FreysoldtPlot(object):
     def plot_all_hartree_pot(self):
         #plot planar averaged locpots, along with the difference for each axis
         if not self._locpot_bulk:
-            print 'did not feed path to locpot file! Need this for plotting hartree pot'
+            print('did not feed path to locpot file! Need this for plotting hartree pot')
             return
         import matplotlib.pyplot as plt
         fig = plt.figure()
@@ -139,7 +139,7 @@ class FreysoldtPlot(object):
         plotvals = {'0': {}, '1': {}, '2': {}}
         platy=[]
         for axis in [0,1,2]:
-            print 'do axis '+str(axis+1)
+            print('do axis '+str(axis+1))
             x_lr, y_lr = [], []
             x, y = [], []
             x_diff, y_diff = [], []
@@ -168,15 +168,15 @@ class FreysoldtPlot(object):
                  platx = (self._frac_coords[axis]-0.5) * latt_len
             else:
                  platx = (self._frac_coords[axis]+0.5) * latt_len
-            print "half way between defects is: ", platx
+            print("half way between defects is: ", platx)
 
             xmin = latt_len - (1-platx) if platx < 1 else platx-1
             xmax = 1-(latt_len-platx) if platx > latt_len-1 else 1+platx
-            print 'means sampling region is (', xmin, ',', xmax, ')'
+            print('means sampling region is (', xmin, ',', xmax, ')')
 
             tmpalign=[]
             if xmax < xmin:
-                print 'wrap around detected, special alignment needed'
+                print('wrap around detected, special alignment needed')
                 for i in range(len(x)):
                     if x[i]<xmax or x[i]>xmin:
                         tmpalign.append(y[i])
@@ -189,7 +189,7 @@ class FreysoldtPlot(object):
                     else:
                         continue
 
-            print 'alignment is ', -np.mean(tmpalign)
+            print('alignment is ', -np.mean(tmpalign))
             platy.append(-np.mean(tmpalign))
             flag = 0
             for i in tmpalign:  #check to see if alignment region varies too much
@@ -198,10 +198,10 @@ class FreysoldtPlot(object):
                 else:
                     continue
             if flag != 0:
-                print 'Warning: potential aligned region varied by more ' + \
+                print('Warning: potential aligned region varied by more ' + \
                       'than 0.2eV (in range of halfway between defects ' + \
                       '+/-1 \Angstrom). Might have issues with Freidel ' + \
-                      'oscillations or atomic relaxation\n'
+                      'oscillations or atomic relaxation\n')
 
             plotvals[str(axis)]['xylong'] = [x_lr,y_lr]
             plotvals[str(axis)]['xy'] = [x,y]
@@ -209,7 +209,7 @@ class FreysoldtPlot(object):
 
         fig = plt.figure(figsize=(15.0,12.0))
         for axis in [0,1,2]:
-            print 'plot axis ',axis+1
+            print('plot axis ',axis+1)
             ax = fig.add_subplot(3, 1, axis+1)
             ax.set_ylabel('axis '+str(axis+1))
             vals_plot = plotvals[str(axis)]

@@ -59,14 +59,14 @@ class FreysoldtCorrection(object):
         if not lengths:
             struct=Locpot.from_file(locpot_bulk_path)
             self._lengths=struct.structure.lattice.abc
-            print 'had to import lengths, if want to speed up set lengths='+str(self._lengths)
+            print('had to import lengths, if want to speed up set lengths='+str(self._lengths))
         else:
             self._lengths = lengths
         self._name = name
         
     def prepare_files(self):
         if  self._charge==0:
-            print 'defect has charge 0, so freysoldt correction is 0'
+            print('defect has charge 0, so freysoldt correction is 0')
             return
         #self._locpot_bulk.write_file("LOCPOT_vref",True)   #from when these were locpot objects
         #self._locpot_defect.write_file("LOCPOT_vdef",True) #from when these were locpot objects
@@ -74,7 +74,7 @@ class FreysoldtCorrection(object):
         mod_blk_locpot = os.path.join(path, name+'_vref')
         self.mod_bulk_locpot = mod_blk_locpot
         if not os.path.exists(mod_blk_locpot):
-            print 'prep pure Locpot'
+            print('prep pure Locpot')
             with open(self._locpot_bulk) as input:
                 with open(mod_blk_locpot,'w') as output: 
                     cnt = 0
@@ -89,7 +89,7 @@ class FreysoldtCorrection(object):
         mod_defect_locpot = os.path.join(path, name+'_vdef')
         self.mod_defect_locpot = mod_defect_locpot
         if not os.path.exists(mod_defect_locpot):
-            print 'prep defect Locpot'
+            print('prep defect Locpot')
             with open(self._locpot_defect) as input:
                 with open(mod_defect_locpot,'w') as output: 
                     cnt = 0
@@ -100,7 +100,7 @@ class FreysoldtCorrection(object):
             #md="perl -n -e 'print if $. != 6' "+str(self._locpot_defect)+" > "+mod_def_locpot
             #rint cmd
             #s.system(cmd)
-        print 'locpots prepared for sxdefectalign'
+        print('locpots prepared for sxdefectalign')
 
     def plot_hartree_pot(self):
         #plot planar averages of bulk and defect (good for seeing global changes)
@@ -208,7 +208,7 @@ class FreysoldtCorrection(object):
         if print_pot_flag == 'plotfull':  
             plotvals = {'0': {}, '1': {}, '2': {}}
         for axis in [0,1,2]:
-            print 'do axis '+str(axis+1)
+            print('do axis '+str(axis+1))
             #print self._frac_coords[1:]
             #relpos = (str(self._frac_coords)[1:])[:-1]
             #relpos = relpos.replace(" ",",")
@@ -221,7 +221,7 @@ class FreysoldtCorrection(object):
                     '-C', str(-float(align[axis])), 
                     '--vref', self.mod_bulk_locpot,
                     '--vdef', self.mod_defect_locpot]
-            print command
+            print(command)
 
             #standard way of running NERSC commands.
             #in case NERSC (Hopper) has issues with python subprocess can use hack
@@ -246,7 +246,7 @@ class FreysoldtCorrection(object):
             val =  output[-1].split()[3].strip()
             #result.append(float(output[-1].split()[3]))
             result.append(float(val))
-            print "chg correction is "+str(result[-1])
+            print("chg correction is "+str(result[-1]))
             os.remove('tmpoutput')
 
             x_lr, y_lr = [], []
@@ -278,15 +278,15 @@ class FreysoldtCorrection(object):
                  platx = (self._frac_coords[axis]-0.5) * latt_len
             else:
                  platx = (self._frac_coords[axis]+0.5) * latt_len
-            print "half way between defects is: ", platx
+            print("half way between defects is: ", platx)
 
             xmin = latt_len - (1-platx) if platx < 1 else platx-1
             xmax = 1-(latt_len-platx) if platx > latt_len-1 else 1+platx
-            print 'means sampling region is (', xmin, ',', xmax, ')'
+            print('means sampling region is (', xmin, ',', xmax, ')')
 
             tmpalign=[]
             if xmax < xmin:
-                print 'wrap around detected, special alignment needed'
+                print('wrap around detected, special alignment needed')
                 for i in range(len(x)):
                     if x[i]<xmax or x[i]>xmin:
                         tmpalign.append(y[i])
@@ -299,7 +299,7 @@ class FreysoldtCorrection(object):
                     else:
                         continue
 
-            print 'alignment is ', -np.mean(tmpalign)
+            print('alignment is ', -np.mean(tmpalign))
             platy.append(-np.mean(tmpalign))
             flag = 0
             for i in tmpalign:  #check to see if alignment region varies too much
@@ -308,10 +308,10 @@ class FreysoldtCorrection(object):
                 else:
                     continue
             if flag != 0:
-                print 'Warning: potential aligned region varied by more ' + \
+                print('Warning: potential aligned region varied by more ' + \
                       'than 0.2eV (in range of halfway between defects ' + \
                       '+/-1 \Angstrom). Might have issues with Freidel ' + \
-                      'oscillations or atomic relaxation'
+                      'oscillations or atomic relaxation')
 
             if print_pot_flag == 'written':
                 def write_xy(x, y, fname):
@@ -342,9 +342,9 @@ class FreysoldtCorrection(object):
             import matplotlib.pyplot as plt
             import pylab
             fig = plt.figure(figsize=(15.0,12.0))
-            print 'plot full plot'
+            print('plot full plot')
             for axis in [0,1,2]:
-                print 'plot axis ',axis+1
+                print('plot axis ',axis+1)
                 ax = fig.add_subplot(3, 1, axis+1)
                 ax.set_ylabel('axis '+str(axis+1))
                 #pylab.hold(True)
@@ -379,20 +379,20 @@ class FreysoldtCorrection(object):
         with ScratchDir('.'):
             self.prepare_files()
             s = self.plot_pot_diff(print_pot_flag='none')
-            print '--'
-            print 'potential alignments determined to be: '+str(s[1])
-            print 'get final correction terms'
-            print '--'
+            print('--')
+            print('potential alignments determined to be: '+str(s[1]))
+            print('get final correction terms')
+            print('--')
             #To get locpot plots use print_pot_flag = 'written' or 'plotfull'
             vals = self.plot_pot_diff(align=s[1], print_pot_flag='written')
-            print 'vals is '+str(vals)
+            print('vals is '+str(vals))
             for i in range(3):
                 if np.abs(vals[1][i]) > 0.0001:
-                    print 'PROBLEM! planar averaging didnt work. Issue ' +\
-                            'with axis', str(i+1)
-            print '--'
-            print 'Final Freysoldt sxdefectalign correction values are: ', \
-                    str(vals[0])
+                    print('PROBLEM! planar averaging didnt work. Issue ' +\
+                            'with axis', str(i+1))
+            print('--')
+            print('Final Freysoldt sxdefectalign correction values are: ', \
+                    str(vals[0]))
 
         return vals[0]
 
