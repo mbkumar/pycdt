@@ -213,9 +213,11 @@ def get_pc_energy(s1, dieltens,  q, madetol, r, silence, optgam=None):
             for rec in recip:
                 Gdotdiel = np.dot(rec, np.dot(dieltens, rec))
                 Gdotr = np.dot(rec, r)
-                summand = (4 * np.pi * q / vol) * math.exp(-Gdotdiel / (4 * (gamma ** 2))) / Gdotdiel
+                summand = math.exp(-Gdotdiel / (4 * (gamma ** 2))) / Gdotdiel
                 recippartreal += summand * math.cos(Gdotr)
                 recippartimag += summand * math.sin(Gdotr)
+            recippartreal *= 4*np.pi*q/vol
+            recippartimag *= 4*np.pi*q/vol
             return recippartreal, recippartimag, len(recip)
     else:  #produces PC energy term
         def get_recippart(encut, gamma):
@@ -223,8 +225,9 @@ def get_pc_energy(s1, dieltens,  q, madetol, r, silence, optgam=None):
             recippart = 0.0
             for rec in recip:
                 Gdotdiel = np.dot(rec, np.dot(dieltens, rec))
-                summand = (4 * np.pi * q / vol) * math.exp(-Gdotdiel / (4 * (gamma ** 2))) / Gdotdiel
+                summand = math.exp(-Gdotdiel / (4 * (gamma ** 2))) / Gdotdiel
                 recippart += summand
+            recippart *= 4*np.pi*q/vol
             return recippart, 0.0, len(recip)
 
     def do_summation(gamma):
@@ -232,7 +235,8 @@ def get_pc_energy(s1, dieltens,  q, madetol, r, silence, optgam=None):
         Nmaxlength = 40  #tolerance for stopping real space sum convergence
         N = 2
         realpre = q / np.sqrt(determ)
-        while N < Nmaxlength:  #create list of real space vectors that satisfy |i*a1+j*a2+k*a3|<=N
+        #create list of real space vectors that satisfy |i*a1+j*a2+k*a3|<=N
+        while N < Nmaxlength:  
             realvecsum = []
             if not norm(r):
                 for i in range(-N, N + 1):
@@ -250,25 +254,27 @@ def get_pc_energy(s1, dieltens,  q, madetol, r, silence, optgam=None):
             #calculation real summation up to N
             directpart = 0.0
             for i in range(len(realvecsum)):
-                local_response = np.dot(realvecsum[i], np.dot(invdiel, realvecsum[i]))
+                local_response = np.dot(realvecsum[i], 
+                                        np.dot(invdiel, realvecsum[i]))
                 nmr = math.erfc(gamma * np.sqrt(local_response))
                 dmr = np.sqrt(determ * local_response)
-                directpart += nmr / dmr  #for anisotropic this includes dielectric tensor
+                directpart += nmr / dmr  
             directlist.append([N, realpre * directpart])
 
-            if N == Nmaxlength - 1:
-                print 'Direct part could not converge up with real space translation tolerance of ' + str(
-                    Nmaxlength - 1) + \
-                      'for gamma ' + str(gamma)
+            if N == Nmaxlength-1:
+                print('Direct part could not converge up with real space ' + 
+                       'translation tolerance of {} for gamma {}'.format(
+                           Nmaxlength-1, gamma))
                 return
             elif len(directlist) > 3:
                 if abs(abs(directlist[-1][1]) - abs(directlist[-2][1])) * 27.2114 < madetol:
                     directpart = directlist[-1][1]
                     if not silence:
-                        print "gamma is " + str(gamma)
-                        print "convergence for direct term occurs at step " + str(N) + " where direct sum is " + str(
-                            directpart * 27.2114)
-                        print 'there are ' + str(len(realvecsum)) + ' real vectors'
+                        print("gamma is {}".format(gamma))
+                        print("convergence for direct term occurs at step " + 
+                               "{}  where direct sum is {}".format(
+                                   N,  directpart * 27.2114))
+                        print('There are {} real vectors'.format(len(realvecsum)))
                     break
 
             N += 1
@@ -284,21 +290,24 @@ def get_pc_energy(s1, dieltens,  q, madetol, r, silence, optgam=None):
             recippartreal, recippartimag, len_recip = get_recippart(encut, gamma)
             converge.reverse()
             converge[1] = recippartreal
-            if encut > 700:
-                print 'Problem, imaginary part not converged at encut = 700eV'
+            if encut > 700: # Bharat: Why 700 eV?
+                print('Problem, imaginary part not converged at encut = 700eV')
                 return
         if not silence:
-            print 'recip sum converged to ', str(recippartreal * 27.2114) + ' (eV) at encut=' + str(encut) + \
-                                             ' number of reciprocal vectors is ' + str(len_recip)
-            if (abs(converge[1]) * 27.2114 < 1 and not optgam):  #only optimize is flag set for optimizing routine
-                print 'Warning: reciprocal summation value is less than 1 eV. ' \
-                      'Last recip sum value=' + str(converge[1]) + \
-                      '. This might lead to errors in the reciprocal summation. Changing gamma now. '
-                return False, False, 'Try Again'
+            print('recip sum converged to {} (eV) at encut= {}'.format(
+                        recippartreal * 27.2114, encut))
+            print('Number of reciprocal vectors is {}'.format(len_recip))
+            if (abs(converge[1]) * 27.2114 < 1 and not optgam):  
+                #only optimize is flag set for optimizing routine
+                print('Warning: reciprocal summation value is less than 1 eV.')
+                print('Last recip sum value = {}.'.format(converge[1])) 
+                print('This might lead to errors in the reciprocal summation.')
+                print('Changing gamma now.')
+                return None, None, 'Try Again'
         if abs(recippartimag) * 27.2114 > madetol:
-            print "problem with imaginary convergence of recip sum, imag sum value is " + str(
-                recippartimag * 27.2114) + " (eV)"
-            return
+            print("Problem with convergence of imaginary part of recip sum."), 
+            print("imag sum value is {} (eV)".format( recippartimag * 27.2114))
+            return None, None, None
 
         return directpart, recippartreal, gamma
 
@@ -310,16 +319,16 @@ def get_pc_energy(s1, dieltens,  q, madetol, r, silence, optgam=None):
         while not flag:
             directpart, recippartreal, optgamma = do_summation(gamma)
             if optgamma == gamma:
-                print 'optimized gamma found to be ', optgamma
+                print('optimized gamma found to be ', optgamma)
                 flag += 1
             elif 'Try Again' in optgamma:
                 gamma *= 1.5
             else:
-                print 'had problem in gamma optimization process.'
+                print('Had problem in gamma optimization process.')
                 return
 
             if gamma > 50:
-                print 'WARNING. could not optimize gamma before gamma =', 50
+                print('WARNING. could not optimize gamma before gamma =', 50)
                 return
     else:
         directpart, recippartreal, optgamma = do_summation(optgam)
@@ -327,23 +336,27 @@ def get_pc_energy(s1, dieltens,  q, madetol, r, silence, optgam=None):
     #now add up total madelung potential part with two extra parts
     selfint = q * np.pi / (vol * (optgamma ** 2))
     if not silence:
-        print 'self interaction piece is ' + str(selfint * 27.2114)
+        print ('self interaction piece is {}'.format(selfint * 27.2114))
     #parts = [directpart, N, recippartreal, encut, len_recip]
     if not norm(r):
         surfterm = 2 * optgamma * q / np.sqrt(np.pi * determ)
         if not silence:
-            print 'surface term is ' + str(surfterm * 27.2114)
-        totalPC = -q * 0.5 * (directpart + recippartreal - selfint - surfterm) * 27.2114
+            print ('surface term is {}'.format(surfterm * 27.2114))
+        totalPC = -q * 0.5 * 27.2114 * (
+                directpart + recippartreal - selfint - surfterm)
     else:
-        totalPC = (
-                      directpart + recippartreal - selfint) * 27.2114  #note this is supposed to be a potential not an energy...
-        #                       so not multiplying by additional -q/2...note this means the sign of q matters...
-        #                       this is background charge we need to use
+        totalPC = (directpart + recippartreal - selfint) * 27.2114  
+        # note this is supposed to be a potential not an energy...
+        # so not multiplying by additional -q/2...
+        # note this means the sign of q matters...
+        # this is background charge we need to use
 
     if not silence:
-        print 'Final PC Energy term is then ', totalPC, ' (eV)'
+        print ('Final PC Energy term is then ', totalPC, ' (eV)')
 
-    return totalPC, optgamma  #for r=0 this returns the energy of PC, for r!=0 this returns the potential at atomic positions [in eV units]
+    return totalPC, optgamma  
+    # For r=0 this returns the energy of PC. 
+    # For r!=0 this returns the potential at atomic positions [in eV units]
 
 
 def disttrans(s1, s2, c):
