@@ -425,24 +425,31 @@ def disttrans(s1, s2, c):
     return griddict
 
 
-def WSrad_fullcell(s1):
-    # calculate the WS rad for the larger structure (might be that I want to reduce to primitive structure
+def wigner_seitz_radius(s):
+    """
+    Calculate the Wigner Seitz radius for the given structure.
+    Args:
+        s: Either structure or VolumetricData object
+    """
+    #(might be that I want to reduce to primitive structure
     try:
-        lat = Lattice(s1.structure.lattice_vectors())
+        lat = Lattice(s.structure.lattice_vectors())
     except:
-        lat = Lattice(s1.lattice_vectors())
+        lat = Lattice(s.lattice_vectors())
+
     wz = lat.get_wigner_seitz_cell()  # this list of WS cell face vertices
     # make list of midpoints to edges of WS cell
     dist = []
-    for i in wz:
-        x = []
-        y = []
-        z = []
-        for j in i:
-            x.append(j[0])
-            y.append(j[1])
-            z.append(j[2])
-        midpt = [np.mean(x), np.mean(y), np.mean(z)]
+    for facet in wz:
+        midpt = np.mean(np.array(facet), axis=0)
+        #x = []
+        #y = []
+        #z = []
+        #for vertex in facet:
+        #    x.append(vertex[0])
+        #    y.append(vertex[1])
+        #    z.append(vertex[2])
+        #midpt = list(map(np.mean, [x,y,z]))#[np.mean(x), np.mean(y), np.mean(z)]
         dist.append(norm(midpt))
     wsrad = min(dist)
     return wsrad
