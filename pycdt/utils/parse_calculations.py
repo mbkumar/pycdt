@@ -22,6 +22,7 @@ from monty.serialization import loadfn, dumpfn
 from monty.json import MontyEncoder, MontyDecoder
 from pymatgen.matproj.rest import MPRester
 from pymatgen.io.vasp.outputs import Vasprun
+from pymatgen.io.vasp.inputs import Potcar
 from pymatgen.electronic_structure.bandstructure import BandStructure
 from pymatgen.entries.computed_entries import ComputedStructureEntry
 from pymatgen.phasediagram.pdmaker import PhaseDiagram
@@ -86,7 +87,7 @@ class PostProcess(object):
         def get_encut_from_potcar(fldr):
             potcar_file = os.path.join(fldr,'POTCAR')
             if not os.path.exists(potcar_file):
-                error_msg = ": Failure, POTCAR file."
+                error_msg = ": Failure, No POTCAR file."
                 return (None, error_msg) #Further processing is not useful
 
             try:
@@ -96,7 +97,7 @@ class PostProcess(object):
                 return (None, error_msg)
 
             encut = max(ptcr_sngl.enmax for ptcr_sngl in potcar)
-            return encut, None
+            return (encut, None)
 
 
         for fldr in subfolders:
@@ -138,10 +139,10 @@ class PostProcess(object):
                     try: 
                         encut = vr.incar['ENCUT'] 
                     except: # ENCUT not specified in INCAR. Read from POTCAR
-                        try:
-                            encut = get_encut_from_potcar(chrg_fldr)
-                        except:
+                        encut, error_msg = get_encut_from_potcar(chrg_fldr)
+                        if error_msg:
                             print (fldr_name, 'Not able to determine ENCUT') 
+                            print (error_msg)
                             print "But parsing of the rest of the calculations"
                             continue
 
