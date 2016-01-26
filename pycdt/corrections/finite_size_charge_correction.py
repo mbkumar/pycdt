@@ -176,16 +176,6 @@ def kumagai_init(s1, dieltens, sil=True):
         print 'converted to bohr for atomic units, lat consts are:' + str([a1, a2, a3])
     # define dielectric tensors (modified to be like IEEE papers)
     determ = np.linalg.det(dieltens)
-    #m11 = float(dieltens[1][1] * dieltens[2][2] - dieltens[1][2] ** 2) / determ
-    #m22 = float(dieltens[0][0] * dieltens[2][2] - dieltens[0][2] ** 2) / determ
-    #m33 = float(dieltens[0][0] * dieltens[1][1] - dieltens[0][1] ** 2) / determ
-    #m12 = float(dieltens[0][1] * dieltens[2][2] - dieltens[0][2] * dieltens[1][2]) / determ
-    #m13 = float(dieltens[0][1] * dieltens[1][2] - dieltens[0][2] * dieltens[1][1]) / determ
-    #m23 = float(dieltens[0][0] * dieltens[1][2] - dieltens[0][1] * dieltens[0][2]) / determ
-    #row1 = [m11, float(-1.0 * m12), m13]
-    #row2 = [float(-1.0 * m12), m22, float(-1.0 * m23)]
-    #row3 = [m13, float(-1.0 * m23), m33]
-    #invdiel = [row1, row2, row3]
     invdiel = np.linalg.inv(dieltens)
     if not sil:
         print 'inv dielectric tensor is ' + str(invdiel)
@@ -437,19 +427,12 @@ def wigner_seitz_radius(s):
     except:
         lat = Lattice(s.lattice_vectors())
 
-    wz = lat.get_wigner_seitz_cell()  # this list of WS cell face vertices
+    wz = lat.get_wigner_seitz_cell()  
+    # this list of WS cell face vertices
     # make list of midpoints to edges of WS cell
     dist = []
     for facet in wz:
         midpt = np.mean(np.array(facet), axis=0)
-        #x = []
-        #y = []
-        #z = []
-        #for vertex in facet:
-        #    x.append(vertex[0])
-        #    y.append(vertex[1])
-        #    z.append(vertex[2])
-        #midpt = list(map(np.mean, [x,y,z]))#[np.mean(x), np.mean(y), np.mean(z)]
         dist.append(norm(midpt))
     wsrad = min(dist)
     return wsrad
