@@ -106,8 +106,8 @@ class PostProcess(object):
             if 'bulk' in fldr_fields:
                 vr, error_msg = get_vr_and_check_locpot(fldr)
                 if error_msg:
-                    print (fldr_name, error_msg)
-                    print "Abandoing parsing of the calculations"
+                    print(fldr_name, error_msg)
+                    print("Abandoing parsing of the calculations")
                     break
                 bulk_energy = vr.final_energy
                 bulk_struct = vr.final_structure
@@ -118,7 +118,6 @@ class PostProcess(object):
                         data={'locpot_path':bulk_locpot_path})
             else:
                 chrg_fldrs = glob.glob(os.path.join(fldr,'charge*'))
-                print ('charge folders', chrg_fldrs)
                 for chrg_fldr in chrg_fldrs:
                     trans_dict = loadfn(
                             os.path.join(chrg_fldr, 'transformation.json'), 
@@ -126,8 +125,8 @@ class PostProcess(object):
                     chrg = trans_dict['charge']
                     vr, error_msg = get_vr_and_check_locpot(chrg_fldr)
                     if error_msg:
-                        print (fldr_name, 'charge- ', chrg, error_msg)
-                        print "But parsing of the rest of the calculations"
+                        print(fldr_name, 'charge- ', chrg, error_msg)
+                        print("But parsing of the rest of the calculations")
                         continue  # The successful calculations maybe useful
                     if 'substitution_specie' in trans_dict:
                         self._substitution_species.add(
@@ -141,9 +140,9 @@ class PostProcess(object):
                     except: # ENCUT not specified in INCAR. Read from POTCAR
                         encut, error_msg = get_encut_from_potcar(chrg_fldr)
                         if error_msg:
-                            print (fldr_name, 'Not able to determine ENCUT') 
-                            print (error_msg)
-                            print "But parsing of the rest of the calculations"
+                            print(fldr_name, 'Not able to determine ENCUT') 
+                            print(error_msg)
+                            print("But parsing the rest of the calculations")
                             continue
 
                     locpot_path = os.path.abspath(
@@ -220,16 +219,14 @@ class PostProcess(object):
             raise ValueError("Could not fetch entries for atomic chempots!")
 
         if len(species) == 1:
-            print 'this is elemental system! use bulk value.'
+            print('this is elemental system! Using bulk value.')
             vals = [entry.energy_per_atom for entry in entries]
             chempot = {species[0]: min(vals)}
             return chempot
 
         pd = PhaseDiagram(entries)
-        print pd
 
         chem_lims = {}
-        print 'species=', species
         for specie in species:
             mu_lims = PDAnalyzer(pd).get_chempot_range_stability_phase(
                     structure.composition, specie)
@@ -241,7 +238,6 @@ class PostProcess(object):
 
         # For substitution species the values are equal to single element vals
         for sub_el in self._substitution_species:
-            print sub_el
             if not self._mapi_key:
                 with MPRester() as mp:
                     entries = mp.get_entries_in_chemsys([sub_el])
@@ -286,7 +282,7 @@ class PostProcess(object):
             vr = Vasprun(os.path.join(
                 self._root_fldr,"dielectric","vasprun.xml"))
         except:
-            print 'Parsing Dielectric calculation failed'
+            print('Parsing Dielectric calculation failed')
             return None
 
         eps_ion = vr.epsilon_ionic
