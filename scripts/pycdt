@@ -25,11 +25,11 @@ from monty.json import MontyEncoder, MontyDecoder
 from pymatgen.matproj.rest import MPRester
 from pymatgen.symmetry.analyzer import SpacegroupAnalyzer
 
-from pycdcd.core.defectsmaker import ChargedDefectsStructures
-from pycdcd.utils.vasp import make_vasp_defect_files, \
+from pycdt.core.defectsmaker import ChargedDefectsStructures
+from pycdt.utils.vasp import make_vasp_defect_files, \
                               make_vasp_dielectric_files
-from pycdcd.utils.parse_calculations import PostProcess
-from pycdcd.corrections.defects_analyzer import get_correction
+from pycdt.utils.parse_calculations import PostProcess
+from pycdt.corrections.defects_analyzer import get_correction
 
 
 

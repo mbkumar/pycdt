@@ -13,7 +13,7 @@ __date__ = "May 6, 2015"
 import unittest
 import os
 
-from pycdcd.core.defectsmaker import ChargedDefectsStructures
+from pycdt.core.defectsmaker import ChargedDefectsStructures
 
 class ChargedDefectsStructuresTest(unittest.TestCase):
     def setUp(self):

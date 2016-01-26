@@ -13,7 +13,7 @@ __date__ = "May 6, 2015"
 import unittest
 import os
 
-from pycdcd.corrections.defects_analyzer import Defect, DefectsAnalyzer
+from pycdt.corrections.defects_analyzer import Defect, DefectsAnalyzer
 
 class DefectTest(unittest.TestCase):
     def setUp(self):

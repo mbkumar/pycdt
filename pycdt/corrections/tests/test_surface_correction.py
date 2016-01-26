@@ -13,7 +13,7 @@ __date__ = "May 6, 2015"
 import unittest
 import os
 
-from pycdcd.corrections.surface_correction import unit_xc_correction, \
+from pycdt.corrections.surface_correction import unit_xc_correction, \
         surf_correction
 
 class UnitXCCorrectionTest(unittest.TestCase):

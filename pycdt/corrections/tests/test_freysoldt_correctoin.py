@@ -13,7 +13,7 @@ __date__ = "May 6, 2015"
 import unittest
 import os
 
-from pycdcd.corrections.freysoldt_correction import FreysoldtCorrection
+from pycdt.corrections.freysoldt_correction import FreysoldtCorrection
 
 class FreysoldtCorrectionTest(unittest.TestCase):
     def setUp(self):
