@@ -176,26 +176,34 @@ def kumagai_init(s1, dieltens, sil=True):
         print 'converted to bohr for atomic units, lat consts are:' + str([a1, a2, a3])
     # define dielectric tensors (modified to be like IEEE papers)
     determ = np.linalg.det(dieltens)
-    m11 = float(dieltens[1][1] * dieltens[2][2] - dieltens[1][2] ** 2) / determ
-    m22 = float(dieltens[0][0] * dieltens[2][2] - dieltens[0][2] ** 2) / determ
-    m33 = float(dieltens[0][0] * dieltens[1][1] - dieltens[0][1] ** 2) / determ
-    m12 = float(dieltens[0][1] * dieltens[2][2] - dieltens[0][2] * dieltens[1][2]) / determ
-    m13 = float(dieltens[0][1] * dieltens[1][2] - dieltens[0][2] * dieltens[1][1]) / determ
-    m23 = float(dieltens[0][0] * dieltens[1][2] - dieltens[0][1] * dieltens[0][2]) / determ
-    row1 = [m11, float(-1.0 * m12), m13]
-    row2 = [float(-1.0 * m12), m22, float(-1.0 * m23)]
-    row3 = [m13, float(-1.0 * m23), m33]
-    invdiel = [row1, row2, row3]
+    #m11 = float(dieltens[1][1] * dieltens[2][2] - dieltens[1][2] ** 2) / determ
+    #m22 = float(dieltens[0][0] * dieltens[2][2] - dieltens[0][2] ** 2) / determ
+    #m33 = float(dieltens[0][0] * dieltens[1][1] - dieltens[0][1] ** 2) / determ
+    #m12 = float(dieltens[0][1] * dieltens[2][2] - dieltens[0][2] * dieltens[1][2]) / determ
+    #m13 = float(dieltens[0][1] * dieltens[1][2] - dieltens[0][2] * dieltens[1][1]) / determ
+    #m23 = float(dieltens[0][0] * dieltens[1][2] - dieltens[0][1] * dieltens[0][2]) / determ
+    #row1 = [m11, float(-1.0 * m12), m13]
+    #row2 = [float(-1.0 * m12), m22, float(-1.0 * m23)]
+    #row3 = [m13, float(-1.0 * m23), m33]
+    #invdiel = [row1, row2, row3]
+    invdiel = np.linalg.inv(dieltens)
     if not sil:
         print 'inv dielectric tensor is ' + str(invdiel)
     return angset, bohrset, vol, determ, invdiel
 
 
-def get_pc_energy(a1, a2, a3, dieltens, invdiel, q, madetol, r, silence, optgam=False):
+def get_pc_energy(s1, dieltens,  q, madetol, r, silence, optgam=None):
     # if r=[0,0,0] return PCenergy, otherwise return the potential energy part
     # if gamma has already been optimized, then set optgam to the optimized gamma
-    determ = np.linalg.det(dieltens)
-    vol = np.dot(a1, np.cross(a2, a3))
+    angset, [a1, a2, a3], vol, determ, invdiel = kumagai_init(
+            s1, self._dieltens, sil=self._silence)
+    
+    if not optgam:
+        gamma = 5./(vol ** (1/3.))
+        print 'gamma not optimized for Kumagai calc. Setting gamma to ', gamma
+    else:
+        gamma = optgam
+
 
     # for recip summation part
     if norm(r):  #produces potential term
@@ -834,12 +842,12 @@ class ChargeCorrection(object):
             tmp = Locpot.from_file(self._purelocpot)
             s1 = tmp.structure
         print 'run Kumagai PC calculation'
-        angset, [a1, a2, a3], vol, determ, invdiel = kumagai_init(
-                s1, self._dieltens, sil=self._silence)
+        #angset, [a1, a2, a3], vol, determ, invdiel = kumagai_init(
+        #        s1, self._dieltens, sil=self._silence)
 
         #get aniso PCenergy (equation 8 from kumagai paper)
         energy_pc, optgamma = get_pc_energy(
-                a1, a2, a3, self._dieltens, invdiel, self._q, 
+                s1, self._dieltens,  self._q, 
                 self._madetol, [0., 0., 0.], self._silence)  #returns PCenergy in eV
 
         if not self._silence:
@@ -849,28 +857,26 @@ class ChargeCorrection(object):
 
         return energy_pc, optgamma  #PC energy in eV
 
-    def kumagai_potalign(self, v1=None, v2=None, optgam=False, title=False):
-        #v1 is bulk locpot object, v2 is defect locpot object
+    def kumagai_potalign(self, v1=None, v2=None, optgam=None, title=None):
+        """
+        Potential alignment for Kumagai method
+        Args:
+            v1: Bulk locpot object
+            v2: Defect locpot object
+            optgam: ?
+            title: Title for the plot. None will not generate the plot
+        """
         #Note this accounts for defects not at origin
         #if no optimized gamma chooses gamma s.t. gamma*L=5 (some paper said this is optimal)
-        #if you want to plot then feed the defect name to title
         if not self._silence:
-            print 'run Kumagai potential calculation (atomic site averaging)'
+            print ('run Kumagai potential calculation (atomic site averaging)')
         if not v1:
-            print 'load pure locpot object'
             v1 = Locpot.from_file(self._purelocpot)
         if not v2:
-            print 'load defect locpot object'
             v2 = Locpot.from_file(self._deflocpot)
 
         angset, [a1, a2, a3], vol, determ, invdiel = kumagai_init(
                 v1.structure, self._dieltens, sil=self._silence)
-
-        if not optgam:
-            gamma = round(5./(vol ** (1/3.)), 3)
-            print 'gamma not optimized for Kumagai calc. Setting gamma to ', gamma
-        else:
-            gamma = optgam
 
         from pymatgen.analysis.structure_matcher import StructureMatcher as SM
 
@@ -918,16 +924,17 @@ class ChargeCorrection(object):
             dx, dy, dz = potinddict[i]['defgrid']
             bx, by, bz = potinddict[i]['bulkgrid']
             #print 'gridpts=',dx,dy,dz,' and ',bx,by,bz,'  Note length =',len(defdat),len(defdat[0]),len(defdat[0][0])
-            Vqb = defdat[dx][dy][dz] - puredat[bx][by][bz]  #should change this to averaging pure
+            v_qb = defdat[dx][dy][dz] - puredat[bx][by][bz]  #should change this to averaging pure
             # and def within a range then subtract
 
-            Vpc, gam1 = PCenergy(a1, a2, a3, self._dieltens, invdiel, self._q,
-                                 self._madetol, potinddict[i]['cart_reldef'], silence=True, optgam=gamma)
-            potinddict[i]['Vpc'] = Vpc
-            potinddict[i]['Vqb'] = Vqb
+            v_pc, gam1 = get_pc_energy(s1, self._dieltens, 
+                    self._q, self._madetol, potinddict[i]['cart_reldef'], 
+                    silence=True, optgam=optgam)
+            potinddict[i]['Vpc'] = v_pc
+            potinddict[i]['Vqb'] = v_qb
             if not self._silence:
-                print 'Has anisotropic point charge energy = ', Vpc
-                print 'DFT bulk/defect difference = ', Vqb
+                print 'Has anisotropic point charge energy = ', v_pc
+                print 'DFT bulk/defect difference = ', v_qb
                 print 'atoms left to calculate = ' + str(len(potinddict.keys()) - jup)
         if not self._silence:
             print '--------------------------------------'
@@ -1033,6 +1040,14 @@ class ChargeCorrection(object):
             #print 'Madelung leading order ES correction is then (units?): ' + Mcorr
             #return Mcorr
 
+    def mp_corr(self, s1=None):
+        """
+        Markov Payne correction. 
+        Compute alpha for each structure or use the given ne
+        """
+        #NOT DONE
+        pass
+
 
 if __name__ == '__main__':
     s = ChargeCorrections(
@@ -1049,10 +1064,10 @@ if __name__ == '__main__':
     #vd=Locpot.from_file('../../Gavacm3testMachgcorr/LOCPOT_vdef')
 
     #print s.freysoldt_pc(vb.structure)
-    s.freysoldt_pc()
+    #s.freysoldt_pc()
     #s.freysoldt_potalign(title='Gavac+3test',v1=vb,v2=vd) #this doesnt work...and takes forever to run
 
-    #s.RunKumagai(title='Gavac+3test')
+    s.RunKumagai(title='Gavac+3test_kumagai')
     #s.KumagaiPC(vb.structure)
     #s.Kumagaipotalign(vb,vd,optgam=1.848916,printflag='Gavac+3test')
 
