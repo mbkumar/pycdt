@@ -196,7 +196,7 @@ def get_pc_energy(s1, dieltens,  q, madetol, r, silence, optgam=None):
     # if r=[0,0,0] return PCenergy, otherwise return the potential energy part
     # if gamma has already been optimized, then set optgam to the optimized gamma
     angset, [a1, a2, a3], vol, determ, invdiel = kumagai_init(
-            s1, self._dieltens, sil=self._silence)
+            s1, dieltens, sil=silence)
     
     if not optgam:
         gamma = 5./(vol ** (1/3.))
@@ -844,7 +844,7 @@ class ChargeCorrection(object):
                 print 'Load defect locpot'
             vd = Locpot.from_file(self._deflocpot)
         print '\nRun PC energy'
-        energy_pc, optgam = self.kumaga_pc(vb.structure)
+        energy_pc, optgam = self.kumagai_pc(vb.structure)
         print '\nPC calc done, correction =', round(energy_pc, 4), \
                 ' optimized gamma found to be: ', round(optgam, 4)
         print 'Now run potenttial alignment script'
@@ -922,7 +922,7 @@ class ChargeCorrection(object):
         # create distance matrix for plotting
         # get a list of atoms outside of WS radius.
         potinddict = disttrans(v1, v2, defect_index)  #this is to calculate distance matrix for plotting
-        wsrad = WSrad_fullcell(v1)
+        wsrad = wigner_seitz_radius(v1)
         for i in potinddict.keys():
             if potinddict[i]['dist'] > wsrad:
                 potinddict[i]['OutsideWS'] = True
@@ -947,7 +947,7 @@ class ChargeCorrection(object):
             v_qb = defdat[dx][dy][dz] - puredat[bx][by][bz]  #should change this to averaging pure
             # and def within a range then subtract
 
-            v_pc, gam1 = get_pc_energy(s1, self._dieltens, 
+            v_pc, gam1 = get_pc_energy(v1.structure, self._dieltens, 
                     self._q, self._madetol, potinddict[i]['cart_reldef'], 
                     silence=True, optgam=optgam)
             potinddict[i]['Vpc'] = v_pc
