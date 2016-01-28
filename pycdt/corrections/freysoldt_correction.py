@@ -213,7 +213,7 @@ class FreysoldtCorrection(object):
             #relpos = (str(self._frac_coords)[1:])[:-1]
             #relpos = relpos.replace(" ",",")
             relpos = ",".join(str(i) for i in self._frac_coords)
-            command = ['~/sxdefectalign', '--vasp', '-a'+str(axis+1), 
+            command = ['~/bin/sxdefectalign', '--vasp', '-a'+str(axis+1), 
                     '--relative', '--pos', relpos, 
                     '--charge', str(-self._charge), 
                     '--ecut', str(self._encut/13.6057), #eV to Ry for sxdefect 
@@ -243,7 +243,7 @@ class FreysoldtCorrection(object):
             with open('tmpoutput') as f:
                 output = f.readlines()
             #print 'output from sxdefectalign = '+str(output)
-            val =  output[-1].split()[3].strip()
+            val =  output[-2].split()[3].strip()
             #result.append(float(output[-1].split()[3]))
             result.append(float(val))
             print("chg correction is "+str(result[-1]))

@@ -120,6 +120,7 @@ def get_correction_new(defect, bulk_entry, epsilon_tensor, type='freysoldt'):
         #locpot_blk = Locpot.from_file(locpot_path_blk)
         #locpot_defect = Locpot.from_file(locpot_path_def)
         epsilon = sum([epsilon_tensor[i][i] for i in range(3)])/3.0
+        print ('epsilon', epsilon)
         frac_coords = defect._site.frac_coords
         corr_meth = FreysoldtCorrection(
                 locpot_path_blk, locpot_path_def, charge, epsilon, 

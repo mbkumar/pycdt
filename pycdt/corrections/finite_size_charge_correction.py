@@ -82,15 +82,52 @@ def genrecip(a1, a2, a3, encut, gcutflag=False):
         for j in range(-tol, tol + 1):
             for k in range(-tol, tol + 1):
                 vec = (i * b1 + j * b2 + k * b3)
-                en = 3.80986 * (1 / 1.8897) * norm(vec)
+                en = 3.80986 * (((1 / 1.8897) * norm(vec))** 2)
                 if (en <= encut and en != 0):
                     recip.append([i * b1[m] + j * b2[m] + k * b3[m] for m in range(3)])
     return recip, gcut  #output is 1/bohr recip and 1/bohr gcut
 
+def generate_3d_reciprocal_vectors(a1, a2, a3, encut, gcutflag=False):
+    # latt vectors in 1/bohr, encut=eV
+    # generate reciprocal lattice vectors with value less than encut
+    # define recip vectors first, (units of 1/angstrom).
+    # gcut flag =True just quits and gives you gcut rather than computing all reciprocal lattice vectors
+    vol = np.dot(a1, np.cross(a2, a3))  # 1/bohr^3
+    b1 = (2 * np.pi / vol) * np.cross(a2, a3)  # units 1/bohr
+    b2 = (2 * np.pi / vol) * np.cross(a3, a1)
+    b3 = (2 * np.pi / vol) * np.cross(a1, a2)
+    recip = []
+    flag = 0
+    # create list of recip space vectors that satisfy |i*b1+j*b2+k*b3|<=encut
+    #start by enumerating to find max i that doesn't upset the encut condition
+    tol = 0
+    gcut = 0.  #this is max number of repetitions for minimum recip vector to upset encut condition
+    #print 'value of smallest b vec is '+str(min(mod(b1),mod(b2),mod(b3)))
+    while flag != 1:
+        if 3.80986 * ((tol * (1 / 1.8897) * min(norm(b1), norm(b2), norm(b3))) ** 2) < encut:
+            #added the 1.8897 factor because the energy given converts 1/A to eV but b'2 in 1/bohr
+            tol = tol + 1
+        else:
+            #print ('tolerance is',tol)
+            gcut = tol * min(norm(b1), norm(b2), norm(b3))  #1/bohr
+            flag = 1
+    if gcutflag:
+        print ('gcut', gcut)
+        return gcut
+    print ('tol', tol)
+    #now look though all options for recip vectors to see what vectors are less than energy val
+    for i in range(-tol, tol + 1):
+        for j in range(-tol, tol + 1):
+            for k in range(-tol, tol + 1):
+                vec = (i * b1 + j * b2 + k * b3)
+                en = 3.80986 * (((1 / 1.8897) * norm(vec))** 2)
+                if (en <= encut and en != 0):
+                    recip.append([i * b1[m] + j * b2[m] + k * b3[m] for m in range(3)])
+    return recip, gcut  #output is 1/bohr recip and 1/bohr gcut
 
 def generate_reciprocal_vectors(a1, a2, a3, gcut):
     """
-    Generate reciprocal vectors within the cutoff along the specied
+    Generate reciprocal vector magnitudes within the cutoff along the specied
     lattice vectors. 
     Args:
         a1: Lattice vector a (in Bohrs)
@@ -182,21 +219,34 @@ def kumagai_init(s1, dieltens, sil=True):
     return angset, bohrset, vol, determ, invdiel
 
 
-def get_pc_energy(s1, dieltens,  q, madetol, r, silence, optgam=None):
+def get_anistropic_pc_energy(structure, dieltens, q, madetol, r, silence, 
+        gamma=None):
+    """
+    Compute the anistropic point charge energy correction.
+    Args:
+        structure: pymatgen Structure 
+        dieltens: dielectric tensor
+        q: Point charge (in units of e+)
+        madetol: Accuracy parameter 
+        r: Position with respect to defect
+        silence: Verbosity flag. If off, messages are printed.
+        gamma: Convergence parameter (optional)
+    """
     # if r=[0,0,0] return PCenergy, otherwise return the potential energy part
     # if gamma has already been optimized, then set optgam to the optimized gamma
     angset, [a1, a2, a3], vol, determ, invdiel = kumagai_init(
-            s1, dieltens, sil=silence)
+            structure, dieltens, sil=silence)
     
-    if not optgam:
+    if not gamma: # What is the optimal gamma and how to infer it?
         gamma = 5./(vol ** (1/3.))
-        print 'gamma not optimized for Kumagai calc. Setting gamma to ', gamma
-    else:
-        gamma = optgam
-
+    if not silence:
+        print ('Gamma not yet optimized for Kumagai calc. Initial gamma is ', 
+                gamma)
 
     # for recip summation part
     if norm(r):  #produces potential term
+        # Comment by Bharat to Danny: 
+        # The following can be realized with FFT
         def get_recippart(encut, gamma):
             recip, gcut = genrecip(a1, a2, a3, encut)
             recippartreal, recippartimag = 0.0, 0.0
@@ -446,28 +496,25 @@ def wigner_seitz_radius(s):
 
 class ChargeCorrection(object):
     def __init__(self, axis, dielectric_tensor, pure_locpot_path, 
-            defect_locpot_path, q, energy_cutoff=520, madetol=0.0001, 
+            defect_locpot_path, q, pos, energy_cutoff=520, madetol=0.0001, 
             silence=False, q_model=None):
         """
         Args:
-            axis:
-                axis to do freysoldt averaging over ( has no effect on kumagai correction )
-            dielectric_tensor (matrix, array or scalar):
-                Macroscopic dielectric tensor (ionic if defect relaxed, static if not)
-            pure_locpot_path (str):
-                Bulk Locpot file path
-            defect_locpot_path (str):
-                Defect Locpot file path
-            q (int):
-                Charge associated with the defect
-            energy_cutoff (int, float or double):
-                Energy for plane wave cutoff in in eV
-            madetol (double or float):
-                Tolerance
-            silence (Bool):
-                For disabling/enabling  messages
-            q_model (QModel object):
-                User defined model charge for charge correction
+            axis: axis to do Freysoldt averaging over. Has no effect on 
+                 Kumagai correction, so better move to Freysoldt potalign
+            dielectric_tensor: Macroscopic dielectric tensor 
+                 Include ionic also if defect is relaxed, othewise ion clamped.
+                 Can be a matrix, array or scalar.
+            pure_locpot_path: Bulk Locpot file path
+            defect_locpot_path: Defect Locpot file path
+            q: Charge associated with the defect. Typically integer
+            pos: Position of the defect in the cell (Frac or coord?)
+            energy_cutoff: Energy for plane wave cutoff (in eV).
+                 If not given, Materials Project default 520 eV is used.
+            madetol: Tolerance (double or float)
+            silence: Flag for disabling/enabling  messages (Bool)
+            q_model (QModel object): User defined charge for correction.
+                 If not given, highly localized charge is assumed.
         """
         self._axis = axis  #needs to be zero defined (0,1,2); says which axis to do planar averaging on...
         if isinstance(dielectric_tensor, int) or \
@@ -483,6 +530,7 @@ class ChargeCorrection(object):
         self._madetol = madetol #tolerance for convergence of energy terms in eV
         self._q = q  #charge of defect (not of the homogen. background)
         self._encut = energy_cutoff  #encut (eV) for calculation
+        self._pos = pos
         self._silence = silence  #for silencing printflags
         if not q_model:
             self._q_model = QModel()
@@ -704,6 +752,7 @@ class ChargeCorrection(object):
         return self._q * C  #pot align energy correction (eV), add to the energy output of PCfrey
 
     def freysoldt_potalign(self, title=None,  widthsample=1.):
+        # TODO: Move inputting self._axis from ChargeCorrection __init__ to here
         #NOTE this hasnt been coded for arbitrary defect position yet...
         #title is for name of plot, if you dont care about plot then leave it as None
         #widthsample is the width of the region in between defects where the potential alignment correction is averaged
@@ -849,7 +898,7 @@ class ChargeCorrection(object):
         #        s1, self._dieltens, sil=self._silence)
 
         #get aniso PCenergy (equation 8 from kumagai paper)
-        energy_pc, optgamma = get_pc_energy(
+        energy_pc, optgamma = get_anistropic_pc_energy(
                 s1, self._dieltens,  self._q, 
                 self._madetol, [0., 0., 0.], self._silence)  #returns PCenergy in eV
 
@@ -930,7 +979,7 @@ class ChargeCorrection(object):
             v_qb = defdat[dx][dy][dz] - puredat[bx][by][bz]  #should change this to averaging pure
             # and def within a range then subtract
 
-            v_pc, gam1 = get_pc_energy(v1.structure, self._dieltens, 
+            v_pc, gam1 = get_anistropic_pc_energy(v1.structure, self._dieltens, 
                     self._q, self._madetol, potinddict[i]['cart_reldef'], 
                     silence=True, optgam=optgam)
             potinddict[i]['Vpc'] = v_pc
