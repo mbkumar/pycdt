@@ -2,7 +2,7 @@
 chg corrections:
 1) Freysoldt correction 
 	a) PC energy
-	b) potential alignment [axis averaging] (****not working****)
+	b) potential alignment [axis averaging]
 2) Kumagai correction
 	a) anisotropic PC energy
 	b) potential alignment [atomic site averaging outside WS cell]
@@ -19,7 +19,7 @@ from pymatgen.io.vaspio.vasp_output import Locpot
 from pymatgen.core.lattice import Lattice
 import numpy as np
 import sys
-import time
+import os
 import matplotlib.pyplot as plt
 import math
 
@@ -46,14 +46,13 @@ def eV_to_k(energy):
     Returns:
         (double) Reciprocal vector magnitude (units of 1/Bohr).
     """
-    return math.sqrt(encut/3.80986)*1.8897
+    return math.sqrt(energy/3.80986)*1.8897
 
 
-def genrecip(a1, a2, a3, encut, gcutflag=False):
-    # latt vectors in 1/bohr, encut=eV
+def genrecip(a1, a2, a3, encut):
+    # latt vectors in bohr, encut=eV
     # generate reciprocal lattice vectors with value less than encut
     # define recip vectors first, (units of 1/angstrom).
-    # gcut flag =True just quits and gives you gcut rather than computing all reciprocal lattice vectors
     vol = np.dot(a1, np.cross(a2, a3))  # 1/bohr^3
     b1 = (2 * np.pi / vol) * np.cross(a2, a3)  # units 1/bohr
     b2 = (2 * np.pi / vol) * np.cross(a3, a1)
@@ -63,20 +62,12 @@ def genrecip(a1, a2, a3, encut, gcutflag=False):
     # create list of recip space vectors that satisfy |i*b1+j*b2+k*b3|<=encut
     #start by enumerating to find max i that doesn't upset the encut condition
     tol = 0
-    gcut = 0.  #this is max number of repetitions for minimum recip vector to upset encut condition
-    #print 'value of smallest b vec is '+str(min(mod(b1),mod(b2),mod(b3)))
     while flag != 1:
         if 3.80986 * ((tol * (1 / 1.8897) * min(norm(b1), norm(b2), norm(b3))) ** 2) < encut:
-            #added the 1.8897 factor because the energy given converts 1/A to eV but b'2 in 1/bohr
+            #added the 1.8897 factor because the energy given converts 1/A to eV but b's in 1/bohr
             tol = tol + 1
         else:
-            #print ('tolerance is',tol)
-            gcut = tol * min(norm(b1), norm(b2), norm(b3))  #1/bohr
             flag = 1
-    if gcutflag:
-        print ('gcut', gcut)
-        return gcut
-    print ('tol', tol)
     #now look though all options for recip vectors to see what vectors are less than energy val
     for i in range(-tol, tol + 1):
         for j in range(-tol, tol + 1):
@@ -85,10 +76,10 @@ def genrecip(a1, a2, a3, encut, gcutflag=False):
                 en = 3.80986 * (1 / 1.8897) * norm(vec)
                 if (en <= encut and en != 0):
                     recip.append([i * b1[m] + j * b2[m] + k * b3[m] for m in range(3)])
-    return recip, gcut  #output is 1/bohr recip and 1/bohr gcut
+    return recip  #output is 1/bohr recip
 
 
-def generate_reciprocal_vectors(a1, a2, a3, gcut):
+def generate_reciprocal_vectors_squared(a1, a2, a3, encut):
     """
     Generate reciprocal vectors within the cutoff along the specied
     lattice vectors. 
@@ -96,7 +87,7 @@ def generate_reciprocal_vectors(a1, a2, a3, gcut):
         a1: Lattice vector a (in Bohrs)
         a2: Lattice vector b (in Bohrs)
         a3: Lattice vector c (in Bohrs)
-        gcut: Reciprocal vector cutoff
+        encut: Reciprocal vector energy cutoff
 
     Returns:
         [[g1^2], [g2^2], ...] Square of reciprocal vectors (1/Bohr)^2 
@@ -108,6 +99,7 @@ def generate_reciprocal_vectors(a1, a2, a3, gcut):
     b3 = (2 * np.pi / vol) * np.cross(a1, a2)
 
     # Max (i,j,k) that doesn't upset the condition |i*b1+j*b2+k*b3|<=gcut
+    gcut=eV_to_k(encut)
     max_index = int(math.ceil(gcut/min(norm(b1), norm(b2), norm(b3))))
     gcut2 = gcut*gcut
     recip = []
@@ -124,8 +116,10 @@ def generate_reciprocal_vectors(a1, a2, a3, gcut):
 class QModel():
     """
     Model for the defect charge distribution.
-    A combination of exponential tail and gaussian distribution is used.
-    q_model = q[x N_gamma exp(-r/gamma) + (1-x) N_beta exp(-r^2/beta^2)]
+    A combination of exponential tail and gaussian distribution is used
+    (see Freysoldt (2011), DOI: 10.1002/pssb.201046289 )
+    q_model(r) = q [x exp(-r/gamma) + (1-x) exp(-r^2/beta^2)]
+            without normalization constants
     By default, gaussian distribution with 1 Bohr width is assumed.
     If defect charge is more delocalized, exponential tail is needed.
     """
@@ -147,7 +141,8 @@ class QModel():
 
     def rho_rec(self, g2):
         """
-        Model charge density at the input reciprocal vector.
+        Reciprocal space model charge value
+        for input squared reciprocal vector.
         Args:
             g2: Square of reciprocal vector
 
@@ -159,7 +154,8 @@ class QModel():
 
     def rho_rec_limit0(self):
         """
-        Model charge density close to reciprocal vector 0 .
+        Reciprocal space model charge value
+        close to reciprocal vector 0 .
         rho_rec(g->0) -> 1 + rho_rec_limit0 * g^2
         """
         return -2*self.gamma2*self.x - 0.25*self.beta2*(1-self.x)
@@ -174,7 +170,6 @@ def kumagai_init(s1, dieltens, sil=True):
     vol = np.dot(a1, np.cross(a2, a3))
     if not sil:
         print 'converted to bohr for atomic units, lat consts are:' + str([a1, a2, a3])
-    # define dielectric tensors (modified to be like IEEE papers)
     determ = np.linalg.det(dieltens)
     invdiel = np.linalg.inv(dieltens)
     if not sil:
@@ -183,7 +178,8 @@ def kumagai_init(s1, dieltens, sil=True):
 
 
 def get_pc_energy(s1, dieltens,  q, madetol, r, silence, optgam=None):
-    # if r=[0,0,0] return PCenergy, otherwise return the potential energy part
+    # if r=[0,0,0] return PC_energy,
+    #   otherwise return a potential contribution at atomic position = r
     # if gamma has already been optimized, then set optgam to the optimized gamma
     angset, [a1, a2, a3], vol, determ, invdiel = kumagai_init(
             s1, dieltens, sil=silence)
@@ -198,7 +194,7 @@ def get_pc_energy(s1, dieltens,  q, madetol, r, silence, optgam=None):
     # for recip summation part
     if norm(r):  #produces potential term
         def get_recippart(encut, gamma):
-            recip, gcut = genrecip(a1, a2, a3, encut)
+            recip = genrecip(a1, a2, a3, encut)
             recippartreal, recippartimag = 0.0, 0.0
             for rec in recip:
                 Gdotdiel = np.dot(rec, np.dot(dieltens, rec))
@@ -211,7 +207,7 @@ def get_pc_energy(s1, dieltens,  q, madetol, r, silence, optgam=None):
             return recippartreal, recippartimag, len(recip)
     else:  #produces PC energy term
         def get_recippart(encut, gamma):
-            recip, gcut = genrecip(a1, a2, a3, encut)
+            recip = genrecip(a1, a2, a3, encut)
             recippart = 0.0
             for rec in recip:
                 Gdotdiel = np.dot(rec, np.dot(dieltens, rec))
@@ -225,6 +221,7 @@ def get_pc_energy(s1, dieltens,  q, madetol, r, silence, optgam=None):
         Nmaxlength = 40  #tolerance for stopping real space sum convergence
         N = 2
         realpre = q / np.sqrt(determ)
+        #Real space sum by converging with respect to real space vectors
         #create list of real space vectors that satisfy |i*a1+j*a2+k*a3|<=N
         while N < Nmaxlength:  
             realvecsum = []
@@ -243,16 +240,15 @@ def get_pc_energy(s1, dieltens,  q, madetol, r, silence, optgam=None):
 
             #calculation real summation up to N
             directpart = 0.0
-            for i in range(len(realvecsum)):
-                local_response = np.dot(realvecsum[i], 
-                                        np.dot(invdiel, realvecsum[i]))
+            for i in realvecsum:
+                local_response = np.dot(i, np.dot(invdiel, i))
                 nmr = math.erfc(gamma * np.sqrt(local_response))
                 dmr = np.sqrt(determ * local_response)
                 directpart += nmr / dmr  
             directlist.append([N, realpre * directpart])
 
             if N == Nmaxlength-1:
-                print('Direct part could not converge up with real space ' + 
+                print('Direct part could not converge with real space ' +
                        'translation tolerance of {} for gamma {}'.format(
                            Nmaxlength-1, gamma))
                 return
@@ -269,8 +265,8 @@ def get_pc_energy(s1, dieltens,  q, madetol, r, silence, optgam=None):
 
             N += 1
 
-        #now do recip sum convergence
-        encut = 20  #starting encut for convergence
+        #Recip space sum convergence with respect to encut
+        encut = 20  #start with small encut for expediency
         recippartreal1, recippartimag1, len_recip = get_recippart(encut, gamma)
         encut += 10
         recippartreal, recippartimag, len_recip = get_recippart(encut, gamma)
@@ -281,8 +277,13 @@ def get_pc_energy(s1, dieltens,  q, madetol, r, silence, optgam=None):
             converge.reverse()
             converge[1] = recippartreal
             if encut > 700: # Bharat: Why 700 eV?
+                # Danny: Because if it isnt converged by then somethign is wrong...could do somethign smaller like 300eV?
                 print('Problem, imaginary part not converged at encut = 700eV')
                 return
+        if abs(recippartimag) * 27.2114 > madetol:
+            print("Problem with convergence of imaginary part of recip sum."),
+            print("imag sum value is {} (eV)".format( recippartimag * 27.2114))
+            return None, None, None
         if not silence:
             print('recip sum converged to {} (eV) at encut= {}'.format(
                         recippartreal * 27.2114, encut))
@@ -294,17 +295,12 @@ def get_pc_energy(s1, dieltens,  q, madetol, r, silence, optgam=None):
                 print('This might lead to errors in the reciprocal summation.')
                 print('Changing gamma now.')
                 return None, None, 'Try Again'
-        if abs(recippartimag) * 27.2114 > madetol:
-            print("Problem with convergence of imaginary part of recip sum."), 
-            print("imag sum value is {} (eV)".format( recippartimag * 27.2114))
-            return None, None, None
 
         return directpart, recippartreal, gamma
 
     #start with gamma s.t. gamma*L=5 (some paper said this is optimal)
     if not optgam:
         #optimizing gamma for the recipt sum to improve convergence of calculation
-        gamma = 5. / (vol ** (1 / 3.))
         flag = 0
         while not flag:
             directpart, recippartreal, optgamma = do_summation(gamma)
@@ -317,17 +313,19 @@ def get_pc_energy(s1, dieltens,  q, madetol, r, silence, optgam=None):
                 print('Had problem in gamma optimization process.')
                 return
 
-            if gamma > 50:
+            if gamma > 50:  #kind of an arbitrary number for cut off...
                 print('WARNING. could not optimize gamma before gamma =', 50)
                 return
     else:
         directpart, recippartreal, optgamma = do_summation(optgam)
 
-    #now add up total madelung potential part with two extra parts
+    #now add up total madelung potential part with two extra parts:
+    #self interaction term
     selfint = q * np.pi / (vol * (optgamma ** 2))
     if not silence:
         print ('self interaction piece is {}'.format(selfint * 27.2114))
-    #parts = [directpart, N, recippartreal, encut, len_recip]
+
+    #surface term (only for r not at origin)
     if not norm(r):
         surfterm = 2 * optgamma * q / np.sqrt(np.pi * determ)
         if not silence:
@@ -335,33 +333,29 @@ def get_pc_energy(s1, dieltens,  q, madetol, r, silence, optgam=None):
         totalPC = -q * 0.5 * 27.2114 * (
                 directpart + recippartreal - selfint - surfterm)
     else:
-        totalPC = (directpart + recippartreal - selfint) * 27.2114  
-        # note this is supposed to be a potential not an energy...
-        # so not multiplying by additional -q/2...
-        # note this means the sign of q matters...
-        # this is background charge we need to use
+        #returns a potential, not an energy (no multiplying by -q/2)
+        totalPC = (directpart + recippartreal - selfint) * 27.2114
 
     if not silence:
         print ('Final PC Energy term is then ', totalPC, ' (eV)')
 
-    return totalPC, optgamma  
-    # For r=0 this returns the energy of PC. 
-    # For r!=0 this returns the potential at atomic positions [in eV units]
+    return totalPC, optgamma
 
 
 def disttrans(s1, s2, c):
     """
-    this is function for calculating distance to each atom and finding grid pts at each atom
-    input pure structure and index of atom where defect is...
-    should amend to calculate potential out to radius of atom??
-    This might be alot of points to evaluate the PCen potential at...Could just evaluate PCen at one pt and average the data
+    this is function for calculating distance to each atom and finding NGX grid pts at each atom
+    input pure Locpot Object(s1), defect Locpot Object(s2)
+        and zero-definedindex of where defect is in POSCAR (c)
+    should amend to calculate potential out to radius of atom for averaging LocpotData?
     """
     struct = s1.structure
     defstruct = s2.structure
     griddict = {}  # dictionary with indices keys in order of structure list
 
-    def getgridind(
-            coord):  # get grid index (if wanted to do a range then s1.structure.sites[i].specie.atomic_radius gives radius...
+    def getgridind(coord):
+        # get grid index (if wanted to do a range then
+        #      s1.structure.sites[i].specie.atomic_radius gives radius...
         grdind = []
         for j in range(3):
             axis = s1.get_axis_grid(j)
@@ -421,15 +415,14 @@ def wigner_seitz_radius(s):
     Args:
         s: Either structure or VolumetricData object
     """
-    #(might be that I want to reduce to primitive structure
     try:
         lat = Lattice(s.structure.lattice_vectors())
     except:
         lat = Lattice(s.lattice_vectors())
 
-    wz = lat.get_wigner_seitz_cell()  
-    # this list of WS cell face vertices
-    # make list of midpoints to edges of WS cell
+    wz = lat.get_wigner_seitz_cell()
+    # wz is list of WS cell face vertices
+    # make list of midpoints on faces of WS cell
     dist = []
     for facet in wz:
         midpt = np.mean(np.array(facet), axis=0)
@@ -474,7 +467,7 @@ class ChargeCorrection(object):
                 isinstance(dielectric_tensor, float):
             self._dielectricconst = float(dielectric_tensor)
             self._dieltens = np.diag(
-                np.ones(3) * dielectric_tensor)  #this would make kumagai correction not very useful
+                np.ones(3) * dielectric_tensor)  #this would make kumagai correction pointless
         else:
             self._dieltens = np.array(dielectric_tensor)  #full dielectric tensor
             self._dielectricconst = np.mean(np.diag(self._dieltens))  #take dielconstant to be average of trace
@@ -487,13 +480,40 @@ class ChargeCorrection(object):
         if not q_model:
             self._q_model = QModel()
 
+    def freysoldt_correction(self, vb=None, vd=None, title=None):
+        #runs correction. input v1 and v2 locpot objects for speeding things up
+        if not self._silence:
+            print 'This is Freysoldt Correction.'
+        if not self._q:
+            return 0.0
+        if not vb:
+            if not self._silence:
+                print 'Load bulk locpot'
+            vb = Locpot.from_file(self._purelocpot)
+        if not vd:
+            if not self._silence:
+                print 'Load defect locpot'
+            vd = Locpot.from_file(self._deflocpot)
+        if not self._silence:
+            print '\nRun PC energy'
+        energy_pc = self.freysoldt_pc(vb.structure)
+        if not self._silence:
+            print '\nPC calc done, correction =', round(energy_pc, 4)
+            print 'Now run potenttial alignment script'
+        potalign = self.freysoldt_potalign(v1=vb, v2=vd, title=title)
+        if not self._silence:
+            print '\n\nAlright so the corrections are:'
+            print 'PCenergy = ', round(energy_pc, 5), '  potential alignment = ', round(potalign, 5)
+            print 'TOTAL Freysoldt correction = ', round(energy_pc - potalign, 5)
+
+        return round(energy_pc - potalign, 5)
+
     def freysoldt_pc(self, s1=None):
-        #note that this ony needs structure info
+        #note this ony needs structural info
         # so s1=structure object speeds this calculation up alot
         if not s1:
             print 'load Pure locpot'
             s1 = Locpot.from_file(self._purelocpot).structure
-        #print 'note this calculation assumes point charge at origin'
 
         #lattice constants from pure cell
         def cleanlat(dat):
@@ -543,15 +563,11 @@ class ChargeCorrection(object):
         converge = []
         while flag != 1:
             eper = 0.0
-            #recip, gcut = genrecip(a1, a2, a3, encut1)
-            gcut1 = eV_to_k(encut1)
-            recip1 = generate_reciprocal_vectors(a1, a2, a3, gcut1)
-            #print ('recip lens', len(recip), len(recip1))
+            recip1 = generate_reciprocal_vectors_squared(a1, a2, a3, encut1)
             for g2 in recip1:
-                #g2 = norm(i) ** 2.
                 eper += (self._q_model.rho_rec(g2) ** 2) / g2
             eper *= (self._q ** 2) * 2 * round(np.pi, 6) / vol
-            eper += (self._q ** 2) * 4 * round(np.pi, 6) * self._q_model.rho_rec_limit0() / vol  # g->0 part
+            eper += (self._q ** 2) * 4 * round(np.pi, 6) * self._q_model.rho_rec_limit0() / vol
             converge.append(eper)
             if len(converge) > 2:
                 if abs(converge[-1] - converge[-2]) < self._madetol:
@@ -568,150 +584,19 @@ class ChargeCorrection(object):
             print 'difference in (eV) is ' + str(round((eper - eiso) * 27.2114, 4))  #27.2114 eV/1 hartree
         PCfreycorr = round(((eiso - eper) / self._dielectricconst) * 27.2114, 6)  #converted to eV
         if self._silence == False:
-            print 'Defect Correction (eV): ', PCfreycorr
-        return [PCfreycorr, eiso, eper,
-                eper - eiso]  #first term is PC energy in eV (add to potential correction for frey correction), last three are in hartree
+            print 'Defect Correction without alignment (eV): ', PCfreycorr
+        return PCfreycorr
 
-    def freysoldt_potalign_old(self, title=None,  widthsample=1.):
+    def freysoldt_potalign(self, v1=None, v2=None, title=None,  widthsample=1.):
         #NOTE this hasnt been coded for arbitrary defect position yet...
         #title is for name of plot, if you dont care about plot then leave it as None
         #widthsample is the width of the region in between defects where the potential alignment correction is averaged
-        begin = time.time()  # for testing
-        v1 = Locpot.from_file(self._purelocpot)
-        v2 = Locpot.from_file(self._deflocpot)
-        tmp1 = time.time()
-        print 'locpots loaded in ', str(round(tmp1 - begin, 2)), ' secs'
-
-        ind = []  #stores axes besides self._axis
-        for i in range(3):
-            if self._axis == i:
-                continue
-            else:
-                ind.append(i)
-
-        x = np.array(v1.get_axis_grid(self._axis))  #angstrom
-        xbohr = 1.889716 * x
-        yz = [np.array(v1.get_axis_grid(ind[0])), 
-              np.array(v1.get_axis_grid(ind[1]))]  #this is grid to average over for each "x-point" but setup so it works for any axis
-        yzbohr = [1.889716*yz[0], 1.889716*yz[1]]
-        print 'run Freysoldt potential alignment method'
-        #perform potential alignment part
-        pureavg = v1.get_average_along_axis(self._axis)  #eV
-        defavg = v2.get_average_along_axis(self._axis)  #eV
-
-        ap = v1.structure.lattice.get_cartesian_coords(1)  #angstrom
-        [a1, a2, a3] = ap * 1.889716  #converts latt consts to bohr
-
-        if not self._silence:
-            print 'calculate lr part along planar avg axis'
-            print 'first get g-vectors for encut=', str(self._encut)
-        recip, gcut = genrecip(a1, a2, a3, self._encut)  #recip lattice vectors given from eV energy cut off input and bohr lattice vectors
-
-        if not self._silence:
-            print 'there are ', str(len(recip)), ' G vectors. Now start averaging process'
-        flag = 0
-        coeff = 4.0*np.pi / (self._dielectricconst * float(len(yz[0])) * float(
-            len(yz[1])) * v1.structure.lattice.volume)  #prefactor to averaging term in atomic units
-        avggrid = []
-        for i in range(len(xbohr)):
-            tmp0 = time.time()
-            if not self._silence:
-                print '----------------------------------'
-                print '!@#$%^&*() NEXT POSITION is (Angstroms) ' + str(x[i])
-                print '----------------------------------'
-                print 'note there are ', str(len(yz[0])), ' steps in x direction'
-            if flag == 0:
-                print 'This is initial step (takes the longest amount of time)'
-                A = []
-                Chi = []
-                B = []
-                Bimag = []
-                tmp3 = time.time()
-                for g in recip:
-                    tmp = 0.0
-                    for u in yzbohr[0]:
-                        for v in yzbohr[1]:
-                            tmp += g[ind[0]] * u + g[ind[1]] * v
-                    Chi.append(tmp)
-                    g2 = norm(g) ** 2
-                    A.append((self._q_model.rho_rec(g2) ** 2) / g2)
-                    arg = tmp + g[self._axis] * xbohr[i]
-                    B.append(np.cos(arg))
-                    Bimag.append(np.sin(arg))
-                tmp4 = time.time()
-                if not self._silence:
-                    print 'time for xy grid took ', str(round(tmp4 - tmp3, 2)), ' secs'
-                flag += 1
-            else:
-                B = []
-                Bimag = []
-                for gi in range(len(recip)):
-                    tmp = Chi[gi]
-                    g = recip[gi]
-                    arg = tmp + g[self._axis] * xbohr[i]
-                    B.append(np.cos(arg))
-                    Bimag.append(np.sin(arg))
-            xavg = coeff * np.dot(A, B)
-            imagpart = np.dot(A, Bimag)
-            if abs(imagpart) > self._madetol:
-                print 'imaginary part found to be ', str(imagpart), ' this is an issue'
-                sys.exit()
-            xavg_eV = xavg * 27.2114  #convert hartree to eV
-            avggrid.append(-self._q * xavg_eV)
-            if not self._silence:
-                print 'average potential value = ' + str(avggrid[-1])
-                tmp1 = time.time()
-                print 'done in ', str(round(tmp1 - tmp0, 2)), ' secs'
-                print '-------------------------------------------------'
-
-        short = (defavg - pureavg - avggrid)
-        checkdis = int((widthsample / 2) / x[1])  #index window for getting potential alignment correction
-        mid = len(short) / 2
-        tmppot = [short[i] for i in range(mid - checkdis, mid + checkdis)]
-
-        C = np.mean(tmppot)
-        Cquik = short[mid]  #this just uses mid point rather than average
-        finalshift = [short[j] - C for j in range(len(avggrid))]
-        if not self._silence:
-            print 'C value is averaged to be ' + str(C) + ' eV, or ' + str(C / 27.2114) + ' Hartree, ' \
-                                                                                          'or quicker C value (value directly between defects) =' + str(
-                Cquik) + ' eV'
-            print 'calculate shifted short range pot'
-            print 'I think corresponds to an alignment like term of ' + str(sum(finalshift) * x[1]) + \
-                  ' where we multiply by first entry in grid to get rectangular integration? '
-            print 'will use C value ', float(self._q) * C, ' instead'
-        tmp1 = time.time()
-        if not self._silence:
-            print 'Pot. align correction is (eV) : ' + str(float(self._q) * float(C)) + \
-                  ' done in ' + str(round(tmp1 - tmp0, 2)) + ' secs'
-        end = time.time()
-        print 'full code took ', str(round(end - begin, 2)), ' secs'
-        if title:
-            plt.figure(1)
-            plt.clf()
-            plt.plot(x, avggrid, c="green", zorder=1, label="long range from model")
-            plt.plot(x, defavg - pureavg, c="red", label="DFT locpot diff")
-            plt.plot(x, short, c="blue", label="short range locpot")
-            plt.plot(x, finalshift, c="purple", label="short range shifted by C")
-            plt.xlabel('planar average along axis ' + str(self._axis))
-            plt.ylabel('Potential')
-            plt.legend(loc=9)
-            plt.axhline(y=0, linewidth=0.2, color='black')
-            plt.axhline(y=C, linewidth=0.2, color='black')
-            plt.title(str(title) + ' defect potential')
-            plt.savefig(str(self._deflocpot[:-6]) + 'FreyplnravgPlot.png')
-
-        return self._q * C  #pot align energy correction (eV), add to the energy output of PCfrey
-
-    def freysoldt_potalign(self, title=None,  widthsample=1.):
-        #NOTE this hasnt been coded for arbitrary defect position yet...
-        #title is for name of plot, if you dont care about plot then leave it as None
-        #widthsample is the width of the region in between defects where the potential alignment correction is averaged
-        begin = time.time()  # for testing
-        v1 = Locpot.from_file(self._purelocpot)
-        v2 = Locpot.from_file(self._deflocpot)
-        tmp1 = time.time()
-        print 'locpots loaded in ', str(round(tmp1 - begin, 2)), ' secs'
+        if not v1:
+            print 'load pure locpot object'
+            v1 = Locpot.from_file(self._purelocpot)
+        if not v2:
+            print 'load defect locpot object'
+            v2 = Locpot.from_file(self._deflocpot)
 
         ind = []  #stores axes besides self._axis
         for i in range(3):
@@ -722,94 +607,78 @@ class ChargeCorrection(object):
 
         x = np.array(v1.get_axis_grid(self._axis))  #angstrom
         nx = len(x)
-        print ('len x', len(x), x[-1], x[1]-x[0])
-        xbohr = 1.889716 * x
-        yz = [np.array(v1.get_axis_grid(ind[0])), 
-              np.array(v1.get_axis_grid(ind[1]))]  #this is grid to average over for each "x-point" but setup so it works for any axis
-        print ('maxyz', yz[0][-1], yz[1][-1])
-        yzbohr = [1.889716*yz[0], 1.889716*yz[1]]
         print 'run Freysoldt potential alignment method'
         #perform potential alignment part
         pureavg = v1.get_average_along_axis(self._axis)  #eV
         defavg = v2.get_average_along_axis(self._axis)  #eV
 
+        if not self._silence:
+            print 'calculating lr part along planar avg axis'
         latt = v1.structure.lattice
         reci_latt = latt.reciprocal_lattice
         dg = reci_latt.abc[self._axis]
-        print ('dg', dg)
         v_G = np.empty(len(x), np.dtype('c16'))
         epsilon = self._dielectricconst
-        v_G[0] = 4*np.pi * self._q /epsilon * self._q_model.rho_rec_limit0()
+        # q needs to be that of the back ground? so added a (-) sign...
+        v_G[0] = 4*np.pi * -self._q /epsilon * self._q_model.rho_rec_limit0()
         for i in range(1,nx):
             if (2*i < nx):
                 g = i * dg
             else:
                 g = (i-nx) * dg
             g2 = g*g
-            v_G[i] = 4*np.pi / (epsilon * g2) * self._q * self._q_model.rho_rec(g2)
+            v_G[i] = 4*np.pi / (epsilon * g2) * -self._q * self._q_model.rho_rec(g2)
         if not (nx % 2):
             v_G[nx/2] = 0
         v_R = np.fft.fft(v_G)
         v_R_imag = np.imag(v_R)
-        v_R = np.real(v_R)
+        v_R = np.real(v_R)* 27.2114
         v_R /= latt.volume
 
-
-        #if not self._silence:
-        #    print 'calculate lr part along planar avg axis'
-        #    print 'first get g-vectors for encut=', str(self._encut)
-#
         max_imag_vr = v_R_imag.max()
         if abs(max_imag_vr) > self._madetol:
-            print 'imaginary part found to be ', imagpart, ' this is an issue'
+            print 'imaginary part found to be ', max_imag_vr, ' this is an issue'
             sys.exit()
-        #xavg_eV = xavg * 27.2114  #convert hartree to eV
-        #avggrid.append(-self._q * xavg_eV)
-        #if not self._silence:
-        #    print 'average potential value = ' + str(avggrid[-1])
-        #    tmp1 = time.time()
-        #    print 'done in ', str(round(tmp1 - tmp0, 2)), ' secs'
-        #    print '-------------------------------------------------'
 
-        #short = (defavg - pureavg - avggrid)
-        #checkdis = int((widthsample / 2) / x[1])  #index window for getting potential alignment correction
-        #mid = len(short) / 2
-        #tmppot = [short[i] for i in range(mid - checkdis, mid + checkdis)]
+        #now get correction and do plots
+        short = (defavg - pureavg - v_R)
+        checkdis = int((widthsample / 2) / x[1])  #index window for getting potential alignment correction
+        mid = len(short) / 2
+        tmppot = [short[i] for i in range(mid - checkdis, mid + checkdis)]
 
-        #C = np.mean(tmppot)
-        #Cquik = short[mid]  #this just uses mid point rather than average
-        #finalshift = [short[j] - C for j in range(len(avggrid))]
-        #if not self._silence:
-        #    print 'C value is averaged to be ' + str(C) + ' eV, or ' + str(C / 27.2114) + ' Hartree, ' \
-        #                                                                                  'or quicker C value (value directly between defects) =' + str(
-        #        Cquik) + ' eV'
-        #    print 'calculate shifted short range pot'
-        #    print 'I think corresponds to an alignment like term of ' + str(sum(finalshift) * x[1]) + \
-        #          ' where we multiply by first entry in grid to get rectangular integration? '
-        #    print 'will use C value ', float(self._q) * C, ' instead'
-        #tmp1 = time.time()
-        #if not self._silence:
-        #    print 'Pot. align correction is (eV) : ' + str(float(self._q) * float(C)) + \
-        #          ' done in ' + str(round(tmp1 - tmp0, 2)) + ' secs'
-        #end = time.time()
-        #print 'full code took ', str(round(end - begin, 2)), ' secs'
+        C = np.mean(tmppot)
+        Cquik = short[mid]  #this just uses mid point rather than average
+        finalshift = [short[j] - C for j in range(len(v_R))]
+
+        print 'short=',np.array(short)
+        #get integrated final shift value
+        vol=v1.structure.volume
+        #alignmentterm_integrated=sum(finalshift) * x[1]/vol #not sure if should divide by vol
+        alignmentterm_integrated=sum(finalshift)*x[1] #if locpot data is potential/unit vol this is right
+        if not self._silence:
+           print 'C value is averaged to be ' + str(C) + ' eV, '
+           print 'compare with quicker C value (value halfway between defects) =',Cquik,' eV'
+           print '\nCorresponds to an integrated alignment like term of ' + str(alignmentterm_integrated)+\
+                    '\nIf this is not close to -C value then that should be sign of bad delocalization?'
+           print 'will use eAlign term of ', -C, ' instead'
+           print 'Pot. align correction is then (eV) : ' + str(-float(self._q) * float(C)) #= q*/Delta
         if title:
             plt.figure(1)
             plt.clf()
             plt.plot(x, v_R, c="green", zorder=1, label="long range from model")
-            #plt.plot(x, defavg - pureavg, c="red", label="DFT locpot diff")
-            #plt.plot(x, short, c="blue", label="short range locpot")
-            #plt.plot(x, finalshift, c="purple", label="short range shifted by C")
-            #plt.xlabel('planar average along axis ' + str(self._axis))
-            #plt.plot(x, v_R, c='black', label='DFT potential')
+            plt.plot(x, defavg - pureavg, c="red", label="DFT locpot diff")
+            #plt.plot(x, short, c="purple", label="short range not shifted by C")
+            plt.plot(x, finalshift, c="blue", label="short range (aligned)")
+            plt.xlabel('planar average along axis ' + str(self._axis))
             plt.ylabel('Potential')
             plt.legend(loc=9)
             plt.axhline(y=0, linewidth=0.2, color='black')
-            #plt.axhline(y=C, linewidth=0.2, color='black')
+            plt.axhline(y=C, linewidth=0.2, color='black')
             plt.title(str(title) + ' defect potential')
-            plt.savefig(str(self._deflocpot[:-6]) + 'FreyplnravgPlot.png')
+            plt.xlim(0,max(x))
+            plt.savefig(str(title)+'FreyplnravgPlot.png')
 
-        #return self._q * C  #pot align energy correction (eV), add to the energy output of PCfrey
+        return -float(self._q)*C  #pot align energy correction (eV), add to the energy output of PCfrey
 
     def kumagai_correction(self, title=None, vb=None, vd=None):
         #runs correction. If you want a plot of potential averaging process set title to name of defect
@@ -845,8 +714,6 @@ class ChargeCorrection(object):
             tmp = Locpot.from_file(self._purelocpot)
             s1 = tmp.structure
         print 'run Kumagai PC calculation'
-        #angset, [a1, a2, a3], vol, determ, invdiel = kumagai_init(
-        #        s1, self._dieltens, sil=self._silence)
 
         #get aniso PCenergy (equation 8 from kumagai paper)
         energy_pc, optgamma = get_pc_energy(
@@ -866,21 +733,22 @@ class ChargeCorrection(object):
         Args:
             v1: Bulk locpot object
             v2: Defect locpot object
-            optgam: ?
+            optgam: None if gamma has not been optimized yet, otherwise feed it optimized value
             title: Title for the plot. None will not generate the plot
         """
-        #Note this accounts for defects not at origin
-        #if no optimized gamma chooses gamma s.t. gamma*L=5 (some paper said this is optimal)
         if not self._silence:
             print ('run Kumagai potential calculation (atomic site averaging)')
         if not v1:
+            print 'load pure locpot object'
             v1 = Locpot.from_file(self._purelocpot)
         if not v2:
+            print 'load defect locpot object'
             v2 = Locpot.from_file(self._deflocpot)
 
         angset, [a1, a2, a3], vol, determ, invdiel = kumagai_init(
                 v1.structure, self._dieltens, sil=self._silence)
 
+        #find location of defect
         from pymatgen.analysis.structure_matcher import StructureMatcher as SM
 
         smatch = SM(primitive_cell=False, allow_subset=True)
@@ -912,21 +780,20 @@ class ChargeCorrection(object):
             else:
                 potinddict[i]['OutsideWS'] = False
 
-        #bulk of calculation
+        #calculate potential value at each atomic site
         puredat = v1.data["total"]
         defdat = v2.data["total"]
         jup = 0
         for i in potinddict.keys():
             jup += 1
             if (not title and not potinddict[i]['OutsideWS']):
-                #dont need to do inside WS if not printing plot
+                #dont need to calculate inside WS if not printing plot
                 continue
             if not self._silence:
                 print '-------------------------------------'
                 print "calculate alignment potential data for atom " + str(i)
             dx, dy, dz = potinddict[i]['defgrid']
             bx, by, bz = potinddict[i]['bulkgrid']
-            #print 'gridpts=',dx,dy,dz,' and ',bx,by,bz,'  Note length =',len(defdat),len(defdat[0]),len(defdat[0][0])
             v_qb = defdat[dx][dy][dz] - puredat[bx][by][bz]  #should change this to averaging pure
             # and def within a range then subtract
 
@@ -938,7 +805,7 @@ class ChargeCorrection(object):
             if not self._silence:
                 print 'Has anisotropic point charge energy = ', v_pc
                 print 'DFT bulk/defect difference = ', v_qb
-                print 'atoms left to calculate = ' + str(len(potinddict.keys()) - jup)
+                print 'atoms left to calculate = ' + str(len(potinddict.keys()) - jup) #this is broken if you arent plotting
         if not self._silence:
             print '--------------------------------------'
 
@@ -1053,12 +920,10 @@ class ChargeCorrection(object):
 
 
 if __name__ == '__main__':
-    s = ChargeCorrections(
+    s = ChargeCorrection(
             0, 18.099, 
-            #'../../Gavacm3testMachgcorr/LOCPOT_vref', 
-            #'../../Gavacm3testMachgcorr/LOCPOT_vdef', 
-            'trans/LOCPOT_vref',
-            'trans/LOCPOT_vdef',
+            '../../Gavacm3testMachgcorr/LOCPOT_vref',
+            '../../Gavacm3testMachgcorr/LOCPOT_vdef',
             -3, silence=False)
 
     #print 'load locpots'
@@ -1066,12 +931,13 @@ if __name__ == '__main__':
     #vb=Locpot.from_file('trans/LOCPOT_vref')
     #vd=Locpot.from_file('../../Gavacm3testMachgcorr/LOCPOT_vdef')
 
-    #print s.freysoldt_pc(vb.structure)
-    #s.freysoldt_pc()
-    #s.freysoldt_potalign(title='Gavac+3test',v1=vb,v2=vd) #this doesnt work...and takes forever to run
 
-    s.RunKumagai(title='Gavac+3test_kumagai')
+    s.freysoldt_correction(title='Test')
+    #s.freysoldt_pc()
+    #s.freysoldt_pc(vb.structure)
+    #s.freysoldt_potalign(v1=vb,v2=vd,title='Test')
+
+    #s.kumagai_correction(title='Test')
     #s.KumagaiPC(vb.structure)
     #s.Kumagaipotalign(vb,vd,optgam=1.848916,printflag='Gavac+3test')
 
-    #s.Madelungcorr()
