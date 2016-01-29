@@ -215,7 +215,7 @@ def kumagai_init(s1, dieltens, sil=True):
 
 
 def get_anistropic_pc_energy(structure, dieltens, q, madetol, r, silence, 
-        gamma=None):
+        optgam=None):
     """
     Compute the anistropic point charge energy correction.
     Args:
@@ -232,11 +232,12 @@ def get_anistropic_pc_energy(structure, dieltens, q, madetol, r, silence,
     angset, [a1, a2, a3], vol, determ, invdiel = kumagai_init(
             structure, dieltens, sil=silence)
     
-    if not gamma: # What is the optimal gamma and how to infer it?
-        gamma = 5./(vol ** (1/3.))
-    if not silence:
-        print ('Gamma not yet optimized for Kumagai calc. Initial gamma is ', 
-                gamma)
+    #if not optgam: # What is the optimal gamma and how to infer it?
+    #else:
+    #    gamma = optgam
+    #if not silence:
+    #    print ('Gamma not yet optimized for Kumagai calc. Initial gamma is ', 
+    #            gamma)
 
     # for recip summation part
     if norm(r):  #produces potential term
@@ -350,6 +351,7 @@ def get_anistropic_pc_energy(structure, dieltens, q, madetol, r, silence,
     #start with gamma s.t. gamma*L=5 (some paper said this is optimal)
     if not optgam:
         #optimizing gamma for the recipt sum to improve convergence of calculation
+        gamma = 5./(vol ** (1/3.))
         flag = 0
         while not flag:
             directpart, recippartreal, optgamma = do_summation(gamma)
