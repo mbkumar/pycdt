@@ -12,11 +12,14 @@ __date__ = "Jan 26, 2016"
 
 import unittest
 import os
+import numpy as np
 
+from pymatgen.core.structure import Structure
+from pymatgen.io.vasp.outputs import Locpot
 from pycdt.corrections.finite_size_charge_correction import *
 
 
-def EnergyConversionTest(unittest.TestCase):
+class EnergyConversionTest(unittest.TestCase):
     """
     Test for  k-vector to energy [eV] conversion and viceversa via hbar*k^2/2m
     """
@@ -28,17 +31,42 @@ def EnergyConversionTest(unittest.TestCase):
         pass
 
 
-def ReciprocalVectorGenerationTest(unittest.TestCase):
+class ReciprocalVectorGenerationTest(unittest.TestCase):
     """
     Test for  k-vector to energy [eV] conversion and viceversa via hbar*k^2/2m
     """
     def setUp(self):
-        pass
-    def test_gen():
-        pass
+        self.struct = Structure.from_file('POSCAR')
+        self.latt = self.struct.lattice
+    def test_dg_vals(self):
+        reci_latt = self.latt.reciprocal_lattice
+        #print (reci_latt.abc)
+        vol = self.latt.volume
+        [a1, a2, a3] = self.latt.get_cartesian_coords(1)
+        #print (a1, a2, a3)
+        b1 = 2*np.pi/vol*np.cross(a2,a3)
+        b2 = 2*np.pi/vol*np.cross(a3,a1)
+        b3 = 2*np.pi/vol*np.cross(a1,a2)
+        print (b1, b2, b3)
+        norm = np.linalg.norm
+        #print norm(b1), norm(b2), norm(b3)
+        [bp1, bp2, bp3] = reci_latt.get_cartesian_coords(1)
+        print bp1, bp2, bp3
 
 
-def QModelTest(unittest.TestCase):
+class LocPotMeshTest(unittest.TestCase):
+    """
+    Test for  k-vector to energy [eV] conversion and viceversa via hbar*k^2/2m
+    """
+    def setUp(self):
+        self.locpot = Locpot.from_file('LOCPOT')
+        self.latt = self.locpot.structure.lattice
+    def test_dim_vals(self):
+        dim = self.locpot.dim
+        print dim
+
+
+class QModelTest(unittest.TestCase):
     """
     Test for the charge model used in correction 
     """
@@ -50,7 +78,7 @@ def QModelTest(unittest.TestCase):
         pass
 
 
-def WignerSeitzRadiusTest(unittest.TestCase):
+class WignerSeitzRadiusTest(unittest.TestCase):
     """
     """
     def setUp(self):

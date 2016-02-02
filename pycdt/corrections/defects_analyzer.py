@@ -132,7 +132,7 @@ def get_correction_new(defect, bulk_entry, epsilon_tensor, type='freysoldt'):
         corr_meth = ChargeCorrection(0, epsilon_tensor, locpot_path_blk, 
                 locpot_path_def, charge, encut, madetol=0.0001, 
                 silence=False, q_model=None)
-        corr_val = corr_meth.kumagai_correction()
+        corr_val = corr_meth.kumagai_correction1()
         return corr_val
 
 
