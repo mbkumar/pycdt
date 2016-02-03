@@ -269,7 +269,7 @@ def reciprocal_sum(locpot_bulk, dieltens, q, gamma, silence=False):
     for i in ind1:
         for j in ind2:
             for k in ind3:
-                g = (i*b1 + j*b2 + k*b3)
+                g = i*b1 + j*b2 + k*b3
                 g_eps_g = np.dot(g, np.dot(dieltens, g))
                 if i == j == k == 0:
                     continue
@@ -311,14 +311,14 @@ def reciprocal_sum(locpot_bulk, dieltens, q, gamma, silence=False):
     #print ('r_arr_vals', r_arr_real[0,0,0], r_arr_real1[0,0,0])
 
     max_imag = r_arr_imag.max()
-    print 'imaginary part found to be ', max_imag
+    print 'Max imaginary part found to be ', max_imag
 
-    import matplotlib.pyplot as plt
-    from mpl_toolkits.mplot3d import Axes3D
-    fig = plt.figure()
-    ax = fig.add_subplot(111, projection='3d')
-    ax.plot_surface(np.arange(nx), np.arange(ny), r_arr_real[:,:,0])
-    plt.savefig('3dplot.png')
+    #import matplotlib.pyplot as plt
+    #from mpl_toolkits.mplot3d import Axes3D
+    #fig = plt.figure()
+    #ax = fig.add_subplot(111, projection='3d')
+    #ax.plot_surface(np.arange(nx), np.arange(ny), r_arr_real[:,:,0])
+    #plt.savefig('3dplot.png')
     return r_arr_real
 
 
