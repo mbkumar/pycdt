@@ -508,8 +508,7 @@ def anisotropic_madelung_potential(locpot_bulk, g_sum, r, dieltens, q, tolerance
 def anisotropic_pc_energy(structure, g_sum, dieltens, q, gamma, madetol,
                           silence=True):
     """
-    Compute the reciprocal summation in the anisotropic Madelung 
-    potential.
+    Compute the anistropic periodic point charge interaction energy.
     Args:
         locpot_bulk: Bulk calculation potential file
         dieltens: dielectric tensor
