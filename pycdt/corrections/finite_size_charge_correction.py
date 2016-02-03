@@ -457,6 +457,18 @@ def find_optimal_gamma(structure, dieltens, q, madetol, silence=True):
 
     return optgamma 
 
+def get_g_sum_at_r(g_sum, locpot_bulk, r):
+    """
+    Args:
+        g_sum: Reciprocal summation calculated from reciprocal_sum method
+        locpot_bulk: Bulk locpot 
+        r: Position relative to defect
+    Returns:
+        reciprocal summ value at g_sum[i_rx,j_ry,k_rz]
+    """
+    i, j, k = getgridind1(locpot_bulk, r)
+    return g_sum[i, j, k]
+
 
 def anisotropic_madelung_potential(locpot_bulk, g_sum, r, dieltens, q, tolerance,
                                    gamma, silence=True):
