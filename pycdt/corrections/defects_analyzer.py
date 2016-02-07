@@ -17,7 +17,7 @@ from pymatgen.io.vasp.outputs import Locpot
 from pymatgen.entries.computed_entries import ComputedStructureEntry
 from pymatgen.symmetry.analyzer import SpacegroupAnalyzer
 from pycdt.corrections.freysoldt_correction import FreysoldtCorrection
-from pycdt.corrections.finite_size_charge_correction import ChargeCorrection
+from pycdt.corrections.downfinite_size_charge_correction import ChargeCorrection
 
 #some constants
 kb = 8.6173324e-5
@@ -44,7 +44,7 @@ class ParsedDefect(object):
         """
 
         self.entry = entry_defect
-        self._site = site_in_bulk
+        self.site = site_in_bulk
         self._charge = charge
         self.charge_correction = charge_correction # Can be added after initialization
         self._name = name
@@ -52,7 +52,7 @@ class ParsedDefect(object):
 
     def as_dict(self):
         return {'entry': self.entry.as_dict(),
-                'site': self._site.as_dict(),
+                'site': self.site.as_dict(),
                 'charge': self._charge,
                 'charge_correction': self.charge_correction,
                 'name': self._name,
@@ -86,7 +86,7 @@ def get_correction(defect, bulk_entry, epsilon, type='freysoldt'):
         locpot_path_def = defect.entry.data['locpot_path']
         #locpot_defect = Locpot.from_file(locpot_path_def)
         charge = defect._charge
-        frac_coords = defect._site.frac_coords
+        frac_coords = defect.site.frac_coords
         encut = defect.entry.data['encut']
         latt_len = defect.entry.structure.lattice.abc
         corr_meth = FreysoldtCorrection(
@@ -113,15 +113,16 @@ def get_correction_new(defect, bulk_entry, epsilon_tensor, type='freysoldt'):
     """
     locpot_path_blk = bulk_entry.data['locpot_path']
     locpot_path_def = defect.entry.data['locpot_path']
+    print ('defect_data', defect.site)
     charge = defect._charge
     encut = defect.entry.data['encut']
     latt_len = defect.entry.structure.lattice.abc
+    frac_coords = defect.site.frac_coords
     if type == 'freysoldt':
         #locpot_blk = Locpot.from_file(locpot_path_blk)
         #locpot_defect = Locpot.from_file(locpot_path_def)
         epsilon = sum([epsilon_tensor[i][i] for i in range(3)])/3.0
         print ('epsilon', epsilon)
-        frac_coords = defect._site.frac_coords
         corr_meth = FreysoldtCorrection(
                 locpot_path_blk, locpot_path_def, charge, epsilon, 
                 frac_coords, encut, latt_len, name=defect._name)
@@ -130,8 +131,8 @@ def get_correction_new(defect, bulk_entry, epsilon_tensor, type='freysoldt'):
         return sum(corr_val)/len(corr_val) 
     elif type == "kumagai":
         corr_meth = ChargeCorrection(0, epsilon_tensor, locpot_path_blk, 
-                locpot_path_def, charge, encut, madetol=0.0001, 
-                silence=False, q_model=None)
+                locpot_path_def, charge, frac_coords, energy_cutoff=encut, 
+                madetol=0.0001, silence=False, q_model=None)
         corr_val = corr_meth.kumagai_correction1()
         return corr_val
 
@@ -324,7 +325,7 @@ class DefectsAnalyzer(object):
         struct = spga.get_symmetrized_structure()
         i = 0
         for d in self._defects:
-            df_coords = d._site.frac_coords
+            df_coords = d.site.frac_coords
             target_site=None
             #TODO make a better check this large tol. is weird
             for s in struct.sites:
