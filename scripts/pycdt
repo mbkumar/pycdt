@@ -62,7 +62,9 @@ def generate_input_files(args):
     oxi_state = args.oxi_state
     oxi_range = args.oxi_range
     antisites = args.antisites
-    settings = loadfn(args.input_settings_file)
+    settings = None
+    if args.input_settings_file:
+        settings = loadfn(args.input_settings_file)
 
     # error-checking
     if not struct_file and not mp_id:
@@ -75,7 +77,7 @@ def generate_input_files(args):
         return
 
     # get primitive unit cell
-    if mpid_id:
+    if mp_id:
         if not mapi_key:
             with MPRester() as mp:
                 prim_struct = mp.get_structure_by_material_id(mp_id)
@@ -183,6 +185,8 @@ def parse_vasp_output(args):
 
 
 def main():
+    #if len(sys.args):
+    #    raise 
     parser = argparse.ArgumentParser(description="""
         PyCDT is a script that generates vasp input files, parses vasp output
         files, and computes the formation energy of charged defects.
@@ -214,7 +218,7 @@ def main():
         " range (e.g., --oxi_range As -3 5)."
     no_antisites_string = "Optional flag to indicate that anti-site defects" \
         "should not be generated."
-    input_settings = "Supply VASP input settings for INCAR, KPOINTS in" \
+    input_settings_string = "Supply VASP input settings for INCAR, KPOINTS in" \
         "the specified YAML/JSON file."
     root_fldr_string = "Path (relative or absolute) to directory" \
         " in which data of charged point-defect calculations for" \
@@ -258,7 +262,7 @@ def main():
     parser_input_files.add_argument("-noa", "--no_antisites",
                                     action='store_false', dest="antisites",
                                     help=no_antisites_string)
-    parser_input_files.add_argument("-is", "--input_settings_file", default=None
+    parser_input_files.add_argument("-is", "--input_settings_file", default=None,
                                     type=str, dest="input_settings_file",
                                     help=input_settings_string)
     parser_input_files.set_defaults(func=generate_input_files)
