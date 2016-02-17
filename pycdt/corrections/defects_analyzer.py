@@ -17,7 +17,8 @@ from pymatgen.io.vasp.outputs import Locpot
 from pymatgen.entries.computed_entries import ComputedStructureEntry
 from pymatgen.symmetry.analyzer import SpacegroupAnalyzer
 from pycdt.corrections.freysoldt_correction import FreysoldtCorrection
-from pycdt.corrections.finite_size_charge_correction import ChargeCorrection
+from pycdt.corrections.finite_size_charge_correction import ChargeCorrection, \
+        KumagaiBulkInit, KumagaiCorrection
 
 #some constants
 kb = 8.6173324e-5
@@ -119,8 +120,6 @@ def get_correction_new(defect, bulk_entry, epsilon_tensor, type='freysoldt'):
     latt_len = defect.entry.structure.lattice.abc
     frac_coords = defect.site.frac_coords
     if type == 'freysoldt':
-        #locpot_blk = Locpot.from_file(locpot_path_blk)
-        #locpot_defect = Locpot.from_file(locpot_path_def)
         epsilon = sum([epsilon_tensor[i][i] for i in range(3)])/3.0
         print ('epsilon', epsilon)
         corr_meth = FreysoldtCorrection(
@@ -129,11 +128,21 @@ def get_correction_new(defect, bulk_entry, epsilon_tensor, type='freysoldt'):
         corr_val = corr_meth.run_correction()
 
         return sum(corr_val)/len(corr_val) 
+
     elif type == "kumagai":
-        corr_meth = ChargeCorrection(0, epsilon_tensor, locpot_path_blk, 
-                locpot_path_def, charge, frac_coords, energy_cutoff=encut, 
-                madetol=0.0001, silence=False, q_model=None)
-        corr_val = corr_meth.kumagai_correction1()
+        kumagai_init = KumagaiBulkInit(locpot_path_blk, epsilon_tensor, 
+                                       encut, tolerance=0.0001, silence=False)
+        locpot_blk = kumagai_init.bulk_locpot
+        g_sum = kumagai_init.g_sum
+        gamma = kumagai_init.gamma
+        kum_cor = KumagaiCorrection(epsilon_tensor, locpot_blk, gamma, g_sum, 
+                locpot_path_def, charge, frac_coords, 
+                coords_are_cartesian=False, energy_cutoff=520, madetol=0.0001, 
+                silence=False)
+        #corr_meth = ChargeCorrection(0, epsilon_tensor, locpot_path_blk, 
+        #        locpot_path_def, charge, frac_coords, energy_cutoff=encut, 
+        #        madetol=0.0001, silence=False, q_model=None)
+        corr_val = kum_cor.get_correction()
         return corr_val
 
 
