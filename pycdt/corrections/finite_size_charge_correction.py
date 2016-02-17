@@ -1104,6 +1104,7 @@ def getgridind(locpot, r, gridavg=0.0):
         if gridavg:
             radvals.append(int(gridavg/dx))
             dxvals.append(dx)
+    grdind = [grdind] # To be consistent with non-zero gridavg
     grid_dim = locpot.dim
     if gridavg:
         grdindfull=[]
