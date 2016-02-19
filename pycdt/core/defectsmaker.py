@@ -23,6 +23,8 @@ from pymatgen.analysis.defects.point_defects import Vacancy
 from pymatgen.analysis.bond_valence import BVAnalyzer
 from pymatgen.analysis.defects.point_defects import \
         ValenceIonicRadiusEvaluator
+from pymatgen.analysis.defects.alt_interstitial_class import \
+        StructureMotifInterstitial
 
 def get_sc_scale(inp_struct, final_site_no):
     """
@@ -65,28 +67,28 @@ def get_optimized_sc_scale(inp_struct, final_site_no):
                     s=struct._sites[i]
                     if s.distance_from_point(target_site.coords)<0.001:
                         index=i
-                min=1000.0
-                for a in range(-1,1):
-                    for b in range(-1,1):
-                        for c in range(-1,1):
+                min_dist = 1000.0
+                for a in range(-1,2):
+                    for b in range(-1,2):
+                        for c in range(-1,2):
                             distance = struct.get_distance(index,index,(a,b,c))
-                            if  distance < min and distance>0.00001:
-                                min = distance
-                min=round(min,3)
-                if dictio.has_key(min):
-                    if dictio[min]['num_sites'] > struct.num_sites:
-                        dictio[min]['num_sites'] = struct.num_sites
-                        dictio[min]['supercell'] = [k1,k2,k3]
+                            if  distance < min_dist and distance>0.00001:
+                                min_dist = distance
+                min_dist = round(min_dist, 3)
+                if dictio.has_key(min_dist):
+                    if dictio[min_dist]['num_sites'] > struct.num_sites:
+                        dictio[min_dist]['num_sites'] = struct.num_sites
+                        dictio[min_dist]['supercell'] = [k1,k2,k3]
                 else:
-                    dictio[min]={}
-                    dictio[min]['num_sites'] = struct.num_sites
-                    dictio[min]['supercell'] = [k1,k2,k3]
-    min=-1.0
+                    dictio[min_dist]={}
+                    dictio[min_dist]['num_sites'] = struct.num_sites
+                    dictio[min_dist]['supercell'] = [k1,k2,k3]
+    min_dist=-1.0
     biggest=None
     for c in dictio:
-        if c>min:
+        if c>min_dist:
             biggest=dictio[c]['supercell']
-            min=c
+            min_dist=c
     return biggest
 
 
@@ -98,38 +100,38 @@ class ChargedDefectsStructures(object):
     TODO: develop a better way to find interstitials
     """
     def __init__(self, structure, max_min_oxi={}, substitutions={}, 
-                 oxi_states={}, cellmax=128, interstitial_sites=[],
+                 oxi_states={}, cellmax=128, intersites=[],
                  antisites_flag=True, standardized=False, 
                  charge_states='liberal'):
         """
         Args:
-            structure:
-                the bulk structure
-            max_min_oxi:
+            structure (Structure):
+                the bulk structure.
+            max_min_oxi (dict):
                 The minimal and maximum oxidation state of each element as a 
                 dict. For instance {"O":(-2,0)}. If not given, the oxi-states 
                 of pymatgen are considered.
-            substitutions:
+            substitutions (dict):
                 The allowed substitutions of elements as a dict. If not given, 
                 intrinsic defects are computed. If given, intrinsic (e.g., 
                 anti-sites) and extrinsic are considered explicitly specified. 
                 Example: {"Co":["Zn","Mn"]} means Co sites can be substituted 
                 by Mn or Zn.
-            oxi_states:
+            oxi_states (dict):
                 The oxidation state of the elements in the compound e.g. 
                 {"Fe":2,"O":-2}. If not given, the oxidation state of each
                 site is computed with bond valence sum. WARNING: Bond-valence 
-                method can fail for mixed-valence compounds
-            cellmax:
-                Maximum number of atoms allowed in the supercell
-            interstitials_sites:
+                method can fail for mixed-valence compounds.
+            cellmax (int):
+                Maximum number of atoms allowed in the supercell.
+            intersites ([PeriodicSite]):
                 A list of PeriodicSites in the bulk structure on which we put 
-                an interstitial
-            antisites_flag: 
-                If False, don't generate antisites
-            charge_states:
-                Options are 'liberal' and 'conservative'. If liberal is selected
-                more charge states are computed
+                an interstitial.
+            antisites_flag (bool):
+                If False, don't generate antisites.
+            charge_states (string):
+                Options are 'liberal' and 'conservative'. If liberal is selected,
+                more charge states are computed.
         """
 
         self.defects = []
@@ -145,6 +147,21 @@ class ChargedDefectsStructures(object):
             self.struct = prim_struct
         else:
             self.struct = structure
+
+        # If interstitials are provided as a list of PeriodicSites,
+        # make sure that the lattice has not changed.
+        if intersites:
+            smat = self.struct.lattice.matrix
+            for intersite in intersites:
+                imat = intersite.lattice.matrix
+                for i1 in range(3):
+                    for i2 in range(3):
+                        if fabs(imat[i1][i2]-smat[i1][i2])/fabs(
+                                imat[i1][i2]) > 1.0e-4:
+                            raise RuntimeError("Discrepancy between lattices"
+                                    " underlying the input interstitials and"
+                                    " the bulk structure; possibly because of"
+                                    " standardizing the input structure.")
 
         struct_species = self.struct.types_of_specie
         if not oxi_states:
@@ -333,7 +350,7 @@ class ChargedDefectsStructures(object):
         self.defects['substitutions'] += as_defs
 
         #interstitials
-	#if (not self.interstitial_sites and self.charge_states=='liberal'):
+	#if (not self.interstitial_frac_coords and self.charge_states=='liberal'):
 		
 	##THIS IS STRICTLY FOR DANNY TESTING INTERSTITIAL AUTOMATION
 	#from pymatgen.analysis.defects.point_defects import Interstitial as Inter
@@ -347,19 +364,93 @@ class ChargedDefectsStructures(object):
 	#radi[j]=Element(j).atomic_radius
 	#s=Inter(struct,valdic,radi)
 
+        # Find interstitial sites if intersites is empty,
+        # thus, not providing any input fractional coordinates for
+        # interstitial positions.
+        # Note that we do want to use the smaller self.struct unit cell
+        # and not the supercell sc to search for interstitial sites.
+        # However, this approach tacitly assumes that both structures
+        # directly map because the interstitial positions found will
+        # be placed into the supercell sc.
+        # We use the first element in the Composition object underlying
+        # our input structure, but the result of the interstitial fin
         interstitials = []
+        inter_types = []
+        inter_cns = []
+        inter_multi = []
+        if not intersites:
+            intersites = []
+            smi = StructureMotifInterstitial(
+                    self.struct,
+                    self.struct.composition.elements[0].symbol,
+                    dl=0.2)
+            n_inters = len(smi.enumerate_defectsites())
+            for i_inter in range(n_inters):
+                intersites.append(
+                        smi.get_defectsite(i_inter))
+                inter_types.append(smi.get_motif_type(i_inter))
+                inter_cns.append(smi.get_coordinating_elements_cns(i_inter))
+                inter_multi.append(int(smi.get_defectsite_multiplicity(
+                        i_inter)/conv_prim_rat))
+
+        # For now, we focus on intrinsic interstitials;
+        # extrinsic interstitials are, however,
+        # not a dramatic extension.
         for elt in self.struct.composition.elements:
-            count = 1
-            for frac_coord in interstitial_sites:
-                site = PeriodicSite(elt, frac_coord, structure.lattice)
+            for i_inter, intersite in enumerate(intersites):
+                if inter_types and inter_cns:
+                    tmp_string = ""
+                    for elem, cn in inter_cns[i_inter].items():
+                        tmp_string = tmp_string + "_{}{}".format(elem, cn)
+                    if tmp_string == "":
+                        raise RuntimeError("no coordinating neighbors")
+                    name = "inter_{}_{}_{}{}".format(i_inter+1, elt.symbol, inter_types[i_inter],
+                            tmp_string)
+                    site_mult = inter_multi[i_inter]
+
+                else:
+                    name = "inter_{}_{}".format(i_inter+1, elt.symbol)
+                    # This needs further attention at some point.
+                    site_mult = int(1 / conv_prim_rat)
+
+                site = PeriodicSite(elt, intersite.frac_coords,
+                        intersite.lattice)
+                site_sc = PeriodicSite(elt, site.coords, sc.lattice,
+                        coords_are_cartesian=True)
+                sc_with_inter = sc.copy()
+                sc_with_inter.append(elt.symbol,
+                    site_sc.frac_coords)
+
+                charges=[]
+                print 'inter_symbol=', elt
+                inter_oxi_state = self.oxi_states[str2unicode(elt.symbol)]
+                if inter_oxi_state < 0:
+                    min_oxi = min(inter_oxi_state, self.max_min_oxi[elt.symbol][0])
+                    if self.charge_states=='liberal':
+                            max_oxi = 2
+                    else:
+                            max_oxi = 0
+                elif inter_oxi_state > 0:
+                    max_oxi = max(inter_oxi_state, self.max_min_oxi[elt.symbol][1])
+                    if self.charge_states=='liberal':
+                            min_oxi = -2
+                    else:
+                            min_oxi = 0
+                for c in range(min_oxi, max_oxi+1):
+                    charges.append(-c)
+                print 'charge states for ',elt.symbol,' interstitial =',charges
+
                 interstitials.append({
-                    'name': elt.symbol+str(count)+"_inter",
-                    'unique_site': site,
-                    'supercell': {'size': s_size,
-                        'structure': self.make_interstitial(site, sc_scale)},
-                    'charges': [c for c in range(
-                        max_min_oxi[elt][0], max_min_oxi[elt][1]+1)]})
-                count = count+1
+                        'name': name,
+                        'unique_site': site,
+                        'bulk_supercell_site': site_sc,
+                        'defect_type': 'interstitial',
+                        'site_specie': elt,
+                        'site_multiplicity': site_mult,
+                        'supercell': {'size': sc_scale, 'structure': sc_with_inter},
+                        'charges': charges})
+
+
         self.defects['interstitials'] = interstitials
 
 	print '\nNumber of jobs created:'
