@@ -5,11 +5,13 @@ Code to generate charged defects structure.
 Ideas from pydii's code and geoffroy's code are merged.
 """
 
-__author__ = "Bharat Medasani, Geoffroy Hautier, Danny Broberg"
+__author__ = "Bharat Medasani, Geoffroy Hautier, Danny Broberg," + \
+        " Nils E. R. Zimmermann"
 __copyright__ = "Copyright 2014, The Materials Project"
 __version__ = "2.0"
 __maintainer__ = "Bharat Medasani"
-__email__ = "mbkumar@gmail.com,geoffroy@uclouvain.be,dbroberg@berkeley.edu"
+__email__ = "mbkumar@gmail.com, geoffroy@uclouvain.be," + \
+        " dbroberg@berkeley.edu, n.zimmermann@tuhh.de"
 __status__ = "Development"
 __date__ = "Janurary 6, 2016"
 
