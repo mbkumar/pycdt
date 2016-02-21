@@ -23,8 +23,12 @@ from pymatgen.analysis.defects.point_defects import Vacancy
 from pymatgen.analysis.bond_valence import BVAnalyzer
 from pymatgen.analysis.defects.point_defects import \
         ValenceIonicRadiusEvaluator
-from pymatgen.analysis.defects.alt_interstitial_class import \
-        StructureMotifInterstitial
+try:
+    from pymatgen.analysis.defects.alt_interstitial_class import \
+            StructureMotifInterstitial
+    gen_inter = True
+except:
+    gen_inter = False
 
 def get_sc_scale(inp_struct, final_site_no):
     """
@@ -363,7 +367,6 @@ class ChargedDefectsStructures(object):
 	#for j in valdic.keys():
 	#radi[j]=Element(j).atomic_radius
 	#s=Inter(struct,valdic,radi)
-
         # Find interstitial sites if intersites is empty,
         # thus, not providing any input fractional coordinates for
         # interstitial positions.
@@ -374,84 +377,85 @@ class ChargedDefectsStructures(object):
         # be placed into the supercell sc.
         # We use the first element in the Composition object underlying
         # our input structure, but the result of the interstitial fin
-        interstitials = []
-        inter_types = []
-        inter_cns = []
-        inter_multi = []
-        if not intersites:
-            intersites = []
-            smi = StructureMotifInterstitial(
-                    self.struct,
-                    self.struct.composition.elements[0].symbol,
-                    dl=0.2)
-            n_inters = len(smi.enumerate_defectsites())
-            for i_inter in range(n_inters):
-                intersites.append(
-                        smi.get_defectsite(i_inter))
-                inter_types.append(smi.get_motif_type(i_inter))
-                inter_cns.append(smi.get_coordinating_elements_cns(i_inter))
-                inter_multi.append(int(smi.get_defectsite_multiplicity(
-                        i_inter)/conv_prim_rat))
+        if gen_inter:
+            interstitials = []
+            inter_types = []
+            inter_cns = []
+            inter_multi = []
+            if not intersites:
+                intersites = []
+                smi = StructureMotifInterstitial(
+                        self.struct,
+                        self.struct.composition.elements[0].symbol,
+                        dl=0.2)
+                n_inters = len(smi.enumerate_defectsites())
+                for i_inter in range(n_inters):
+                    intersites.append(
+                            smi.get_defectsite(i_inter))
+                    inter_types.append(smi.get_motif_type(i_inter))
+                    inter_cns.append(smi.get_coordinating_elements_cns(i_inter))
+                    inter_multi.append(int(smi.get_defectsite_multiplicity(
+                            i_inter)/conv_prim_rat))
 
-        # For now, we focus on intrinsic interstitials;
-        # extrinsic interstitials are, however,
-        # not a dramatic extension.
-        for elt in self.struct.composition.elements:
-            for i_inter, intersite in enumerate(intersites):
-                if inter_types and inter_cns:
-                    tmp_string = ""
-                    for elem, cn in inter_cns[i_inter].items():
-                        tmp_string = tmp_string + "_{}{}".format(elem, cn)
-                    if tmp_string == "":
-                        raise RuntimeError("no coordinating neighbors")
-                    name = "inter_{}_{}_{}{}".format(i_inter+1, elt.symbol, inter_types[i_inter],
-                            tmp_string)
-                    site_mult = inter_multi[i_inter]
+            # For now, we focus on intrinsic interstitials;
+            # extrinsic interstitials are, however,
+            # not a dramatic extension.
+            for elt in self.struct.composition.elements:
+                for i_inter, intersite in enumerate(intersites):
+                    if inter_types and inter_cns:
+                        tmp_string = ""
+                        for elem, cn in inter_cns[i_inter].items():
+                            tmp_string = tmp_string + "_{}{}".format(elem, cn)
+                        if tmp_string == "":
+                            raise RuntimeError("no coordinating neighbors")
+                        name = "inter_{}_{}_{}{}".format(i_inter+1, elt.symbol, inter_types[i_inter],
+                                tmp_string)
+                        site_mult = inter_multi[i_inter]
 
-                else:
-                    name = "inter_{}_{}".format(i_inter+1, elt.symbol)
-                    # This needs further attention at some point.
-                    site_mult = int(1 / conv_prim_rat)
-
-                site = PeriodicSite(elt, intersite.frac_coords,
-                        intersite.lattice)
-                site_sc = PeriodicSite(elt, site.coords, sc.lattice,
-                        coords_are_cartesian=True)
-                sc_with_inter = sc.copy()
-                sc_with_inter.append(elt.symbol,
-                    site_sc.frac_coords)
-
-                charges=[]
-                print 'inter_symbol=', elt
-                inter_oxi_state = self.oxi_states[str2unicode(elt.symbol)]
-                if inter_oxi_state < 0:
-                    min_oxi = min(inter_oxi_state, self.max_min_oxi[elt.symbol][0])
-                    if self.charge_states=='liberal':
-                            max_oxi = 2
                     else:
-                            max_oxi = 0
-                elif inter_oxi_state > 0:
-                    max_oxi = max(inter_oxi_state, self.max_min_oxi[elt.symbol][1])
-                    if self.charge_states=='liberal':
-                            min_oxi = -2
-                    else:
-                            min_oxi = 0
-                for c in range(min_oxi, max_oxi+1):
-                    charges.append(-c)
-                print 'charge states for ',elt.symbol,' interstitial =',charges
+                        name = "inter_{}_{}".format(i_inter+1, elt.symbol)
+                        # This needs further attention at some point.
+                        site_mult = int(1 / conv_prim_rat)
 
-                interstitials.append({
-                        'name': name,
-                        'unique_site': site,
-                        'bulk_supercell_site': site_sc,
-                        'defect_type': 'interstitial',
-                        'site_specie': elt,
-                        'site_multiplicity': site_mult,
-                        'supercell': {'size': sc_scale, 'structure': sc_with_inter},
-                        'charges': charges})
+                    site = PeriodicSite(elt, intersite.frac_coords,
+                            intersite.lattice)
+                    site_sc = PeriodicSite(elt, site.coords, sc.lattice,
+                            coords_are_cartesian=True)
+                    sc_with_inter = sc.copy()
+                    sc_with_inter.append(elt.symbol,
+                        site_sc.frac_coords)
+
+                    charges=[]
+                    print 'inter_symbol=', elt
+                    inter_oxi_state = self.oxi_states[str2unicode(elt.symbol)]
+                    if inter_oxi_state < 0:
+                        min_oxi = min(inter_oxi_state, self.max_min_oxi[elt.symbol][0])
+                        if self.charge_states=='liberal':
+                                max_oxi = 2
+                        else:
+                                max_oxi = 0
+                    elif inter_oxi_state > 0:
+                        max_oxi = max(inter_oxi_state, self.max_min_oxi[elt.symbol][1])
+                        if self.charge_states=='liberal':
+                                min_oxi = -2
+                        else:
+                                min_oxi = 0
+                    for c in range(min_oxi, max_oxi+1):
+                        charges.append(-c)
+                    print 'charge states for ',elt.symbol,' interstitial =',charges
+
+                    interstitials.append({
+                            'name': name,
+                            'unique_site': site,
+                            'bulk_supercell_site': site_sc,
+                            'defect_type': 'interstitial',
+                            'site_specie': elt,
+                            'site_multiplicity': site_mult,
+                            'supercell': {'size': sc_scale, 'structure': sc_with_inter},
+                            'charges': charges})
 
 
-        self.defects['interstitials'] = interstitials
+            self.defects['interstitials'] = interstitials
 
 	print '\nNumber of jobs created:'
 	tottmp=0
