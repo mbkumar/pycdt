@@ -12,7 +12,7 @@ __email__ = "geoffroy@uclouvain.be"
 __status__ = "Development"
 __date__ = "November 4, 2012"
 
-from pymatgen.io.vasp.inputs import Kpoints
+from pymatgen.io.vasp.inputs import Kpoints, Potcar 
 from pymatgen.io.vasp.sets import MPVaspInputSet
 from monty.serialization import loadfn, dumpfn
 from monty.json import MontyDecoder, MontyEncoder
@@ -41,6 +41,14 @@ def make_vasp_defect_files(defects, path_base, user_settings={}, hse=False):
     comb_defs = reduce(lambda x,y: x+y, [
         defects[key] for key in defects if key != 'bulk'])
 
+    # User setting dicts
+    user_incar = user_settings.pop('INCAR', {})
+    user_incar_blk = user_incar.pop('bulk', {})
+    user_incar_def = user_incar.pop('defects', {})
+    user_kpoints = user_settings.pop('KPOINTS', {})
+    user_potcar = user_settings.pop('POTCAR', {})
+
+
     for defect in comb_defs:
         #print type(defect)
         #print defect['charges']
@@ -65,9 +73,11 @@ def make_vasp_defect_files(defects, path_base, user_settings={}, hse=False):
             #    incar.update({
             #        'LHFCALC': True, "ALGO": "All", "HFSCREEN": 0.2,
             #        "PRECFOCK": "Fast", 'NKRED': 2})#, "AEXX": 0.45})
-            if user_settings:
-                if 'INCAR' in user_settings.get('defects',None):
-                    incar.update(user_settings['defects']['INCAR'])
+            #if user_settings:
+            #    if 'INCAR' in user_settings.get('defects', {}):
+            #        incar.update(user_settings['defects']['INCAR'])
+            incar.update(user_incar)
+            incar.update(user_incar_def)
 
             comp = s['structure'].composition
             sum_elec = 0
@@ -79,7 +89,10 @@ def make_vasp_defect_files(defects, path_base, user_settings={}, hse=False):
             if charge != 0:
                 incar['NELECT'] = sum_elec - charge
 
-            kpoint=dict_params['KPOINTS'].monkhorst_automatic()
+            if user_kpoints:
+                kpoint = Kpoints.from_dict(user_kpoints)
+            else:
+                kpoint=dict_params['KPOINTS'].monkhorst_automatic()
 
             path=os.path.join(path_base,defect['name'],"charge_"+str(charge))
             try:
@@ -114,14 +127,19 @@ def make_vasp_defect_files(defects, path_base, user_settings={}, hse=False):
         'IBRION': -1, "NSW": 0, 'ISPIN': 2, 'LWAVE': False, 'EDIFF': 1e-5,
         'ISMEAR': 0, 'SIGMA': 0.05, 'LVTOT': True, 'LVHAR': True, 
         'ALGO': 'Fast', 'ISYM': 0})
-    if user_settings:
-        if 'INCAR' in user_settings.get('bulk',None):
-            incar.update(user_settings['bulk']['INCAR'])
+    #if user_settings:
+    #    if 'INCAR' in user_settings.get('bulk', {}):
+    #        incar.update(user_settings['bulk']['INCAR'])
+    incar.update(user_incar)
+    incar.update(user_incar_blk)
     #if hse == True:
     #    incar.update({
     #        'LHFCALC': True, "ALGO": "All", "HFSCREEN": 0.2, "AEXX": 0.45, 
     #        "PRECFOCK": "Fast", 'NKRED': 2})
-    kpoint=dict_params['KPOINTS'].monkhorst_automatic()
+    if user_kpoints:
+        kpoint = Kpoints.from_dict(user_kpoints)
+    else:
+        kpoint=dict_params['KPOINTS'].monkhorst_automatic()
     path = os.path.join(path_base,'bulk')
     try:
         os.makedirs(path)
