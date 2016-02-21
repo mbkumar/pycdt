@@ -111,11 +111,17 @@ class PostProcess(object):
                     break
                 bulk_energy = vr.final_energy
                 bulk_struct = vr.final_structure
-                bulk_sites = vr.structures[-1].num_sites
+                try: 
+                    encut = vr.incar['ENCUT'] 
+                except: # ENCUT not specified in INCAR. Read from POTCAR
+                    encut, error_msg = get_encut_from_potcar(fldr)
+                    if error_msg:
+                        raise AttributeError(error_msg)
+
                 bulk_locpot_path = os.path.abspath(os.path.join(fldr,'LOCPOT'))
                 bulk_entry = ComputedStructureEntry(
                         bulk_struct, bulk_energy,
-                        data={'locpot_path':bulk_locpot_path})
+                        data={'locpot_path':bulk_locpot_path, 'encut': encut})
             else:
                 chrg_fldrs = glob.glob(os.path.join(fldr,'charge*'))
                 for chrg_fldr in chrg_fldrs:
