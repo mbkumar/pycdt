@@ -12,7 +12,7 @@ __author__ = "Nils E. R. Zimmermann, Bharat Medasani"
 __copyright__ = "Copyright 2012, The Materials Project"
 __version__ = "1"
 __maintainer__ = "Nils E. R. Zimmermann"
-__email__ = "nerz@lbl.gov"
+__email__ = "n.zimmermann@tuhh.de"
 __date__ = "May 1, 2015"
 
 import argparse
