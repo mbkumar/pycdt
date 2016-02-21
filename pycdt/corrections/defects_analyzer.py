@@ -71,34 +71,35 @@ class ParsedDefect(object):
                 name=d.get('name',None))
 
 
-def get_correction(defect, bulk_entry, epsilon, type='freysoldt'):
+def get_correction_freysoldt(defect, bulk_entry, epsilon):
     """
     Function to compute the correction for each defect.
     Args:
         defect: ParsedDefect object
         bulk_entry: ComputedStructureEntry corresponding to bulk
-        epsilon: Dielectric constant
-        type: String indicating the type of correction. Only Freysoldt
-            method is implemented.
+        epsilon: dielectric constant
     """
-    if type == 'freysoldt':
-        locpot_path_blk = bulk_entry.data['locpot_path']
-        #locpot_blk = Locpot.from_file(locpot_path_blk)
-        locpot_path_def = defect.entry.data['locpot_path']
-        #locpot_defect = Locpot.from_file(locpot_path_def)
-        charge = defect._charge
-        frac_coords = defect.site.frac_coords
-        encut = defect.entry.data['encut']
-        latt_len = defect.entry.structure.lattice.abc
-        corr_meth = FreysoldtCorrection(
-                locpot_path_blk, locpot_path_def, charge, epsilon, 
-                frac_coords, encut, latt_len, name=defect._name)
-        corr_val = corr_meth.run_correction()
+    locpot_path_blk = bulk_entry.data['locpot_path']
+    locpot_path_def = defect.entry.data['locpot_path']
+    charge = defect._charge
+    frac_coords = defect.site.frac_coords
+    encut = defect.entry.data['encut']
+    latt_len = defect.entry.structure.lattice.abc
+    if hasattr(epsilon, '__contains__'):
+        if hasattr(epsilon[0], '__contains__'):
+            epsilon = sum([epsilon[i][i] for i in range(3)])/3.0
+        else:
+            epsilon = sum(epsilon[:3])/3.0
 
-        return sum(corr_val)/len(corr_val) 
+    corr_meth = FreysoldtCorrection(
+            locpot_path_blk, locpot_path_def, charge, epsilon, 
+            frac_coords, encut, latt_len, name=defect._name)
+    corr_val = corr_meth.run_correction()
+
+    return sum(corr_val)/len(corr_val) 
 
 
-def get_correction_new(defect, bulk_entry, epsilon_tensor, type='freysoldt'):
+def get_correction_kumagai(defect, bulk_init, epsilon_tensor):
     """
     --------------------------------------------------------------
     TODO: Use the ChargeCorrection class for freysoldt method also
@@ -106,44 +107,39 @@ def get_correction_new(defect, bulk_entry, epsilon_tensor, type='freysoldt'):
     Function to compute the correction for each defect.
     Args:
         defect: ParsedDefect object
-        bulk_entry: ComputedStructureEntry corresponding to bulk
+        bulk_init: KumagainBulkInit class object
         epsilon_tensor: Dielectric tenson
         type: 
             "freysoldt": Freysoldt correction for isotropic crystals
             "kumagai": modified Freysoldt or Kumagai for anisotropic crystals
     """
-    locpot_path_blk = bulk_entry.data['locpot_path']
+    #locpot_path_blk = bulk_entry.data['locpot_path']
     locpot_path_def = defect.entry.data['locpot_path']
-    print ('defect_data', defect.site)
     charge = defect._charge
     encut = defect.entry.data['encut']
     latt_len = defect.entry.structure.lattice.abc
     frac_coords = defect.site.frac_coords
-    if type == 'freysoldt':
-        epsilon = sum([epsilon_tensor[i][i] for i in range(3)])/3.0
-        print ('epsilon', epsilon)
-        corr_meth = FreysoldtCorrection(
-                locpot_path_blk, locpot_path_def, charge, epsilon, 
-                frac_coords, encut, latt_len, name=defect._name)
-        corr_val = corr_meth.run_correction()
+    if not hasattr(epsilon_tensor, '__contains__'):
+        epsilon_tensor = [[epsilon_tensor, 0, 0], 
+                          [0, epsilon_tensor, 0], 
+                          [0, 0, epsilon_tensor]]
+    elif not hasattr(epsilon_tensor[0], '__contains__'):
+        epsilon_tensor = [[epsilon_tensor[0], 0, 0], 
+                          [0, epsilon_tensor[1], 0], 
+                          [0, 0, epsilon_tensor[2]]]
 
-        return sum(corr_val)/len(corr_val) 
-
-    elif type == "kumagai":
-        kumagai_init = KumagaiBulkInit(locpot_path_blk, epsilon_tensor, 
-                                       encut, tolerance=0.0001, silence=False)
-        locpot_blk = kumagai_init.bulk_locpot
-        g_sum = kumagai_init.g_sum
-        gamma = kumagai_init.gamma
-        kum_cor = KumagaiCorrection(epsilon_tensor, locpot_blk, gamma, g_sum, 
-                locpot_path_def, charge, frac_coords, 
-                coords_are_cartesian=False, energy_cutoff=520, madetol=0.0001, 
-                silence=False)
-        #corr_meth = ChargeCorrection(0, epsilon_tensor, locpot_path_blk, 
-        #        locpot_path_def, charge, frac_coords, energy_cutoff=encut, 
-        #        madetol=0.0001, silence=False, q_model=None)
-        corr_val = kum_cor.get_correction()
-        return corr_val
+    #kumagai_init = KumagaiBulkInit(locpot_path_blk, epsilon_tensor, 
+    #                               encut, tolerance=0.0001, silence=False)
+    kumagai_init = bulk_init
+    #locpot_blk = kumagai_init.bulk_locpot
+    #g_sum = kumagai_init.g_sum
+    #gamma = kumagai_init.gamma
+    kum_cor = KumagaiCorrection(epsilon_tensor, kumagai_init, #locpot_blk, gamma, g_sum, 
+            locpot_path_def, charge, frac_coords, 
+            coords_are_cartesian=False, energy_cutoff=520, madetol=0.0001, 
+            silence=False)
+    corr_val = kum_cor.get_correction()
+    return corr_val
 
 
 class DefectsAnalyzer(object):

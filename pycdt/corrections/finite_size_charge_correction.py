@@ -995,7 +995,7 @@ def get_g_sum_at_r(g_sum, locpot_bulk, r):
     abc=locpot_bulk.structure.lattice.abc
     for i in range(3):
         r[i]=r[i]/abc[i] #translate to fractional coords for use in getgridind
-    i, j, k = getgridind(locpot_bulk, r)
+    i, j, k = getgridind(locpot_bulk, r)[0]
     return g_sum[i, j, k]
 
 
@@ -1113,9 +1113,9 @@ def getgridind(locpot, r, gridavg=0.0):
                 for k in range(-radvals[2], radvals[2]+1):
                     dtoc = [i*dxvals[0], j*dxvals[1], k*dxvals[2]]
                     if norm(dtoc) < gridavg:
-                        ival = (i+grdind[0]) % grid_dim[0]
-                        jval = (j+grdind[1]) % grid_dim[1]
-                        kval = (k+grdind[2]) % grid_dim[1]
+                        ival = (i+grdind[0][0]) % grid_dim[0]
+                        jval = (j+grdind[0][1]) % grid_dim[1]
+                        kval = (k+grdind[0][2]) % grid_dim[1]
                         grdindfull.append((ival,jval,kval))
         grdind=grdindfull
 
@@ -1411,7 +1411,8 @@ class KumagaiCorrection(object):
     Class that implements the extended freysoldt correction developed 
     by Kumagai.
     """
-    def __init__(self, dielectric_tensor, bulk_locpot, gamma, g_sum, # Obtained from KumagaiBulkPart
+    #def __init__(self, dielectric_tensor, bulk_locpot, gamma, g_sum, # Obtained from KumagaiBulkPart
+    def __init__(self, dielectric_tensor, bulk_init, 
             defect_locpot_path, q, pos, coords_are_cartesian=False, energy_cutoff=520,
             madetol=0.0001, silence=False):
         """
@@ -1430,6 +1431,9 @@ class KumagaiCorrection(object):
             madetol: Tolerance (double or float)
             silence: Flag for disabling/enabling  messages (Bool)
         """
+        bulk_locpot = bulk_init.bulk_locpot
+        gamma = bulk_init.gamma
+        g_sum = bulk_init.g_sum
         if isinstance(dielectric_tensor, int) or \
                 isinstance(dielectric_tensor, float):
             #self._dielectricconst = float(dielectric_tensor)
