@@ -24,13 +24,9 @@ import os
 import math
 
 import numpy as np
-try:
-    import matplotlib.pyplot as plt
-except: # Making a hard choice for the backend
-    print ("The default backend is not working. Trying alternative")
-    import matplotlib
-    matplotlib.rcParams['backend'] = 'TkAgg'  
-    import matplotlib.pyplot as plt
+import matplotlib
+matplotlib.use('agg')
+import matplotlib.pyplot as plt
 
 from pymatgen.io.vasp.outputs import Locpot
 from pymatgen.core.lattice import Lattice
