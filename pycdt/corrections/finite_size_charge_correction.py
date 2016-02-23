@@ -19,13 +19,21 @@ If you use the corrections implemented in this module, cite
 __author__ = 'Danny Broberg, Bharat Medasani'
 __email__ = 'dbroberg@gmail.com, mbkumar@gmail.com'
 
-from pymatgen.io.vaspio.vasp_output import Locpot
-from pymatgen.core.lattice import Lattice
-import numpy as np
 import sys
 import os
-import matplotlib.pyplot as plt
 import math
+
+import numpy as np
+try:
+    import matplotlib.pyplot as plt
+except: # Making a hard choice for the backend
+    print ("The default backend is not working. Trying alternative")
+    import matplotlib
+    matplotlib.rcParams['backend'] = 'TkAgg'  
+    import matplotlib.pyplot as plt
+
+from pymatgen.io.vasp.outputs import Locpot
+from pymatgen.core.lattice import Lattice
 
 norm = np.linalg.norm  # define globally
 
