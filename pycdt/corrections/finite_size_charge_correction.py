@@ -19,13 +19,17 @@ If you use the corrections implemented in this module, cite
 __author__ = 'Danny Broberg, Bharat Medasani'
 __email__ = 'dbroberg@gmail.com, mbkumar@gmail.com'
 
-from pymatgen.io.vaspio.vasp_output import Locpot
-from pymatgen.core.lattice import Lattice
-import numpy as np
 import sys
 import os
-import matplotlib.pyplot as plt
 import math
+
+import numpy as np
+import matplotlib
+matplotlib.use('agg')
+import matplotlib.pyplot as plt
+
+from pymatgen.io.vasp.outputs import Locpot
+from pymatgen.core.lattice import Lattice
 
 norm = np.linalg.norm  # define globally
 
