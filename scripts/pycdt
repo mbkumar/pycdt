@@ -413,7 +413,7 @@ def main():
                                     action='store_false', dest="antisites",
                                     help=no_antisites_string)
     parser_input_files.add_argument("-ii", "--include_interstitials",
-                                    action='store_false', dest="include_interstitials",
+                                    action='store_true', dest="include_interstitials",
                                     help=include_interstitials_string)
     parser_input_files.add_argument("-is", "--input_settings_file", default=None,
                                     type=str, dest="input_settings_file",
