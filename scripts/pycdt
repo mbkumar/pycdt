@@ -66,6 +66,7 @@ def generate_input_files(args):
     oxi_state = args.oxi_state
     oxi_range = args.oxi_range
     antisites = args.antisites
+    include_interstitials = args.include_interstitials
     settings = {}
     if args.input_settings_file:
         settings = loadfn(args.input_settings_file)
@@ -122,6 +123,7 @@ def generate_input_files(args):
     def_structs = ChargedDefectsStructures(
             conv_struct, max_min_oxi=oxi_range_dict, 
             oxi_states=oxi_state_dict, antisites_flag=antisites,
+            include_interstitials=include_interstitials,
             cellmax=nmax)
     make_vasp_defect_files(
             def_structs.defects,
@@ -345,8 +347,8 @@ def main():
     mapi_string = "Your Materials Project REST API key.\nFor more info, " \
         "please, visit www.materialsproject.org/open."
     nmax_string = "Maximum number of atoms in supercell.\nThe default is" \
-        "128.\nKeep in mind that the number of atoms in the supercell may" \
-        "vary from the provided number including the default."
+        " 128.\nKeep in mind that the number of atoms in the supercell may" \
+        " vary from the provided number including the default."
     oxi_state_string = "Oxidation state for an element.\nTwo arguments" \
         " are expected: the element type for which the oxidation state is" \
         " to be specified and the oxidation state (e.g., --oxi_state As -3)."
@@ -355,9 +357,11 @@ def main():
         " to be specified as well as the lower and the upper limit of the" \
         " range (e.g., --oxi_range As -3 5)."
     no_antisites_string = "Optional flag to indicate that anti-site defects" \
-        "should not be generated."
+        " should not be generated."
+    include_interstitials_string = "Optional flag to indicate that" \
+        " interstitial defects should be generated."
     input_settings_string = "Supply VASP input settings for INCAR, KPOINTS in" \
-        "the specified YAML/JSON file."
+        " the specified YAML/JSON file."
     root_fldr_string = "Path (relative or absolute) to directory" \
         " in which data of charged point-defect calculations for" \
         " a particular system are to be found."
@@ -373,17 +377,17 @@ def main():
         " should not be plotted."
     epsilon_string = "Optional: provide a dielectric constant to be" \
         " used in the correction terms of the defect-formation energies.\n" \
-        " Only a scalar is accepted.\nIf not provided, the dielectric" \
+        "Only a scalar is accepted.\nIf not provided, the dielectric" \
         " constant is extracted from the corresponding VASP calculation.\n" \
-        " Note that this evaluation script expects the dielectric" \
+        "Note that this evaluation script expects the dielectric" \
         " constant calculation to have been performed to properly analyze" \
         " the data."
     correction_string = "Method to be used to compute finite size charge " \
-        " correction for the defect-formation energies.\n" \
+        "correction for the defect-formation energies.\n" \
         "Options are `freysoldt' and `kumagai'.\n" \
-        " If not provided, Freysoldt method is assumed." 
+        "If not provided, Freysoldt method is assumed." 
     bandgap_string = "User defined band gap to plot the defect formation " \
-        " energies.\nBy default, Materials Project (MP) bandgap is " \
+        "energies.\nBy default, Materials Project (MP) bandgap is " \
         "used.\nHowever, MP bandgap could be a severly underpredicted value." 
 
 
@@ -408,6 +412,9 @@ def main():
     parser_input_files.add_argument("-noa", "--no_antisites",
                                     action='store_false', dest="antisites",
                                     help=no_antisites_string)
+    parser_input_files.add_argument("-ii", "--include_interstitials",
+                                    action='store_true', dest="include_interstitials",
+                                    help=include_interstitials_string)
     parser_input_files.add_argument("-is", "--input_settings_file", default=None,
                                     type=str, dest="input_settings_file",
                                     help=input_settings_string)
