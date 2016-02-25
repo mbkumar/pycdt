@@ -29,15 +29,11 @@ from pymatgen.symmetry.analyzer import SpacegroupAnalyzer
 from pycdt.core.defectsmaker import ChargedDefectsStructures
 from pycdt.utils.vasp import make_vasp_defect_files, \
                               make_vasp_dielectric_files
-try:
-    from pycdt.utils.parse_calculations import PostProcess
-    from pycdt.utils.plotter import  DefectPlotter
-    from pycdt.corrections.defects_analyzer import get_correction_freysoldt, \
-            get_correction_kumagai, DefectsAnalyzer
-    from pycdt.corrections.finite_size_charge_correction import KumagaiBulkInit
-    plot_enable = True
-except:
-    plot_enable = False
+from pycdt.utils.parse_calculations import PostProcess
+from pycdt.utils.plotter import  DefectPlotter
+from pycdt.corrections.defects_analyzer import get_correction_freysoldt, \
+        get_correction_kumagai, DefectsAnalyzer
+from pycdt.corrections.finite_size_charge_correction import KumagaiBulkInit
 
 
 
@@ -300,16 +296,13 @@ def compute_formation_energies(args):
         rich_da.add_parsed_defect(defect)
     for defect in defects:
         poor_da.add_parsed_defect(defect)
-    if plot_enable:
-        plotter = DefectPlotter(rich_da)
-        form_en_plot = plotter.get_plot_form_energy()
-        form_en_plot.savefig(specie+'_rich_defect_form_energy.eps')
-        plotter = DefectPlotter(poor_da)
-        form_en_plot = plotter.get_plot_form_energy()
-        form_en_plot.savefig(specie+'_poor_defect_form_enenergy.eps')
-    else:
-        print("Warning: cannot plot results because of problem loading" + \
-                " pycdt.utils.plotter")
+    plotter = DefectPlotter(rich_da)
+    form_en_plot = plotter.get_plot_form_energy()
+    form_en_plot.savefig(specie+'_rich_defect_form_energy.eps')
+    plotter = DefectPlotter(poor_da)
+    form_en_plot = plotter.get_plot_form_energy()
+    form_en_plot.savefig(specie+'_poor_defect_form_enenergy.eps')
+
 
     #bulk = defect_data['bulk_entry']
     #defects = defect_data['defects']
