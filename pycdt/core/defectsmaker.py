@@ -1,5 +1,6 @@
 # coding: utf-8
 from __future__ import division
+
 """
 Code to generate charged defects structure.
 Ideas from pydii's code and geoffroy's code are merged.
@@ -33,10 +34,12 @@ except:
     gen_inter = False
 
 def get_sc_scale(inp_struct, final_site_no):
+
     """
-    Get the scaling to generate supercells with atoms less than the 
+    Get the scaling to generate supercells with atoms less than the
     final_site_no.
     """
+
     lengths = inp_struct.lattice.abc
     no_sites = inp_struct.num_sites
     mult = (final_site_no/no_sites*lengths[0]*lengths[1]*lengths[2]) ** (1/3)
@@ -51,10 +54,12 @@ def get_sc_scale(inp_struct, final_site_no):
     return num_mult
 
 def get_optimized_sc_scale(inp_struct, final_site_no):
+
     """
     Get the optimal scaling to generate supercells with atoms less than
     the final_site_no.
     """
+
     print 'number of sites in bulk cell=',inp_struct.num_sites,\
 	  '\nnumber of sites in final super cell=', final_site_no
     target_site = inp_struct.sites[0]
@@ -99,42 +104,55 @@ def get_optimized_sc_scale(inp_struct, final_site_no):
 
 
 class ChargedDefectsStructures(object):
+
     """
-    A class to generate charged defective structures for use in first 
-    principles supercell formalism. The standard defects such as antisites, 
-    vacancies are generated.
-    TODO: develop a better way to find interstitials
+    A class to generate charged defective structures for use in first
+    principles supercell formalism. The standard defects such as antisites
+    and vacancies are generated.  Interstitial finding is also implemented
+    (optional).
     """
-    def __init__(self, structure, max_min_oxi={}, substitutions={}, 
-                 oxi_states={}, cellmax=128, intersites=[],
-                 antisites_flag=True, standardized=False, 
-                 charge_states='liberal'):
+
+    def __init__(self, structure, max_min_oxi={}, substitutions={},
+                 oxi_states={}, cellmax=128, antisites_flag=True,
+                 include_interstitials=False, intersites=[],
+                 standardized=False, charge_states='liberal'):
+
         """
         Args:
             structure (Structure):
                 the bulk structure.
             max_min_oxi (dict):
-                The minimal and maximum oxidation state of each element as a 
-                dict. For instance {"O":(-2,0)}. If not given, the oxi-states 
+                The minimal and maximum oxidation state of each element as a
+                dict. For instance {"O":(-2,0)}. If not given, the oxi-states
                 of pymatgen are considered.
             substitutions (dict):
-                The allowed substitutions of elements as a dict. If not given, 
-                intrinsic defects are computed. If given, intrinsic (e.g., 
-                anti-sites) and extrinsic are considered explicitly specified. 
-                Example: {"Co":["Zn","Mn"]} means Co sites can be substituted 
+                The allowed substitutions of elements as a dict. If not given,
+                intrinsic defects are computed. If given, intrinsic (e.g.,
+                anti-sites) and extrinsic are considered explicitly specified.
+                Example: {"Co":["Zn","Mn"]} means Co sites can be substituted
                 by Mn or Zn.
             oxi_states (dict):
-                The oxidation state of the elements in the compound e.g. 
+                The oxidation state of the elements in the compound e.g.
                 {"Fe":2,"O":-2}. If not given, the oxidation state of each
-                site is computed with bond valence sum. WARNING: Bond-valence 
+                site is computed with bond valence sum. WARNING: Bond-valence
                 method can fail for mixed-valence compounds.
             cellmax (int):
                 Maximum number of atoms allowed in the supercell.
-            intersites ([PeriodicSite]):
-                A list of PeriodicSites in the bulk structure on which we put 
-                an interstitial.
             antisites_flag (bool):
                 If False, don't generate antisites.
+            include_interstitials (bool):
+                If true, do generate interstitial defect configurations
+                (default: False).
+            intersites ([PeriodicSite]):
+                A list of PeriodicSites in the bulk structure on which we put
+                an interstitial.  Note that you have to set flag
+                include_interstitials to True in order to make use of this
+                manual way of providing interstitial sites.
+            standardized (bool):
+                If True, use the primitive standard structure as unit cell
+                for generating the defect configurations (default is False).
+                The primitive standard structure is obtained from the
+                SpacegroupAnalyzer class with a symprec of 0.01.
             charge_states (string):
                 Options are 'liberal' and 'conservative'. If liberal is selected,
                 more charge states are computed.
@@ -147,7 +165,7 @@ class ChargedDefectsStructures(object):
         for key,val in substitutions.items():
             self.substitutions[str2unicode(key)] = val
 
-        spa = SpacegroupAnalyzer(structure,symprec=1e-2)
+        spa = SpacegroupAnalyzer(structure, symprec=1e-2)
         prim_struct = spa.get_primitive_standard_structure()
         if standardized:
             self.struct = prim_struct
@@ -156,7 +174,7 @@ class ChargedDefectsStructures(object):
 
         # If interstitials are provided as a list of PeriodicSites,
         # make sure that the lattice has not changed.
-        if intersites:
+        if include_interstitials and intersites:
             smat = self.struct.lattice.matrix
             for intersite in intersites:
                 imat = intersite.lattice.matrix
@@ -379,12 +397,12 @@ class ChargedDefectsStructures(object):
         # be placed into the supercell sc.
         # We use the first element in the Composition object underlying
         # our input structure, but the result of the interstitial fin
-        if gen_inter:
+        if include_interstitials:
             interstitials = []
             inter_types = []
             inter_cns = []
             inter_multi = []
-            if not intersites:
+            if not intersites and gen_inter:
                 intersites = []
                 smi = StructureMotifInterstitial(
                         self.struct,
@@ -472,7 +490,9 @@ class ChargedDefectsStructures(object):
 				tottmp+=len(lis['charges'])
 	print 'Total (non dielectric) jobs created = ',tottmp,'\n'
 
+
     def make_defect_complexes(max_complex_size=0, include_vacancies=True):
+
         """
         Function to generate defect complexes
         Args:
@@ -481,6 +501,7 @@ class ChargedDefectsStructures(object):
                 on no. of subsitutions
             include_vacancies: Include vacancies in the defect complex
         """
+
         if not max_complex_size:
             max_complex_size = len(self.defects['substitutions'])
             if include_vacancies:
@@ -490,7 +511,23 @@ class ChargedDefectsStructures(object):
         for size in range(2, max_complex_size+1):
             continue
             
+
     def make_interstitial(self, target_site, sc_scale):
+
+        """
+        Function to generate a supercell that contains an
+        interstitial site.
+        Args:
+            target_site (PeriodicSite): interstitial site
+                to be inserted into a supercell of a
+                copy of self.struct.
+            sc_scale (3x3 matrix): supercell scaling matrix
+                to be applied on the copy of self.struct.
+        Returns:
+            sc (Structure): supercell containing an
+                interstitial site.
+        """
+
         sc = self.struct.copy()
         sc.make_supercell(sc_scale)
         sc.append(target_site.specie, target_site.frac_coords)
