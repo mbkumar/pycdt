@@ -68,7 +68,7 @@ class DefectPlotter(object):
             for name in types:
                 for dfct in self._analyzer._defects:
                     if name == dfct._name:
-                        sub_str = '_{'+dfct._site.species_string+'}$'
+                        sub_str = '_{'+dfct.site.species_string+'}$'
                         if 'vac' in name:
                             base = '$Vac'
                         else: #'sub' in name or 'as' in name or 'antisite' in name:

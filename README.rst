@@ -2,7 +2,7 @@
 PyCDT
 =====
 
-Python Charge Defects Tool for processing the DFT calculations of charged point defects in solids
+Python Charge Defects Tool is quite useful for processing the DFT calculations of charged point defects in semiconductors and insulators. It can generate the inputs for required DFT calculations and can processes the output of the DFT calculations to correct the errors arising due to the limitations of supercell methodology in evaluating the long range Coulomb interactions of defect charges. 
 
 Requirements
 ------------
@@ -33,13 +33,13 @@ Access to root may be needed if ``virtualenv`` is not used.
 
 # The package can be installed at non-standard locations using the command::
 
-    python setup.py install --prefix PYCDT_ROOTDIR
+    python setup.py install --prefix PYCDT_INSTALL_DIR
 
-where PYCDT_ROOTDIR is your choice of directory. In UNIX/Linux environments,
-add PYCDT_ROOTDIR to PATH and PYTHONPATH variables by the following commands::
+where PYCDT_INSTALL_DIR is your choice of directory. In UNIX/Linux environments,
+add PYCDT_INSTALL_DIR to PATH and PYTHONPATH variables by the following commands::
     
-    export PATH=$PATH:PYCDT_ROOTDIR
-    export PYTHONPATH=$PYTHONPATH:PYCDT_ROOTDIR
+    export PATH=$PATH:PYCDT_INSTALL_DIR
+    export PYTHONPATH=$PYTHONPATH:PYCDT_INSTALL_DIR
 
 
 Examples
