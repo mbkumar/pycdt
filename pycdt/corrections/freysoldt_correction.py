@@ -243,7 +243,7 @@ class FreysoldtCorrection(object):
             with open('tmpoutput') as f:
                 output = f.readlines()
             #print 'output from sxdefectalign = '+str(output)
-            val =  output[-2].split()[3].strip()
+            val =  output[-1].split()[3].strip()
             #result.append(float(output[-1].split()[3]))
             result.append(float(val))
             print("chg correction is "+str(result[-1]))
