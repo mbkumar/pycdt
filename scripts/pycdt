@@ -67,6 +67,7 @@ def generate_input_files(args):
     oxi_range = args.oxi_range
     antisites = args.antisites
     include_interstitials = args.include_interstitials
+    interstitial_elements = args.interstitial_elements
     settings = {}
     if args.input_settings_file:
         settings = loadfn(args.input_settings_file)
@@ -103,10 +104,10 @@ def generate_input_files(args):
     if oxi_state:
         for i in range(len(oxi_state)):
             oxi_state_dict[oxi_state[i][0]] = int(oxi_state[i][1])
-        if len(oxi_state_dict) != conv_struct.ntypesp:
-            print_error_message("number of oxidation states"
-                " provided does not match number of species in structure!")
-            return
+        #if len(oxi_state_dict) != conv_struct.ntypesp:
+        #    print_error_message("number of oxidation states"
+        #        " provided does not match number of species in structure!")
+        #    return
 
     # manually set oxidation-state ranges if those were provided
     oxi_range_dict = {}
@@ -114,16 +115,17 @@ def generate_input_files(args):
         for i in range(len(oxi_range)):
             oxi_range_dict[oxi_range[i][0]] = tuple(
                     [int(oxi_range[i][1]), int(oxi_range[i][2])])
-        if len(oxi_range_dict) != conv_struct.ntypesp:
-            print_error_message("number of distinct oxidation ranges"
-                " provided does not match number of species in structure!")
-            return
+        #if len(oxi_range_dict) != conv_struct.ntypesp:
+        #    print_error_message("number of distinct oxidation ranges"
+        #        " provided does not match number of species in structure!")
+        #    return
 
     # finally, generate VASP input files for defect calculations
     def_structs = ChargedDefectsStructures(
             conv_struct, max_min_oxi=oxi_range_dict, 
             oxi_states=oxi_state_dict, antisites_flag=antisites,
             include_interstitials=include_interstitials,
+            interstitial_elements=interstitial_elements,
             cellmax=nmax)
     make_vasp_defect_files(
             def_structs.defects,
@@ -360,6 +362,10 @@ def main():
         " should not be generated."
     include_interstitials_string = "Optional flag to indicate that" \
         " interstitial defects should be generated."
+    interstitial_elements_string = "Explicit list of elements" \
+        " that are to be considered for interstitial generation. " \
+        " If no elements are given, intrinsic interstitials" \
+        " are considered."
     input_settings_string = "Supply VASP input settings for INCAR, KPOINTS in" \
         " the specified YAML/JSON file."
     root_fldr_string = "Path (relative or absolute) to directory" \
@@ -415,6 +421,9 @@ def main():
     parser_input_files.add_argument("-ii", "--include_interstitials",
                                     action='store_true', dest="include_interstitials",
                                     help=include_interstitials_string)
+    parser_input_files.add_argument("interstitial_elements", type=str,
+                                    default=[], nargs="*", \
+                                    help=interstitial_elements_string)
     parser_input_files.add_argument("-is", "--input_settings_file", default=None,
                                     type=str, dest="input_settings_file",
                                     help=input_settings_string)
