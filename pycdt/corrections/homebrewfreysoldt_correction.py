@@ -126,29 +126,32 @@ def generate_reciprocal_vectors_squared(a1, a2, a3, encut):
                     recip.append(vec2)
     return recip
 
-def closestsites(sb,sd,pos):
+def closestsites(struct_blk, struct_def, pos):
     #input bulk and defect structures and get site that is nearest to the (cartesian) input position
-    bulkclosesites=sb.get_sites_in_sphere(pos,5)
+    bulkclosesites = struct_blk.get_sites_in_sphere(pos, 5)
     bulkclosesites.sort(key=lambda x:x[1])
-    defclosesites=sd.get_sites_in_sphere(pos,5)
+    defclosesites = struct_def.get_sites_in_sphere(pos, 5)
     defclosesites.sort(key=lambda x:x[1])
     return bulkclosesites[0],defclosesites[0] #returns closest (site object, dist) for both bulk and defect
 
-def find_defect_pos(sb,sd):
+def find_defect_pos(struct_blk, struct_def):
+    """
+    """
     #Will output cartesian coords of defect in bulk,defect cells.
     #If vacancy defectpos=None, if interstitial bulkpos=None, if antisite/sub then both defined
-    if len(sb.sites)>len(sd.sites):
-        vactype=True
-        interstittype=False
-    elif len(sb.sites)<len(sd.sites):
-        vactype=False
-        interstittype=True
+    if len(struct_blk.sites) > len(struct_def.sites):
+        vactype = True
+        interstittype = False
+    elif len(struct_blk.sites) < len(struct_def.sites):
+        vactype = False
+        interstittype = True
     else:
-        vactype=False
-        interstittype=False
-    sitematching=[]
-    for i in sb.sites:
-        blksite,defsite=closestsites(sb,sd,i.coords)
+        vactype = False
+        interstittype = False
+
+    sitematching = []
+    for site in struct_blk.sites:
+        blksite, defsite = closestsites(struct_blk, struct_def, site.coords)
         if vactype and blksite[0].specie.symbol != defsite[0].specie.symbol:
             return blksite[0].coords, None
         elif interstittype and blksite[0].specie.symbol != defsite[0].specie.symbol:
@@ -158,11 +161,11 @@ def find_defect_pos(sb,sd):
         sitematching.append([blksite[0],blksite[1],defsite[0],defsite[1]])
     if vactype: #just in case site type is same for closest site to vacancy
         sitematching.sort(key=lambda x:x[3])
-        vacant=sitematching[-1]
+        vacant = sitematching[-1]
         return vacant[0].coords, None
     elif interstittype: #just in case site type is same for closest site to interstit
         sitematching.sort(key=lambda x:x[1])
-        interstit=sitematching[-1]
+        interstit = sitematching[-1]
         return  None, interstit[2].coords
     return None,None #if you get here there is an error
 
