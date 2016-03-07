@@ -16,6 +16,7 @@ __email__ = "n.zimmermann@tuhh.de"
 __date__ = "May 1, 2015"
 
 import argparse
+import os
 
 from collections import defaultdict
 
@@ -429,6 +430,7 @@ def main():
                                     help=input_settings_string)
     parser_input_files.set_defaults(func=generate_input_files)
 
+    os_path_abspath_this = os.path.abspath(".")
     parser_vasp_output = subparsers.add_parser(
             "parse_vasp_output",
             help="Parses VASP output for calculation of formation energies of"
@@ -437,8 +439,10 @@ def main():
                                     dest="mp_id", help=mp_id_string)
     parser_vasp_output.add_argument("-k", "-key", "--mapi_key", default=None,
                                     dest="mapi_key", help=mapi_string)
-    parser_vasp_output.add_argument("-d", "-dir", "--directory", default=None,
-                                    dest="root_fldr", help=root_fldr_string)
+    parser_vasp_output.add_argument("-d", "-dir", "--directory",
+                                    default=os_path_abspath_this,
+                                    dest="root_fldr",
+                                    help=root_fldr_string)
     parser_vasp_output.add_argument("-o", "-output", "--output_file_name",
                                     default="defect_data.json",
                                     dest="defect_data_file_name",
