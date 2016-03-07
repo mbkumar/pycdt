@@ -193,9 +193,8 @@ def parse_vasp_output(args):
 
 def compute_corrections(args):
     """
-    Computes formation energies of charged point defects by (possibly) applying
-    correction terms (supported so-far: correction due to Freysoldt
-    et al., Phys. Rev. Lett., 2009).
+    Computes corrections for the charged point defects 
+    Supported so-far: Freysoldt method, Extended Freysoldt method
 
     Args:
         args (Namespace): contains the parsed command-line arguments for
@@ -299,8 +298,8 @@ def compute_formation_energies(args):
     rich_da = DefectsAnalyzer(blk_entry, vbm, rich_mu, bandgap)
     for defect in defects:
         rich_da.add_parsed_defect(defect)
-    for defect in defects:
         poor_da.add_parsed_defect(defect)
+    #for defect in defects:
     plotter = DefectPlotter(rich_da)
     form_en_plot = plotter.get_plot_form_energy()
     form_en_plot.savefig(specie+'_rich_defect_form_energy.eps')
@@ -308,25 +307,6 @@ def compute_formation_energies(args):
     form_en_plot = plotter.get_plot_form_energy()
     form_en_plot.savefig(specie+'_poor_defect_form_enenergy.eps')
 
-
-    #bulk = defect_data['bulk_entry']
-    #defects = defect_data['defects']
-    #print (defects)
-    #corrections = defaultdict(list)
-    #for defect in defects:
-    #    print ('defect_name: ', defect._full_name)
-    #    print ('-----------------------------------------\n\n')
-    #    correction = get_correction_new(defect, bulk, epsilon_tensor, type=correction_method)
-    #    #correction = get_correction(defect, bulk, epsilon_tensor, type=correction_method)
-    #    defect.charge_correction = correction
-    #    corrections[defect._name].append({'charge_correction': correction,'charge':defect._charge})
-#
-    # plot results, if applicable
-    #if plot_results:
-    #    pass # go on here
-    #parsed_data = loadfn('defect_data.json',cls=MontyDecoder)
-    
-    
 
 def main():
     parser = argparse.ArgumentParser(description="""
