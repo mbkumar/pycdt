@@ -371,7 +371,8 @@ def main():
         " the specified YAML/JSON file."
     root_fldr_string = "Path (relative or absolute) to directory" \
         " in which data of charged point-defect calculations for" \
-        " a particular system are to be found."
+        " a particular system are to be found.  Default is the" \
+        " current working directory."
     defect_data_file_name_string = "Name of output file for defect data" \
         " obtained from parsing VASP's files of charged-defect" \
         " calculations in json format.\nDefault is" \
