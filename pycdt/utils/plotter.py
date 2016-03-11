@@ -58,7 +58,7 @@ class DefectPlotter(object):
             y[t] = y_tmp
 
         width,height = 12,8
-        plt = get_publication_quality_plot(width,height)
+        plt = get_publication_quality_plot(width, height)
         for c in y:
             plt.plot(x, y[c], linewidth=3)
         plt.plot([min_lim, max_lim], [0, 0], 'k-')
