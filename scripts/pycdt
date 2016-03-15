@@ -384,10 +384,10 @@ def main():
             help="Generates Vasp input files for charged point defects.")
     parser_input_files.add_argument("-s", "--structure_file", default=None, 
                                     dest="struct_file", help=struct_string) 
-    parser_input_files.add_argument("-i", "-id", "--mp_id", default=None,
+    parser_input_files.add_argument("-i", "--mp_id", default=None,
                                     type=str.lower, dest="mp_id", 
                                     help=mp_id_string)
-    parser_input_files.add_argument("-k", "-key", "--mapi_key", default=None,
+    parser_input_files.add_argument("-k",  "--mapi_key", default=None,
                                     dest="mapi_key", help=mapi_string)
     parser_input_files.add_argument("-n", "--nmax", type=int, default=80,
                                     dest="nmax", help=nmax_string)
@@ -416,15 +416,15 @@ def main():
             "parse_output",
             help="Parses VASP output for calculation of formation energies of"
              " charged point defects.")
-    parser_vasp_output.add_argument("-i", "-id", "--mp_id", type=str.lower,
+    parser_vasp_output.add_argument("-i", "--mp_id", type=str.lower,
                                     dest="mp_id", help=mp_id_string)
-    parser_vasp_output.add_argument("-k", "-key", "--mapi_key", default=None,
+    parser_vasp_output.add_argument("-k", "--mapi_key", default=None,
                                     dest="mapi_key", help=mapi_string)
-    parser_vasp_output.add_argument("-d", "-dir", "--directory",
+    parser_vasp_output.add_argument("-d", "--directory",
                                     default=os_path_abspath_this,
                                     dest="root_fldr",
                                     help=root_fldr_string)
-    parser_vasp_output.add_argument("-o", "-output", "--output_file_name",
+    parser_vasp_output.add_argument("-o", "--output_file_name",
                                     default="defect_data.json",
                                     dest="defect_data_file_name",
                                     help=defect_data_file_name_string)
@@ -444,22 +444,21 @@ def main():
             "compute_corrections",
             help="Computes correction for finite size supercell error "
             "associated with charged point defects.")
-    parser_compute_corrections.add_argument("-i", "--input_defect_data_file_name",
+    parser_compute_corrections.add_argument("-i", "--input_file_name",
                                     default="defect_data.json",
                                     dest="defect_data_file_name",
                                     help=defect_data_file_name_string)
-    parser_compute_corrections.add_argument("-o", "--output_corrections_file_name",
+    parser_compute_corrections.add_argument("-o", "--output_file_name",
                                     default="corrections.json",
                                     dest="corrections_file_name",
                                     help=corrections_file_name_string)
     parser_compute_corrections.add_argument("-p", "--plot_results",
                                     action='store_true', dest="plot_results",
                                     help=plot_results_string)
-    parser_compute_corrections.add_argument("-e", "-eps", "--epsilon", 
-                                    "--dielectric_constant", type=float, 
+    parser_compute_corrections.add_argument("-e",  "--epsilon", type=float, 
                                     default=None, dest="epsilon", 
                                     help=epsilon_string)
-    parser_compute_corrections.add_argument("-c", "-cm", "--correction_method",
+    parser_compute_corrections.add_argument("-c", "--correction_method",
                                     type=str, default="freysoldt",
                                     dest="correction_method",
                                     help=correction_string)
@@ -469,19 +468,18 @@ def main():
             "compute_formation_energies",
             help="Computes formation energies of charged point defects from "
             "the parsed VASP output.")
-    parser_compute_energies.add_argument("-i", "-if", "--input_defect_data_file_name",
+    parser_compute_energies.add_argument("-i", "--input_file_name",
                                     default="defect_data.json",
                                     dest="defect_data_file_name",
                                     help=defect_data_file_name_string)
-    parser_compute_energies.add_argument("-c", "-cf", "--corrections_file_name",
+    parser_compute_energies.add_argument("-c", "--corrections_file_name",
                                     default="corrections.json",
                                     dest="corrections_file_name",
                                     help=corrections_file_name_string)
     parser_compute_energies.add_argument("-p", "--plot_results",
                                     action='store_true', dest="plot_results",
                                     help=plot_results_string)
-    parser_compute_energies.add_argument("-e", "-eps", "--epsilon",
-                                    "--dielectric_constant", default=None,
+    parser_compute_energies.add_argument("-e", "--epsilon", default=None,
                                     dest="epsilon_tensor", help=epsilon_string)
     parser_compute_energies.add_argument("-bg", "--bandgap",
                                     type=float, default=0,
