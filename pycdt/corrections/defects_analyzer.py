@@ -11,14 +11,12 @@ __date__ = "November 4, 2012"
 
 from math import sqrt, floor, pi, exp
 
-from pymatgen.core.periodic_table import Element
 from pymatgen.core.structure import PeriodicSite
 from pymatgen.io.vasp.outputs import Locpot
 from pymatgen.entries.computed_entries import ComputedStructureEntry
 from pymatgen.symmetry.analyzer import SpacegroupAnalyzer
-from pycdt.corrections.freysoldt_correction import FreysoldtCorrection
-from pycdt.corrections.finite_size_charge_correction import ChargeCorrection, \
-        KumagaiBulkInit, KumagaiCorrection
+
+from pycdt.corrections.finite_size_charge_correction import ChargeCorrection
 
 #some constants
 kb = 8.6173324e-5
@@ -82,27 +80,28 @@ def get_correction_freysoldt(defect, bulk_entry, epsilon):
     locpot_path_blk = bulk_entry.data['locpot_path']
     locpot_path_def = defect.entry.data['locpot_path']
     charge = defect._charge
-    frac_coords = defect.site.frac_coords
+    #frac_coords = defect.site.frac_coords  #maybe can use this later...but not neccessary?
     encut = defect.entry.data['encut']
-    latt_len = defect.entry.structure.lattice.abc
-    if hasattr(epsilon, '__contains__'):
-        if hasattr(epsilon[0], '__contains__'):
-            epsilon = sum([epsilon[i][i] for i in range(3)])/3.0
-        else:
-            epsilon = sum(epsilon[:3])/3.0
 
-    corr_meth = FreysoldtCorrection(
-            locpot_path_blk, locpot_path_def, charge, epsilon, 
-            frac_coords, encut, latt_len, name=defect._name)
-    corr_val = corr_meth.run_correction()
+    corr_meth = ChargeCorrection(epsilon,
+            locpot_path_blk, locpot_path_def, charge,
+            energy_cutoff = encut,
+            silence=False)
+    #if either locpot already loaded then load pure_locpot= or defect_locpot=
+    # if you want to load position then can load it with pos=
+    #if want to to change energy tolerance for correction convergence then change madetol= (default is 0.0001)
+    # (for kumagai) if known optgamma, set optgamma=, if KumagaiBulk already initialized then set KumagaiBulk=?
 
-    return sum(corr_val)/len(corr_val) 
+    corr_val = corr_meth.freysoldt(title=None, axis=0, partflag='All') #could do an averaging over three axes but this works for now...
+
+    #return sum(corr_val)/len(corr_val)
+    return corr_val
 
 
 def get_correction_kumagai(defect, bulk_init, epsilon_tensor):
     """
     --------------------------------------------------------------
-    TODO: Use the ChargeCorrection class for freysoldt method also
+    TODO: Make easy way to store KumagaiBulk object for doing several successive Kumagai calculations?
     --------------------------------------------------------------
     Function to compute the correction for each defect.
     Args:
@@ -113,32 +112,23 @@ def get_correction_kumagai(defect, bulk_init, epsilon_tensor):
             "freysoldt": Freysoldt correction for isotropic crystals
             "kumagai": modified Freysoldt or Kumagai for anisotropic crystals
     """
-    #locpot_path_blk = bulk_entry.data['locpot_path']
+    locpot_path_blk = bulk_entry.data['locpot_path']
     locpot_path_def = defect.entry.data['locpot_path']
     charge = defect._charge
+    #frac_coords = defect.site.frac_coords  #maybe can use this later...but not neccessary?
     encut = defect.entry.data['encut']
-    latt_len = defect.entry.structure.lattice.abc
-    frac_coords = defect.site.frac_coords
-    if not hasattr(epsilon_tensor, '__contains__'):
-        epsilon_tensor = [[epsilon_tensor, 0, 0], 
-                          [0, epsilon_tensor, 0], 
-                          [0, 0, epsilon_tensor]]
-    elif not hasattr(epsilon_tensor[0], '__contains__'):
-        epsilon_tensor = [[epsilon_tensor[0], 0, 0], 
-                          [0, epsilon_tensor[1], 0], 
-                          [0, 0, epsilon_tensor[2]]]
 
-    #kumagai_init = KumagaiBulkInit(locpot_path_blk, epsilon_tensor, 
-    #                               encut, tolerance=0.0001, silence=False)
-    kumagai_init = bulk_init
-    #locpot_blk = kumagai_init.bulk_locpot
-    #g_sum = kumagai_init.g_sum
-    #gamma = kumagai_init.gamma
-    kum_cor = KumagaiCorrection(epsilon_tensor, kumagai_init, #locpot_blk, gamma, g_sum, 
-            locpot_path_def, charge, frac_coords, 
-            coords_are_cartesian=False, energy_cutoff=520, madetol=0.0001, 
-            silence=False)
-    corr_val = kum_cor.get_correction()
+    corr_meth = ChargeCorrection(epsilon,
+            locpot_path_blk, locpot_path_def, charge,
+            energy_cutoff = encut,
+            silence=False, KumagaiBulk=bulk_init)
+    #if either locpot already loaded then load pure_locpot= or defect_locpot=
+    # if you want to load position then can load it with pos=
+    #if want to to change energy tolerance for correction convergence then change madetol= (default is 0.0001)
+    # (if known optgamma, set optgamma=, if KumagaiBulk already initialized then set KumagaiBulk=
+
+    corr_val = corr_meth.kumagai(title=None, partflag='All') #should probably split this up to include
+
     return corr_val
 
 
