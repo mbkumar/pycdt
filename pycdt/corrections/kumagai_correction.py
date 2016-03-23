@@ -30,7 +30,6 @@ import numpy as np
 
 from pymatgen.io.vasp.outputs import Locpot
 from pymatgen.core.lattice import Lattice
-from pymatgen.core.structure import Structure
 
 norm = np.linalg.norm  # define globally
 
@@ -210,7 +209,7 @@ def real_sum(a1, a2, a3, r, q, dieltens, gamma, tolerance, silence=True):
             for i in range(-N, N + 1):
                 for j in range(-N, N + 1):
                     for k in range(-N, N + 1):
-                        r_vec = i*a1 + j*a2 + k*a3 - r 
+                        r_vec = i*a1 + j*a2 + k*a3 - r
                         loc_res = np.dot(r_vec, np.dot(invdiel, r_vec))
                         nmr = math.erfc(gamma * np.sqrt(loc_res))
                         dmr = np.sqrt(determ * loc_res)
@@ -257,10 +256,11 @@ def get_g_sum_at_r(g_sum, locpot_bulk, r):
     Returns:
         reciprocal summ value at g_sum[i_rx,j_ry,k_rz]
     """
-    abc=locpot_bulk.structure.lattice.abc
-    for i in range(3):
-        r[i]=r[i]/abc[i] #translate to fractional coords for use in getgridind
-    i, j, k = getgridind(locpot_bulk, r)
+    #abc=locpot_bulk.structure.lattice.abc
+    fraccoord=locpot_bulk.structure.lattice.get_fractional_coords(r) #neccessary fix for non-cubic cells...
+    # for i in range(3):
+    #     r[i]=r[i]/abc[i] #translate to fractional coords for use in getgridind
+    i, j, k = getgridind(locpot_bulk, fraccoord)
     return g_sum[i, j, k]
 
 
@@ -351,25 +351,30 @@ def getgridind(locpot, r, gridavg=0.0):
     TODO: Once final, remove the getgridind inside disttrans function
     """
     abc=locpot.structure.lattice.abc
+    #abclats=locpot.structure.lattice.matrix #for getting correct distances in a non-orthogonal basis?
     grdind = []
     if gridavg:
         radvals=[] #radius in terms of indices
         dxvals=[]
     for i in range(3):
         if r[i] < 0:
-            r[i] += 1
+            while r[i]<0:
+                r[i] += 1
+        elif r[i] >= 1:
+            while r[i]>=1:
+                r[i]-=1
         r[i] *= abc[i]
         x = locpot.get_axis_grid(i)
         dx = x[1] - x[0]
         x_rprojection_delta_abs = np.absolute(x - r[i])
         ind = np.argmin(x_rprojection_delta_abs)
-        if x_rprojection_delta_abs[ind] > dx:
+        if x_rprojection_delta_abs[ind] > dx*1.1: #included this tolerance to avoid numerical errors that can occur...
             print i,ind,r
             print x_rprojection_delta_abs
             raise ValueError("Input position is not within the locpot grid")
         grdind.append(ind)
         if gridavg:
-            radvals.append(int(gridavg/dx))
+            radvals.append(int(np.ceil(gridavg/dx)))
             dxvals.append(dx)
     #grdind = [grdind] # To be consistent with non-zero gridavg #this breaks next part...
     grid_dim = locpot.dim
@@ -378,11 +383,12 @@ def getgridind(locpot, r, gridavg=0.0):
         for i in range(-radvals[0], radvals[0]+1):
             for j in range(-radvals[1], radvals[1]+1):
                 for k in range(-radvals[2], radvals[2]+1):
-                    dtoc = [i*dxvals[0], j*dxvals[1], k*dxvals[2]]
+                    dtoc = [i*dxvals[0], j*dxvals[1], k*dxvals[2]] #I wonder if this breaks if the trans vectors aren't orthogonal?
+                    #dtoc = i*abclats[0]/grid_dim[0]+j*abclats[1]/grid_dim[1]+k*abclats[2]/grid_dim[2] #alternative for when trans vecs arent orthogonal?
                     if norm(dtoc) < gridavg:
                         ival = (i+grdind[0]) % grid_dim[0]
                         jval = (j+grdind[1]) % grid_dim[1]
-                        kval = (k+grdind[2]) % grid_dim[1]
+                        kval = (k+grdind[2]) % grid_dim[2] #this was a big bug! last 2 was a 1...
                         grdindfull.append((ival,jval,kval))
         grdind=grdindfull
 
@@ -391,7 +397,7 @@ def getgridind(locpot, r, gridavg=0.0):
 
 def disttrans(locpot_blk, locpot_def,  silence=False):
     """
-    this is function for calculating distance to each atom and finding NGX grid pts at each atom
+    this is function for calculating distance from defect to each atom and finding NGX grid pts at each atom
     Args:
         locpot_blk: Bulk locpot object
         locpot_def: Defect locpot object
@@ -422,12 +428,29 @@ def disttrans(locpot_blk, locpot_def,  silence=False):
     defcell_def_fcoord = defstruct.lattice.get_fractional_coords(defsite)
     defcell_def_ccoord = defsite[:]
 
-    if len(struct.sites)<len(defstruct.sites):
+    if len(struct.sites)>=len(defstruct.sites):
         sitelist=struct.sites[:]
     else: #for interstitial list
         sitelist=defstruct.sites[:]
 
+
+    #better image getter since pymatgen wasnt working
+    def returnclosestr(vec):
+        from operator import itemgetter
+        listvals=[]
+        abclats=defstruct.lattice.matrix
+        trylist=[-1,0,1]
+        for i in trylist:
+            for j in trylist:
+                for k in trylist:
+                    transvec=i*abclats[0]+j*abclats[1]+k*abclats[2]
+                    rnew=vec-(defcell_def_ccoord+transvec)
+                    listvals.append([norm(rnew),rnew,transvec])
+        listvals.sort(key=itemgetter(0))
+        return listvals[0] #will return [dist,r to defect, and transvec for defect]
+
     grid_sites = {}  # dictionary with indices keys in order of structure list
+    radlist = {'Li' : 0.97, 'O' : 0.72, 'Ti' : 1.28}  #this is a specific thing for Li2TiO3...
     for i in sitelist:
         if np.array_equal(i.coords,def_ccoord): #skip defect site
             print 'This is defect! Skipping ',i
@@ -444,24 +467,36 @@ def disttrans(locpot_blk, locpot_def,  silence=False):
         dcart_coord = defsite[0].coords
         dfrac_coord = defsite[0].frac_coords
 
-        dist, img = struct.lattice.get_distance_and_image(def_fcoord,
-                                                          frac_coord)
-        defdist, defimg = defstruct.lattice.get_distance_and_image(defcell_def_fcoord,
-                                                          dfrac_coord)
-        # cart_reldef = np.dot((frac_coord + img), defstruct.lattice._matrix) \
-        #               - def_ccoord
-        cart_reldef = np.dot((dfrac_coord + img), struct.lattice._matrix) \
-                  - defcell_def_ccoord
+        closeimage=returnclosestr(dcart_coord)
+        cart_reldef=closeimage[1]
+        defdist=closeimage[0]
+
+        ## this seemed broken for whatever reason
+        # dist, img = struct.lattice.get_distance_and_image(def_fcoord,
+        #                                                   frac_coord)
+        # defdist, defimg = defstruct.lattice.get_distance_and_image(defcell_def_fcoord,
+        #                                                   dfrac_coord)
+        # # cart_reldef = np.dot((frac_coord + img), defstruct.lattice._matrix) \
+        # #               - def_ccoord
+        # cart_reldef = np.dot((dfrac_coord + img), struct.lattice._matrix) \
+        #           - defcell_def_ccoord
         if abs(norm(cart_reldef) - defdist) > 0.1:
             print('image locater issue encountered for site=', blkindex,
                   '(in def cell) distance should be ', defdist, ' but calculated to be ',
                   norm(cart_reldef))
             #return #dont want to break the code here, but want flag to exist...what to do?
 
+        rad=radlist[i.species_string]
+        if blkindex in grid_sites:
+            print '(WARNING) index ',blkindex,' already exists in potinddict! overwriting information. '
+
         grid_sites[blkindex] = {'dist': defdist,'cart': dcart_coord,
                 'cart_reldef': cart_reldef,
-                'defgrid':getgridind(locpot_def,  dfrac_coord, gridavg=float(radius)),
-                'bulkgrid': getgridind(locpot_blk,  frac_coord, gridavg=float(radius))}
+                #'defgrid':getgridind(locpot_def,  dfrac_coord, gridavg=float(radius)),
+                'defgrid':getgridind(locpot_def,  dfrac_coord, gridavg=rad),
+                #'bulkgrid': getgridind(locpot_blk,  frac_coord, gridavg=float(radius)),
+                'bulkgrid': getgridind(locpot_blk,  frac_coord, gridavg=rad),
+                'siteobj':[i.coords,i.frac_coords,i.species_string]}
 
     return grid_sites
 
@@ -822,7 +857,9 @@ class KumagaiCorrection(object):
         #this is to calculate distance matrix for plotting
         potinddict = disttrans(self.locpot_blk, self.locpot_def,silence=self.silence)
 
-        wsrad = wigner_seitz_radius(self.locpot_blk.structure)
+        #wsrad = wigner_seitz_radius(self.locpot_blk.structure) #fudge factor...not actually using wigner_seitz_radius
+        wsrad = max(norm(a1),norm(a2),norm(a3))/2. #fudge factor...
+
         if not self.silence:
             print ('wsrad', wsrad)
 
@@ -856,6 +893,8 @@ class KumagaiCorrection(object):
                 bulkvals.append(puredat[u][v][w])
             for u,v,w in potinddict[i]['defgrid']:
                 defvals.append(defdat[u][v][w])
+            # print 'defdat val = ',np.mean(defvals)
+            # print 'puredat val = ',np.mean(bulkvals)
             print 'defdat val = ',np.mean(defvals)
             print 'puredat val = ',np.mean(bulkvals)
             v_qb = np.mean(defvals) - np.mean(bulkvals)
@@ -865,6 +904,11 @@ class KumagaiCorrection(object):
             v_pc = anisotropic_madelung_potential(self.locpot_blk, self.g_sum,
                     cart_reldef, self.dieltens, self.q, self.gamma,
                     self.madetol, silence=True)
+
+            #this is fudge factor that I cant figure out... (Danny 3/21/16)
+            v_pc/=self.q
+            v_qb/=-self.q #is negative sign because I am just taking incorrect order of difference? Or another reason...
+
             potinddict[i]['Vpc'] = v_pc
             potinddict[i]['Vqb'] = v_qb
             if not self.silence:
@@ -881,7 +925,7 @@ class KumagaiCorrection(object):
             shade, forplot = {}, {}
             for i in specset:
                 shade[i.symbol] = {'r': [], 'Vpc': [], 'Vqb': []}
-                forplot[i.symbol] = {'r': [], 'Vpc': [], 'Vqb': []}
+                forplot[i.symbol] = {'r': [], 'Vpc': [], 'Vqb': [],'sites':[]}
 
         forcorrection = []
         for i in potinddict.keys():
@@ -899,8 +943,10 @@ class KumagaiCorrection(object):
                 forplot[elt]['r'].append(potinddict[i]['dist'])
                 forplot[elt]['Vpc'].append(potinddict[i]['Vpc'])
                 forplot[elt]['Vqb'].append(potinddict[i]['Vqb'])
+                forplot[elt]['sites'].append(potinddict[i]['siteobj'])
 
-        potalign = np.mean(forcorrection)
+        potalign = np.mean(forcorrection)  #I think I might need to multiply this by the charge now since I am doing weird fudge factor?
+        #note I am already returning a potalign correction that is multiplied by q...
 
         if title:
             if title!='written':
@@ -945,10 +991,14 @@ class KumagaiCorrection(object):
                 #plt.show()
                 plt.savefig(str(title) + 'kumagaisiteavgPlot.png')
             else:
+                from monty.serialization import dumpfn
+                from monty.json import MontyEncoder
                 forplot['EXTRA']={'wsrad':wsrad,'potalign':potalign}
-                fname='KumagaiData.dat'
-                with open(fname,'w') as f:
-                    f.write(str(forplot))
+                fname='KumagaiData.json'
+                #fname='KumagaiData.dat'
+                dumpfn(forplot, fname, cls=MontyEncoder)
+                # with open(fname,'w') as f:
+                #     f.write(str(forplot))
 
         if self.silence == False:
             print 'Atomic site method potential alignment term is ' + str(np.mean(forcorrection))
@@ -957,7 +1007,7 @@ class KumagaiCorrection(object):
 
         return self.q * np.mean(forcorrection)
 
-    def plot_from_datfile(self,name='KumagaiData.dat',title='default'):
+    def plot_from_datfile(self,name='KumagaiData.json',title='default'):
         """
         Takes data file called 'name' and does plotting.
         Good for later plotting of locpot data after running run_correction()
@@ -965,10 +1015,10 @@ class KumagaiCorrection(object):
         """
         if type(self.locpot_blk) is not Locpot and not self.lengths:
             self.locpot_blk=Locpot.from_file(self.locpot_blk) #do this for plotting axes sizes...
-        import ast
-        with open(name,'r') as f:
-            plotvals=f.read()
-        forplot=ast.literal_eval(plotvals) #converting string to dictionary
+
+        from monty.serialization import loadfn
+        from monty.json import MontyDecoder
+        forplot=loadfn(name, cls=MontyDecoder)
 
         import matplotlib.pyplot as plt
         plt.figure()
@@ -1025,5 +1075,5 @@ class KumagaiCorrection(object):
 if __name__ == '__main__':
     s = KumagaiCorrection(18.099,
         '../../../../Gavacm3testMachgcorr/LOCPOT_vref','../../../../Gavacm3testMachgcorr/LOCPOT_vdef',-3,
-        silence=False, optgamma=4.160061)
+        gamma=4.160061)
     s.correction(title='Testing')
