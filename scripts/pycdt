@@ -34,7 +34,7 @@ from pycdt.utils.parse_calculations import PostProcess
 from pycdt.utils.plotter import  DefectPlotter
 from pycdt.corrections.defects_analyzer import get_correction_freysoldt, \
         get_correction_kumagai, DefectsAnalyzer
-from pycdt.corrections.finite_size_charge_correction import KumagaiBulkInit
+from pycdt.corrections.kumagai_correction import KumagaiBulkInit
 
 
 
@@ -380,7 +380,7 @@ def main():
 
 
     parser_input_files = subparsers.add_parser(
-            "generate_input",
+            "generate_input_files",
             help="Generates Vasp input files for charged point defects.")
     parser_input_files.add_argument("-s", "--structure_file", default=None, 
                                     dest="struct_file", help=struct_string) 
