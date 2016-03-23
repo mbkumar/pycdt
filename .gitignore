@@ -53,3 +53,8 @@ docs/_build/
 
 # PyBuilder
 target/
+
+#danny extra stuff for testing
+pycdt/corrections/DANNYtestingstuff/**
+*.pyc
+*~
