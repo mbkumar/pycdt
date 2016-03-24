@@ -8,6 +8,8 @@ __email__ = "geoffroy@uclouvain.be"
 __status__ = "Development"
 __date__ = "November 4, 2012"
 
+import matplotlib
+matplotlib.use('agg')
 from pymatgen.util.plotting_utils import get_publication_quality_plot
 
 
