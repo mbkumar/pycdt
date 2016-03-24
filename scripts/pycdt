@@ -34,7 +34,7 @@ from pycdt.utils.parse_calculations import PostProcess
 from pycdt.utils.plotter import  DefectPlotter
 from pycdt.corrections.defects_analyzer import get_correction_freysoldt, \
         get_correction_kumagai, DefectsAnalyzer
-from pycdt.corrections.finite_size_charge_correction import KumagaiBulkInit
+from pycdt.corrections.kumagai_correction import KumagaiBulkInit
 
 
 
@@ -45,7 +45,7 @@ def print_error_message(err_str):
         "===============\n")
 
 
-def generate_input_files(args):
+def generate_input(args):
     """
     Generates input files for VASP calculations that aim to determine
     formation energies of charged point defects by (possibly) applying
@@ -134,7 +134,7 @@ def generate_input_files(args):
             user_settings=settings)
 
 
-def parse_vasp_output(args):
+def parse_output(args):
     """
     Parses output files from VASP calculations that aim to determine
     formation energies of charged point defects by (possibly) applying
@@ -409,7 +409,7 @@ def main():
     parser_input_files.add_argument("-is", "--input_settings_file", default=None,
                                     type=str, dest="input_settings_file",
                                     help=input_settings_string)
-    parser_input_files.set_defaults(func=generate_input_files)
+    parser_input_files.set_defaults(func=generate_input)
 
     os_path_abspath_this = os.path.abspath(".")
     parser_vasp_output = subparsers.add_parser(
@@ -438,7 +438,7 @@ def main():
     #parser_vasp_output.add_argument("-e", "-eps", "--epsilon",
     #                                "--dielectric_constant", default=None,
     #                                dest="epsilon", help=epsilon_string)
-    parser_vasp_output.set_defaults(func = parse_vasp_output)
+    parser_vasp_output.set_defaults(func = parse_output)
 
     parser_compute_corrections = subparsers.add_parser(
             "compute_corrections",
