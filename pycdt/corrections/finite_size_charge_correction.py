@@ -81,7 +81,7 @@ class ChargeCorrection(object):
         else:
             self._deflocpot = self._path_deflocpot
         self._madetol = madetol #tolerance for convergence of energy terms in eV
-        self._q = q  #charge of defect (not of the homogen. background)
+        self._q = float(q)  #charge of defect (not of the homogen. background)
         self._pos = pos #fractional coords for defect (just for sxdefectalign)
         self._encut = energy_cutoff  #encut (eV) for calculation
         self._silence = silence  #for silencing printflags
