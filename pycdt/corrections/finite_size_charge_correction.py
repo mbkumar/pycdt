@@ -62,16 +62,24 @@ class ChargeCorrection(object):
         else:
             self._dieltens = np.array(dielectric_tensor)  #full dielectric tensor
             self._dielectricconst = np.mean(np.diag(self._dieltens))  #take dielconstant to be average of trace
-        self._path_purelocpot = os.path.abspath(pure_locpot_path)   #pure locpot location (kept for sxdefectalign)
-        self._path_deflocpot = os.path.abspath(defect_locpot_path)  #defect locpot location (kept for sxdefectalign)
+        if 'LOCPOT' not in pure_locpot_path:
+            print 'pure LOCPOT not in path. appending it to path.'
+            self._path_purelocpot = os.path.join(os.path.abspath(pure_locpot_path),'LOCPOT')
+        else:
+            self._path_purelocpot = os.path.abspath(pure_locpot_path)   #pure locpot location (kept for sxdefectalign)
+        if 'LOCPOT' not in defect_locpot_path:
+            print 'defect LOCPOT not in path. appending it to path.'
+            self._path_deflocpot = os.path.join(os.path.abspath(defect_locpot_path),'LOCPOT')
+        else:
+            self._path_deflocpot = os.path.abspath(defect_locpot_path)  #defect locpot location (kept for sxdefectalign)
         if pure_locpot:
             self._purelocpot = pure_locpot   #actual pure locpot object
         else:
-            self._purelocpot = os.path.abspath(pure_locpot_path)
+            self._purelocpot = self._path_purelocpot
         if defect_locpot:
             self._deflocpot = defect_locpot  #actual defect locpot object
         else:
-            self._deflocpot = os.path.abspath(defect_locpot_path)
+            self._deflocpot = self._path_deflocpot
         self._madetol = madetol #tolerance for convergence of energy terms in eV
         self._q = q  #charge of defect (not of the homogen. background)
         self._pos = pos #fractional coords for defect (just for sxdefectalign)
@@ -112,8 +120,9 @@ class ChargeCorrection(object):
             self._purelocpot=s._purelocpot
         if (type(s._deflocpot) is Locpot) and (type(self._deflocpot) is not Locpot):
             self._deflocpot=s._deflocpot
-        if not self._pos:
-            self._pos=self._purelocpot.structure.lattice.get_fractional_coords(s._pos) #neccessary for sxdefectalign
+        ##this next part isn't necessary to have if positions are found in code
+        # if not self._pos:
+        #     self._pos=self._purelocpot.structure.lattice.get_fractional_coords(s._pos) #neccessary for sxdefectalign
         print '\n Final Freysoldt',nomtype,'value is ',freyval
         return freyval
 
@@ -176,13 +185,16 @@ class ChargeCorrection(object):
 
 
 if __name__ == '__main__':
-    s = ChargeCorrection(18.099,
-            '../../../../Gavacm3testMachgcorr/LOCPOT_vref',
-            '../../../../Gavacm3testMachgcorr/LOCPOT_vdef', -3,
-            silence=False, optgamma=4.160061)
+    s = ChargeCorrection(6, 'DANNYtestingstuff/NonorigindefectAsvac+3/LOCPOT_vref',
+                         'DANNYtestingstuff/NonorigindefectAsvac+3/LOCPOT_vdef', +3, silence=False)
+
+    # s = ChargeCorrection(18.099,
+    #         '../../../../Gavacm3testMachgcorr/LOCPOT_vref',
+    #         '../../../../Gavacm3testMachgcorr/LOCPOT_vdef', -3,
+    #         silence=False, optgamma=4.160061)
 
     s.freysoldt(partflag='AllSplit')
-    s.kumagai(partflag='AllSplit')
+    #s.kumagai(partflag='AllSplit')
     #s.sxdefect(lengths=[12.197979519481905, 12.197979063097828, 12.197979],pos=[ 0.0,  0.0,  0.0]partflag='AllSplit')
 
     #s.freysoldt(title='Testing',partflag='AllSplit')
