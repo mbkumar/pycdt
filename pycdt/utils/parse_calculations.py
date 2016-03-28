@@ -59,6 +59,7 @@ class PostProcess(object):
         subfolders += glob.glob(os.path.join(self._root_fldr,"vac_*"))
         subfolders += glob.glob(os.path.join(self._root_fldr,"as_*"))
         subfolders += glob.glob(os.path.join(self._root_fldr,"sub_*"))
+        subfolders += glob.glob(os.path.join(self._root_fldr,"inter_*"))
 
         def get_vr_and_check_locpot(fldr):
             vr_file = os.path.join(fldr,'vasprun.xml')
