@@ -340,7 +340,7 @@ class PostProcess(object):
                     del chemlimlist[key]
             #chem_lims = chem_lims[chem_lims.keys()[0]]
 
-        return chem_lims
+        return chem_limlist
 
     def parse_dielectric_calculation(self):
         """
