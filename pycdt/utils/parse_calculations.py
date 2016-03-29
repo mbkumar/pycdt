@@ -59,6 +59,7 @@ class PostProcess(object):
         subfolders += glob.glob(os.path.join(self._root_fldr,"vac_*"))
         subfolders += glob.glob(os.path.join(self._root_fldr,"as_*"))
         subfolders += glob.glob(os.path.join(self._root_fldr,"sub_*"))
+        subfolders += glob.glob(os.path.join(self._root_fldr,"inter_*"))
 
         def get_vr_and_check_locpot(fldr):
             vr_file = os.path.join(fldr,'vasprun.xml')
@@ -107,7 +108,7 @@ class PostProcess(object):
                 vr, error_msg = get_vr_and_check_locpot(fldr)
                 if error_msg:
                     print(fldr_name, error_msg)
-                    print("Abandoing parsing of the calculations")
+                    print("Abandoning parsing of the calculations")
                     break
                 bulk_energy = vr.final_energy
                 bulk_struct = vr.final_structure
@@ -199,7 +200,9 @@ class PostProcess(object):
 
     def get_chempot_limits(self, structure=None):
         """
-        Returns atomic chempots from mpid
+        Returns atomic chempots from mpid or structure input
+
+        accounts for all different defect phases
         """
         if not structure:
             if not self._mapi_key:
@@ -211,62 +214,131 @@ class PostProcess(object):
             if  not structure:
                 raise ValueError("Could not fetch structure for atomic chempots!")
 
-        species = structure.types_of_specie
-        species_symbol = [s.symbol for s in species]
-        #print 'look for atomic chempots relative to:',species
+        bulk_species = structure.types_of_specie #element object list
+        bulk_species_symbol = [s.symbol for s in bulk_species] #symbol list
+        bulk_composition = structure.composition #composition object
 
-        if not self._mapi_key:
-            with MPRester() as mp:
-                entries = mp.get_entries_in_chemsys(species_symbol)
-        else:
-            with MPRester(self._mapi_key) as mp:
-                entries = mp.get_entries_in_chemsys(species_symbol)
-        if  not entries:
-            raise ValueError("Could not fetch entries for atomic chempots!")
-
-        if len(species) == 1:
-            print('this is elemental system! Using bulk value.')
-            vals = [entry.energy_per_atom for entry in entries]
-            chempot = {species[0]: min(vals)}
-            return chempot
-
-        pd = PhaseDiagram(entries)
-
-        chem_lims = {}
-        for specie in species:
-            mu_lims = PDAnalyzer(pd).get_chempot_range_stability_phase(
-                    structure.composition, specie)
-            sp_symb = specie.symbol
-            chem_lims[sp_symb] = {'rich': {},'poor': {}}
-            for el in mu_lims.keys():
-                chem_lims[sp_symb]['rich'][el.symbol] = mu_lims[el][1]
-                chem_lims[sp_symb]['poor'][el.symbol] = mu_lims[el][0]
-
-        # For substitution species the values are equal to single element vals
-        for sub_el in self._substitution_species:
+        def get_chempots_from_entries(list_species, list_spec_symbol, comp, exceptions=[]):
+            #function for retrieving phase diagram
             if not self._mapi_key:
                 with MPRester() as mp:
-                    entries = mp.get_entries_in_chemsys([sub_el])
+                    entries = mp.get_entries_in_chemsys(list_spec_symbol)
             else:
                 with MPRester(self._mapi_key) as mp:
-                    entries = mp.get_entries_in_chemsys([sub_el])
+                    entries = mp.get_entries_in_chemsys(list_spec_symbol)
             if  not entries:
                 raise ValueError("Could not fetch entries for atomic chempots!")
+            if len(list_species) == 1:
+                print('this is elemental system! Using bulk value.')
+                vals = [entry.energy_per_atom for entry in entries]
+                chempot = {list_species[0]: min(vals)}
+                return chempot
+            else:
+                pd = PhaseDiagram(entries)
+                chem_lims = {}
+                for specie in list_species:
+                    if specie in exceptions: #not considering non-native species as open...
+                        continue
+                    mu_lims = PDAnalyzer(pd).get_chempot_range_stability_phase(
+                            comp, specie)
+                    sp_symb = specie.symbol
+                    chem_lims[sp_symb] = {'rich': {},'poor': {}}
+                    for el in mu_lims.keys():
+                        chem_lims[sp_symb]['rich'][el.symbol] = mu_lims[el][1]
+                        chem_lims[sp_symb]['poor'][el.symbol] = mu_lims[el][0]
+                return chem_lims
 
-            vals = [entry.energy_per_atom for entry in entries]
-            for sp_symb in chem_lims:
-                chem_lims[sp_symb]['rich'][sub_el] = min(vals)
-                chem_lims[sp_symb]['poor'][sub_el] = min(vals)
+        bulkchemlimlist = get_chempots_from_entries(bulk_species, bulk_species_symbol, bulk_composition) #for just this system
+        first_specie = sorted(chemlimlist.keys())[0] #this is so I have a first specie to compare with...
+        chemlimlist = bulkchemlimlist.copy()
+
+        #now create list of additional species that may influence chemical potential limits
+        for sub_el in self._substitution_species: #these are symbols to be added
+            if sub_el in bulk_species_symbol: #skip anti-sites which are considered as subs
+                continue
+            else:
+                from pymatgen.core import Element, Composition
+                def_species = bulk_species[:]
+                def_species_symbol = bulk_species_symbol[:]
+
+                def_species.append(Element(sub_el))
+                def_species_symbol.append(sub_el)
+
+                def_chemlimlist = get_chempots_from_entries(def_species, def_species_symbol, bulk_composition, exceptions=[Element(sub_el)])
+                for richlims in bulkchemlimlist[first_specie].keys():
+                    for elts in bulkchemlimlist[first_specie][richlims].keys():
+                        #bulk elt chempots should be identical. If not then an error has occured?
+                        if def_chemlimlist[first_specie][richlims][elts]!=bulkchemlimlist[first_specie][richlims][elts]:
+                            raise ValueError("Chemical Potential fetching caused error when considering element "
+                                             +str(sub_el)+" in system with "+str(bulk_species_symbol)+" elements")
+                    chemlimlist[first_specie][richlims][sub_el] = def_chemlimlist[first_specie][richlims][sub_el] #add new elt to system
+
+
+        ##THIS was older method before I created the above method
+
+        #species = structure.types_of_specie
+        #species_symbol = [s.symbol for s in species]
+        #print 'look for atomic chempots relative to:',species
+        #
+        # if not self._mapi_key:
+        #     with MPRester() as mp:
+        #         entries = mp.get_entries_in_chemsys(species_symbol)
+        # else:
+        #     with MPRester(self._mapi_key) as mp:
+        #         entries = mp.get_entries_in_chemsys(species_symbol)
+        # if  not entries:
+        #     raise ValueError("Could not fetch entries for atomic chempots!")
+        #
+        # if len(species) == 1:
+        #     print('this is elemental system! Using bulk value.')
+        #     vals = [entry.energy_per_atom for entry in entries]
+        #     chempot = {species[0]: min(vals)}
+        #     return chempot
+        #
+        # pd = PhaseDiagram(entries)
+        #
+        # chem_lims = {}
+        # for specie in species:
+        #     mu_lims = PDAnalyzer(pd).get_chempot_range_stability_phase(
+        #             structure.composition, specie)
+        #     sp_symb = specie.symbol
+        #     chem_lims[sp_symb] = {'rich': {},'poor': {}}
+        #     for el in mu_lims.keys():
+        #         chem_lims[sp_symb]['rich'][el.symbol] = mu_lims[el][1]
+        #         chem_lims[sp_symb]['poor'][el.symbol] = mu_lims[el][0]
+
+        # # For substitution species the values are equal to single element vals
+        # for sub_el in self._substitution_species:
+        #     if not self._mapi_key:
+        #         with MPRester() as mp:
+        #             entries = mp.get_entries_in_chemsys([sub_el])
+        #     else:
+        #         with MPRester(self._mapi_key) as mp:
+        #             entries = mp.get_entries_in_chemsys([sub_el])
+        #     if  not entries:
+        #         raise ValueError("Could not fetch entries for atomic chempots!")
+        #
+        #     vals = [entry.energy_per_atom for entry in entries]
+        #     for sp_symb in chem_lims:
+        #         chem_lims[sp_symb]['rich'][sub_el] = min(vals)
+        #         chem_lims[sp_symb]['poor'][sub_el] = min(vals)
+        #
+        # #make this less confusing for binary systems...
+        # if len(species) == 2:
+        #     first_specie = sorted(chem_lims.keys())[0]
+        #     for key in chem_lims.keys():
+        #         if key is not first_specie:
+        #             del chem_lims[key]
+        #     #chem_lims = chem_lims[chem_lims.keys()[0]]
 
         #make this less confusing for binary systems...
-        if len(species) == 2:
-            first_specie = sorted(chem_lims.keys())[0]
-            for key in chem_lims.keys():
+        #TODO this is too binary system specific...we should improve approach to be equivalent for all systems?
+        if len(chemlimlist.keys()) == 2:
+            first_specie = sorted(chemlimlist.keys())[0]
+            for key in chemlimlist.keys():
                 if key is not first_specie:
-                    del chem_lims[key]
+                    del chemlimlist[key]
             #chem_lims = chem_lims[chem_lims.keys()[0]]
-
-
 
         return chem_lims
 
