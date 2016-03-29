@@ -249,8 +249,8 @@ class PostProcess(object):
                 return chem_lims
 
         bulkchemlimlist = get_chempots_from_entries(bulk_species, bulk_species_symbol, bulk_composition) #for just this system
-        first_specie = sorted(chemlimlist.keys())[0] #this is so I have a first specie to compare with...
-        chemlimlist = bulkchemlimlist.copy()
+        first_specie = sorted(bulkchemlimlist.keys())[0] #this is so I have a first specie to compare with...
+        chem_lims = bulkchemlimlist.copy()
 
         #now create list of additional species that may influence chemical potential limits
         for sub_el in self._substitution_species: #these are symbols to be added
@@ -271,7 +271,7 @@ class PostProcess(object):
                         if def_chemlimlist[first_specie][richlims][elts]!=bulkchemlimlist[first_specie][richlims][elts]:
                             raise ValueError("Chemical Potential fetching caused error when considering element "
                                              +str(sub_el)+" in system with "+str(bulk_species_symbol)+" elements")
-                    chemlimlist[first_specie][richlims][sub_el] = def_chemlimlist[first_specie][richlims][sub_el] #add new elt to system
+                    chem_lims[first_specie][richlims][sub_el] = def_chemlimlist[first_specie][richlims][sub_el] #add new elt to system
 
 
         ##THIS was older method before I created the above method
@@ -333,14 +333,14 @@ class PostProcess(object):
 
         #make this less confusing for binary systems...
         #TODO this is too binary system specific...we should improve approach to be equivalent for all systems?
-        if len(chemlimlist.keys()) == 2:
-            first_specie = sorted(chemlimlist.keys())[0]
-            for key in chemlimlist.keys():
+        if len(chem_lims.keys()) == 2:
+            first_specie = sorted(chem_lims.keys())[0]
+            for key in chem_lims.keys():
                 if key is not first_specie:
-                    del chemlimlist[key]
+                    del chem_lims[key]
             #chem_lims = chem_lims[chem_lims.keys()[0]]
 
-        return chem_limlist
+        return chem_lims
 
     def parse_dielectric_calculation(self):
         """
