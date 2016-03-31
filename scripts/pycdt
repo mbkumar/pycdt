@@ -121,10 +121,18 @@ def generate_input(args):
         #        " provided does not match number of species in structure!")
         #    return
 
+    # Substitution defects if those were provided
+    substitutions = {}
+    if arg.substitutions:
+        for i, sub in enumerate(arg.substitutions):
+            substitutions[sub[0]] = sub[1:]
+
+
     # finally, generate VASP input files for defect calculations
     def_structs = ChargedDefectsStructures(
             conv_struct, max_min_oxi=oxi_range_dict, 
             oxi_states=oxi_state_dict, antisites_flag=antisites,
+            substitutions=substitions,
             include_interstitials=include_interstitials,
             interstitial_elements=interstitial_elements,
             cellmax=nmax)
@@ -347,6 +355,10 @@ def main():
         " that are to be considered for interstitial generation. " \
         " If no elements are given, intrinsic interstitials" \
         " are considered."
+    substitutions_string = "Substitutional defects (optional) to be generated.\n" \
+        " Minimum of two arguments are expected: the element on which the " \
+        " substitution is to applied as well as the substitution elements " \
+        " (e.g., --sub As P N O)."
     input_settings_string = "Supply VASP input settings for INCAR, KPOINTS in" \
         " the specified YAML/JSON file."
     root_fldr_string = "Path (relative or absolute) to directory" \
@@ -406,6 +418,9 @@ def main():
     parser_input_files.add_argument("interstitial_elements", type=str,
                                     default=[], nargs="*", \
                                     help=interstitial_elements_string)
+    parser_input_files.add_argument("--sub", action='append', type=str,
+                                    nargs="+", dest='substitutions',\
+                                    help=substitutions_string)
     parser_input_files.add_argument("-is", "--input_settings_file", default=None,
                                     type=str, dest="input_settings_file",
                                     help=input_settings_string)

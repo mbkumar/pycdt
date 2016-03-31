@@ -27,6 +27,8 @@ __email__ = 'dbroberg@gmail.com, mbkumar@gmail.com'
 
 import os
 import numpy as np
+#import matplotlib
+#matplotlib.use('agg')
 from pymatgen.io.vasp.outputs import Locpot
 
 
