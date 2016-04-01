@@ -123,8 +123,8 @@ def generate_input(args):
 
     # Substitution defects if those were provided
     substitutions = {}
-    if arg.substitutions:
-        for i, sub in enumerate(arg.substitutions):
+    if args.substitutions:
+        for i, sub in enumerate(args.substitutions):
             substitutions[sub[0]] = sub[1:]
 
 
@@ -132,7 +132,7 @@ def generate_input(args):
     def_structs = ChargedDefectsStructures(
             conv_struct, max_min_oxi=oxi_range_dict, 
             oxi_states=oxi_state_dict, antisites_flag=antisites,
-            substitutions=substitions,
+            substitutions=substitutions,
             include_interstitials=include_interstitials,
             interstitial_elements=interstitial_elements,
             cellmax=nmax)
