@@ -396,7 +396,7 @@ def main():
             help="Generates Vasp input files for charged point defects.")
     parser_input_files.add_argument("-s", "--structure_file", default=None, 
                                     dest="struct_file", help=struct_string) 
-    parser_input_files.add_argument("-i", "--mp_id", default=None,
+    parser_input_files.add_argument("-i", "--mpid", default=None,
                                     type=str.lower, dest="mp_id", 
                                     help=mp_id_string)
     parser_input_files.add_argument("-k",  "--mapi_key", default=None,
@@ -431,7 +431,7 @@ def main():
             "parse_output",
             help="Parses VASP output for calculation of formation energies of"
              " charged point defects.")
-    parser_vasp_output.add_argument("-i", "--mp_id", type=str.lower,
+    parser_vasp_output.add_argument("-i", "--mpid", type=str.lower,
                                     dest="mp_id", help=mp_id_string)
     parser_vasp_output.add_argument("-k", "--mapi_key", default=None,
                                     dest="mapi_key", help=mapi_string)
