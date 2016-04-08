@@ -95,7 +95,7 @@ def generate_input(args):
         # transform to conventional unit cell
         conv_struct = SpacegroupAnalyzer( 
                 prim_struct).get_conventional_standard_structure()
-        make_vasp_dielectric_files(prim_struct)
+        make_vasp_dielectric_files(prim_struct, user_settings=settings)
     else:
         conv_struct = Structure.from_file(struct_file)
         make_vasp_dielectric_files(conv_struct, user_settings=settings)
