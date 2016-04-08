@@ -1,0 +1,9 @@
+INCAR:
+    ENCUT: 520
+    GGA: PS
+    defects:
+        EDIFFG: -1e-2
+        EDIFF: 1e-7
+    bulk:
+        EDIFF: 1e-4
+
