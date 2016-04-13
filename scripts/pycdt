@@ -287,6 +287,10 @@ def compute_formation_energies(args):
                     correction = entry['charge_correction']
                     break
             parsed_defect.charge_correction = correction
+    elif corrections_file_name == "corrections.json":  # Default filename
+        pass # Don't bother, the user is not worried about corrections
+    else:
+        raise OSError([2, "File not found", corrections_file_name])
 
     # Gap
     if not args.bandgap:
