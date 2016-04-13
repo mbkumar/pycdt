@@ -486,7 +486,8 @@ def disttrans(locpot_blk, locpot_def,  silence=False):
                   norm(cart_reldef))
             #return #dont want to break the code here, but want flag to exist...what to do?
 
-        rad=radlist[i.species_string]
+        #rad=radlist[i.species_string]
+        rad = 1.0 # Temporary hack by Bharat
         if blkindex in grid_sites:
             print '(WARNING) index ',blkindex,' already exists in potinddict! overwriting information. '
 

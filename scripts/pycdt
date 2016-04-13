@@ -276,16 +276,17 @@ def compute_formation_energies(args):
     if epsilon_tensor is None:
         epsilon_tensor = defect_data['epsilon']
     defects = defect_data['defects']
-    correction_data = loadfn(corrections_file_name)  
 
-    for parsed_defect in defects:
-        name_def = parsed_defect._name
-        q = parsed_defect._charge
-        for entry in correction_data[name_def]:
-            if q == entry['charge']:
-                correction = entry['charge_correction']
-                break
-        parsed_defect.charge_correction = correction
+    if os.path.isfile(corrections_file_name):
+        correction_data = loadfn(corrections_file_name)  
+        for parsed_defect in defects:
+            name_def = parsed_defect._name
+            q = parsed_defect._charge
+            for entry in correction_data[name_def]:
+                if q == entry['charge']:
+                    correction = entry['charge_correction']
+                    break
+            parsed_defect.charge_correction = correction
 
     # Gap
     if not args.bandgap:
@@ -307,13 +308,31 @@ def compute_formation_energies(args):
     for defect in defects:
         rich_da.add_parsed_defect(defect)
         poor_da.add_parsed_defect(defect)
-    #for defect in defects:
-    plotter = DefectPlotter(rich_da)
-    form_en_plot = plotter.get_plot_form_energy()
-    form_en_plot.savefig(specie+'_rich_defect_form_energy.eps')
-    plotter = DefectPlotter(poor_da)
-    form_en_plot = plotter.get_plot_form_energy()
-    form_en_plot.savefig(specie+'_poor_defect_form_enenergy.eps')
+
+    rich_da_trans = rich_da.get_transition_levels()
+    poor_da_trans = poor_da.get_transition_levels()
+
+    print ("===============\nDefect Transition Levels (eV):\n==============")
+    print (specie, " RICH\n------------")
+    for dfct_name, trans_lvls in rich_da_trans.items():
+        print (dfct_name)
+        ky_vals = sorted(trans_lvls.items(), key=lambda x: x[0][0])
+        for qpair, trans_lvl in ky_vals:
+            print ("{}: {}".format(qpair, trans_lvl))
+    print ("\n", specie, " POOR\n--------------")
+    for dfct_name, trans_lvls in poor_da_trans.items():
+        print (dfct_name)
+        ky_vals = sorted(trans_lvls.items(), key=lambda x: x[0][0])
+        for qpair, trans_lvl in ky_vals:
+            print ("{}: {}".format(qpair, trans_lvl))
+     
+    if args.plot_results:
+        plotter = DefectPlotter(rich_da)
+        form_en_plot = plotter.get_plot_form_energy()
+        form_en_plot.savefig(specie+'_rich_defect_form_energy.eps')
+        plotter = DefectPlotter(poor_da)
+        form_en_plot = plotter.get_plot_form_energy()
+        form_en_plot.savefig(specie+'_poor_defect_form_enenergy.eps')
 
 
 def main():

@@ -8,6 +8,7 @@ __email__ = "geoffroy@uclouvain.be"
 __status__ = "Development"
 __date__ = "November 4, 2012"
 
+import numpy as np
 import matplotlib
 matplotlib.use('agg')
 from pymatgen.util.plotting_utils import get_publication_quality_plot
@@ -45,6 +46,7 @@ class DefectPlotter(object):
         nb_steps = 10000
         step = (max_lim-min_lim) / nb_steps
         x = [min_lim+step*i for i in range(nb_steps)]
+        x = np.arange(xlim[0], xlim[1], (xlim[1]-xlim[0])/nb_steps)
         y = {}
         for t in self._analyzer._get_all_defect_types():
             y_tmp = []
@@ -79,7 +81,7 @@ class DefectPlotter(object):
                         break
                 legends.append(legend)
             return legends
-            
+
         plt.legend(get_legends(y.keys()),fontsize=2*width)
         plt.axvline(x=0.0, linestyle='--', color='k', linewidth=3)
         plt.axvline(x=self._analyzer._band_gap, linestyle='--', color='k', linewidth=3)
