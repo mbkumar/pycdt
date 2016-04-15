@@ -336,7 +336,7 @@ def compute_formation_energies(args):
         form_en_plot.savefig(specie+'_rich_defect_form_energy.eps')
         plotter = DefectPlotter(poor_da)
         form_en_plot = plotter.get_plot_form_energy()
-        form_en_plot.savefig(specie+'_poor_defect_form_enenergy.eps')
+        form_en_plot.savefig(specie+'_poor_defect_form_energy.eps')
 
 
 def main():
