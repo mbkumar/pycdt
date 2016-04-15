@@ -73,8 +73,8 @@ class DefectPlotter(object):
                         sub_str = '_{'+dfct.site.species_string+'}$'
                         if 'vac' in name:
                             base = '$Vac'
-                        else: #'sub' in name or 'as' in name or 'antisite' in name:
-                            base = '$'+'AS' # dfct.entry.data['substitution_specie'] --> KeyError
+                        else:
+                            base = '$'+name.split('_')[2] 
                         legend = base + sub_str
                         break
                 legends.append(legend)
