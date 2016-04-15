@@ -169,7 +169,8 @@ def parse_output(args):
     #plot_results = args.plot_results
     #epsilon = args.epsilon
 
-    # error-checking
+    # error-checking; TODO allow for code to work without mp-id at this step...should be allowed to parse_output without mp-id
+    #        Will require finding out phase diagram and inserting computed entry manually (assuming GGA used)
     if not mp_id:
         print_error_message("No Materials Project structure ID provided!")
         return
@@ -201,7 +202,9 @@ def parse_output(args):
 
 def compute_corrections(args):
     """
-    Computes corrections for the charged point defects 
+    TODO: have option to suppress potential plots (but for now want to plot them to make sure correction is working)
+    ----------
+    Computes corrections for the charged point defects
     Supported so-far: Freysoldt method, Extended Freysoldt method
 
     Args:
@@ -226,12 +229,19 @@ def compute_corrections(args):
     bulk = defect_data['bulk_entry']
     defects = defect_data['defects']
     corrections = defaultdict(list)
+    blklpt=None  #for speeding up correction loop by storing bulk Locpot object
     if correction_method=='freysoldt':
         for defect in defects:
             print ('defect_name: ', defect._full_name)
             print ('-----------------------------------------\n\n')
-            correction = get_correction_freysoldt(
-                    defect, bulk, epsilon)
+            #correction = get_correction_freysoldt(
+            #        defect, bulk, epsilon)
+            if not blklpt:
+                correction,blklpt = get_correction_freysoldt(
+                                    defect, bulk, epsilon,title=defect._full_name)  #title outputs freysoldt pot. plots
+            else:
+                correction,blklpt = get_correction_freysoldt(
+                        defect, blklpt, epsilon,title=defect._full_name)
             defect.charge_correction = correction
             corrections[defect._name].append({
                 'charge_correction': correction, 'charge':defect._charge})
@@ -294,7 +304,7 @@ def compute_formation_energies(args):
 
     # Gap
     if not args.bandgap:
-        bandgap = defect_data['gap']['energy']
+        bandgap = defect_data['gap']
     else:
         bandgap = args.bandgap
 

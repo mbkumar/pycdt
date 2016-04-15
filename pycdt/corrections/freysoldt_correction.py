@@ -527,10 +527,10 @@ class FreysoldtCorrection(object):
                 plt.plot(x, finalshift, c="blue", label="short range (aligned)")
                 tmpx=[x[i] for i in range(mid - checkdis, mid + checkdis)]
                 plt.fill_between(tmpx, -100, 100, facecolor='red', alpha=0.15, label='sampling region')
-                plt.xlim(round(x[0]),round(x[-1]))
+                plt.xlim(np.floor(x[0]),np.ceil(x[-1]))
                 ymin=min(min(v_R),min(defavg - pureavg),min(finalshift))
                 ymax=max(max(v_R),max(defavg - pureavg),max(finalshift))
-                plt.ylim(round(ymin),round(ymax))
+                plt.ylim(np.floor(ymin),np.ceil(ymax))
                 plt.xlabel('planar average along axis ' + str(axis+1))
                 plt.ylabel('Potential')
                 plt.legend(loc=9)
