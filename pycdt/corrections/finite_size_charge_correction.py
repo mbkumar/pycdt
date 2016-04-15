@@ -1,6 +1,6 @@
 """
 This module combines all the finite size supercell charge corrections
-into one easy to use class with minimal inputs called ChargeCorrections
+into one easy to use class with minimal inputs called ChargeCorrection
 
 The methods implemented are
 1) Freysoldt correction for isotropic systems.

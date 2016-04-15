@@ -294,7 +294,8 @@ def anisotropic_madelung_potential(locpot_bulk, g_sum, r, dieltens, q,  gamma, t
     if not silence:
         print ('self interaction piece is {}'.format(selfint * hart_to_ev))
 
-    pot = hart_to_ev * (directpart + recippartreal - selfint)
+    #pot = hart_to_ev * (directpart + recippartreal - selfint)
+    pot = (hart_to_ev/-q) * (directpart + recippartreal - selfint) #from danny: this is to have CORRECT conversion to V from atomic units for comparison with DFT data
 
     return pot
 
@@ -906,8 +907,8 @@ class KumagaiCorrection(object):
                     self.madetol, silence=True)
 
             #this is fudge factor that I cant figure out... (Danny 3/21/16)
-            v_pc/=self.q
-            v_qb/=-self.q #is negative sign because I am just taking incorrect order of difference? Or another reason...
+            #v_pc/=-self.q #fixed this is the function...
+            v_qb*=-1 #change sign convention of electron charge
 
             potinddict[i]['Vpc'] = v_pc
             potinddict[i]['Vqb'] = v_qb
