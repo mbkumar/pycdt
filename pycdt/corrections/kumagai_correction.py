@@ -294,8 +294,7 @@ def anisotropic_madelung_potential(locpot_bulk, g_sum, r, dieltens, q,  gamma, t
     if not silence:
         print ('self interaction piece is {}'.format(selfint * hart_to_ev))
 
-    #pot = hart_to_ev * (directpart + recippartreal - selfint)
-    pot = (hart_to_ev/-q) * (directpart + recippartreal - selfint) #from danny: this is to have CORRECT conversion to V from atomic units for comparison with DFT data
+    pot = (hart_to_ev/-q) * (directpart + recippartreal - selfint)
 
     return pot
 
@@ -514,14 +513,14 @@ def wigner_seitz_radius(structure):
     except:
         lat = Lattice(structure.structure.lattice_vectors())
 
-    wz = lat.get_wigner_seitz_cell()
-    # wz is list of WS cell face vertices
-    # make list of midpoints on faces of WS cell
-    dist = []
+    wz = lat.get_wigner_seitz_cell() #list of WS cell face vertices
+
+    dist = [] #distance to midpoints of WS cell facets
     for facet in wz:
         midpt = np.mean(np.array(facet), axis=0)
         dist.append(norm(midpt))
     wsrad = min(dist)
+    
     return wsrad
 
 
@@ -856,12 +855,17 @@ class KumagaiCorrection(object):
         angset, [a1, a2, a3], vol, determ, invdiel = kumagai_init(
                 self.locpot_blk.structure, self.dieltens, sil=self.silence)
 
-        #this is to calculate distance matrix for plotting
+        #calculate distance matrix for plotting
         potinddict = disttrans(self.locpot_blk, self.locpot_def,silence=self.silence)
 
-        #wsrad = wigner_seitz_radius(self.locpot_blk.structure) #fudge factor...not actually using wigner_seitz_radius
-        wsrad = max(norm(a1),norm(a2),norm(a3))/2. #fudge factor...
-
+        #get sampling radius (with special exception if lat constants not close to each other)
+        minlat=min(norm(a1),norm(a2),norm(a3))
+        lat_perc_diffs=[100*abs(norm(a1)-norm(lat))/minlat for lat in [a2,a3]]
+        lat_perc_diffs.append(100*abs(norm(a2)-norm(a3))/minlat)
+        if all(i < 30 for i in lat_perc_diffs):
+            wsrad = wigner_seitz_radius(self.locpot_blk.structure)
+        else:
+            wsrad = max(norm(a1),norm(a2),norm(a3))/2. #increase sampling region if not cubic (not recommended)
         if not self.silence:
             print ('wsrad', wsrad)
 
@@ -884,32 +888,27 @@ class KumagaiCorrection(object):
                 print '-------------------------------------'
                 print "calculate alignment potential data for atom " + str(i) \
                       + " (dist=" + str(potinddict[i]['dist']) + ")"
-            #dx, dy, dz = potinddict[i]['defgrid'] #really should change indices based on whether the atom moved or not...
+            ##single point routine
+            #dx, dy, dz = potinddict[i]['defgrid']
             #dx, dy, dz = potinddict[i]['bulkgrid']
             #bx, by, bz = potinddict[i]['bulkgrid']
             #v_qb = defdat[dx][dy][dz] - puredat[bx][by][bz]
-            #do averaging routine
+            #averaging routine
             bulkvals=[]
             defvals=[]
             for u,v,w in potinddict[i]['bulkgrid']:
                 bulkvals.append(puredat[u][v][w])
             for u,v,w in potinddict[i]['defgrid']:
                 defvals.append(defdat[u][v][w])
-            # print 'defdat val = ',np.mean(defvals)
-            # print 'puredat val = ',np.mean(bulkvals)
             print 'defdat val = ',np.mean(defvals)
             print 'puredat val = ',np.mean(bulkvals)
             v_qb = np.mean(defvals) - np.mean(bulkvals)
-            cart_reldef = potinddict[i]['cart_reldef'] #should change this to averaging pure
-            # and def within a range then subtract
 
+            cart_reldef = potinddict[i]['cart_reldef']
             v_pc = anisotropic_madelung_potential(self.locpot_blk, self.g_sum,
                     cart_reldef, self.dieltens, self.q, self.gamma,
                     self.madetol, silence=True)
-
-            #this is fudge factor that I cant figure out... (Danny 3/21/16)
-            #v_pc/=-self.q #fixed this is the function...
-            v_qb*=-1 #change sign convention of electron charge
+            v_qb*=-1 #change charge sign convention
 
             potinddict[i]['Vpc'] = v_pc
             potinddict[i]['Vqb'] = v_qb
@@ -920,7 +919,7 @@ class KumagaiCorrection(object):
         if not self.silence:
             print '--------------------------------------'
 
-        #now parse and plot if neccessary
+        #parse and plot if title is not None
         if title:  #to make shading region prettier
             fullspecset = self.locpot_blk.structure.species
             specset = list(set(fullspecset))
@@ -947,8 +946,7 @@ class KumagaiCorrection(object):
                 forplot[elt]['Vqb'].append(potinddict[i]['Vqb'])
                 forplot[elt]['sites'].append(potinddict[i]['siteobj'])
 
-        potalign = np.mean(forcorrection)  #I think I might need to multiply this by the charge now since I am doing weird fudge factor?
-        #note I am already returning a potalign correction that is multiplied by q...
+        potalign = np.mean(forcorrection)
 
         if title:
             if title!='written':
@@ -990,24 +988,20 @@ class KumagaiCorrection(object):
                 plt.xlim([0, max(rlis) + 3])
 
                 plt.title(str(title) + ' atomic site potential plot')
-                #plt.show()
                 plt.savefig(str(title) + 'kumagaisiteavgPlot.png')
             else:
                 from monty.serialization import dumpfn
                 from monty.json import MontyEncoder
                 forplot['EXTRA']={'wsrad':wsrad,'potalign':potalign}
                 fname='KumagaiData.json'
-                #fname='KumagaiData.dat'
                 dumpfn(forplot, fname, cls=MontyEncoder)
-                # with open(fname,'w') as f:
-                #     f.write(str(forplot))
 
         if self.silence == False:
             print 'Atomic site method potential alignment term is ' + str(np.mean(forcorrection))
             print 'this yields total (q*align) Kumagai potential correction energy of ' \
                   + str(self.q * np.mean(forcorrection)) + ' (eV) '
 
-        return self.q * np.mean(forcorrection)
+        return self.q * np.mean(forcorrection) #double check sign convention of charge here....
 
     def plot_from_datfile(self,name='KumagaiData.json',title='default'):
         """
