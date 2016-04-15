@@ -220,6 +220,7 @@ class PostProcess(object):
 
         def get_chempots_from_entries(list_species, list_spec_symbol, comp, exceptions=[]):
             #function for retrieving phase diagram
+            #TODO: fix approach for when substituions included
             if not self._mapi_key:
                 with MPRester() as mp:
                     entries = mp.get_entries_in_chemsys(list_spec_symbol)
@@ -228,31 +229,55 @@ class PostProcess(object):
                     entries = mp.get_entries_in_chemsys(list_spec_symbol)
             if  not entries:
                 raise ValueError("Could not fetch entries for atomic chempots!")
-            if len(list_species) == 1:
-                print('this is elemental system! Using bulk value.')
-                vals = [entry.energy_per_atom for entry in entries]
-                chempot = {list_species[0]: min(vals)}
-                return chempot
-            else:
-                pd = PhaseDiagram(entries)
-                chem_lims = {}
-                for specie in list_species:
-                    if specie in exceptions: #not considering non-native species as open...
-                        continue
-                    mu_lims = PDAnalyzer(pd).get_chempot_range_stability_phase(
-                            comp, specie)
-                    sp_symb = specie.symbol
-                    chem_lims[sp_symb] = {'rich': {},'poor': {}}
-                    for el in mu_lims.keys():
-                        chem_lims[sp_symb]['rich'][el.symbol] = mu_lims[el][1]
-                        chem_lims[sp_symb]['poor'][el.symbol] = mu_lims[el][0]
-                return chem_lims
+            #this could be where we physically insert a computed entry into phase diagram
+            # (for when it doesn't exist in MP database)
+            pd = PhaseDiagram(entries)
+            chem_lims = {}
+            #fullinfo_chem_lims = []
+            PDA=PDAnalyzer(pd)
+            fincomp=comp.reduced_composition
+            for i in range(len(pd.facets)):
+                facet=pd.facets[i]
+                eltsinfac=[pd.qhull_entries[j].composition.reduced_composition for j in facet]
+                if fincomp in eltsinfac:
+                    chempots = PDA.get_facet_chempots(facet)
+                    #fullinfo_chem_lims.append([i,eltsinfac,chempots])
+                    eltsinfac.remove(fincomp)
+                    limnom=''
+                    for sys in eltsinfac:
+                        limnom+=str(sys.reduced_formula)+'-'
+                    limnom=limnom[:-1]
+                    if len(eltsinfac)==1:
+                        limnom+=' rich'
+                    chemdict = {el.symbol:chempots[el] for el in pd.elements}
+                    chem_lims[limnom]=chemdict
+            # if len(list_species) == 1:
+            #     print('this is elemental system! Using bulk value.')
+            #     vals = [entry.energy_per_atom for entry in entries]
+            #     chempot = {list_species[0]: min(vals)}
+            #     return chempot
+            # else:
+            #     pd = PhaseDiagram(entries)
+            #     chem_lims = {}
+            #     for specie in list_species:
+            #         if specie in exceptions: #not considering non-native species as open...
+            #             continue
+            #         mu_lims = PDAnalyzer(pd).get_chempot_range_stability_phase(
+            #                 comp, specie)
+            #         sp_symb = specie.symbol
+            #         chem_lims[sp_symb] = {'rich': {},'poor': {}}
+            #         for el in mu_lims.keys():
+            #             chem_lims[sp_symb]['rich'][el.symbol] = mu_lims[el][1]
+            #             chem_lims[sp_symb]['poor'][el.symbol] = mu_lims[el][0]
+            #     return chem_lims
+            return chem_lims
 
         bulkchemlimlist = get_chempots_from_entries(bulk_species, bulk_species_symbol, bulk_composition) #for just this system
         first_specie = sorted(bulkchemlimlist.keys())[0] #this is so I have a first specie to compare with...
         chem_lims = bulkchemlimlist.copy()
 
         #now create list of additional species that may influence chemical potential limits
+        #TODO: currently will probably break...Danny needs to fix in the style of the new above function
         for sub_el in self._substitution_species: #these are symbols to be added
             if sub_el in bulk_species_symbol: #skip anti-sites which are considered as subs
                 continue
@@ -330,15 +355,6 @@ class PostProcess(object):
         #         if key is not first_specie:
         #             del chem_lims[key]
         #     #chem_lims = chem_lims[chem_lims.keys()[0]]
-
-        #make this less confusing for binary systems...
-        #TODO this is too binary system specific...we should improve approach to be equivalent for all systems?
-        if len(chem_lims.keys()) == 2:
-            first_specie = sorted(chem_lims.keys())[0]
-            for key in chem_lims.keys():
-                if key is not first_specie:
-                    del chem_lims[key]
-            #chem_lims = chem_lims[chem_lims.keys()[0]]
 
         return chem_lims
 

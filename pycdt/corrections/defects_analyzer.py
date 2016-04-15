@@ -73,7 +73,7 @@ class ParsedDefect(object):
                 name=d.get('name',None))
 
 
-def get_correction_freysoldt(defect, bulk_entry, epsilon):
+def get_correction_freysoldt(defect, bulk_entry, epsilon, title = None):
     """
     Function to compute the correction for each defect.
     Args:
@@ -81,7 +81,12 @@ def get_correction_freysoldt(defect, bulk_entry, epsilon):
         bulk_entry: ComputedStructureEntry corresponding to bulk
         epsilon: dielectric constant
     """
-    locpot_path_blk = bulk_entry.data['locpot_path']
+    if type(bulk_entry) is Locpot:
+        locpot_blk = bulk_entry
+        locpot_path_blk = 'fakepath' #this doesnt matter if Locpot is already loaded
+    else:
+        locpot_blk = None
+        locpot_path_blk = bulk_entry.data['locpot_path']
     locpot_path_def = defect.entry.data['locpot_path']
     charge = defect._charge
     #frac_coords = defect.site.frac_coords  #maybe can use this later...but not neccessary?
@@ -89,6 +94,7 @@ def get_correction_freysoldt(defect, bulk_entry, epsilon):
 
     corr_meth = ChargeCorrection(epsilon,
             locpot_path_blk, locpot_path_def, charge,
+            pure_locpot = locpot_blk, #for quicker loading of bulk locpot objects...
             energy_cutoff = encut,
             silence=False)
     #if either locpot already loaded then load pure_locpot= or defect_locpot=
@@ -96,16 +102,17 @@ def get_correction_freysoldt(defect, bulk_entry, epsilon):
     #if want to to change energy tolerance for correction convergence then change madetol= (default is 0.0001)
     # (for kumagai) if known optgamma, set optgamma=, if KumagaiBulk already initialized then set KumagaiBulk=?
 
-    corr_val = corr_meth.freysoldt(title=None, axis=0, partflag='All') #could do an averaging over three axes but this works for now...
+    corr_val = corr_meth.freysoldt(title=title, axis=0, partflag='All') #could do an averaging over three axes but this works for now...
 
     #return sum(corr_val)/len(corr_val)
-    return corr_val
+    return (corr_val,corr_meth._purelocpot)
 
 
 def get_correction_kumagai(defect, bulk_init, epsilon_tensor):
     """
     --------------------------------------------------------------
     TODO: Make easy way to store KumagaiBulk object for doing several successive Kumagai calculations?
+    TODO: allow for bulk_init input to be a string to bulkLocpot so that you can build
     --------------------------------------------------------------
     Function to compute the correction for each defect.
     Args:
@@ -117,14 +124,14 @@ def get_correction_kumagai(defect, bulk_init, epsilon_tensor):
             "kumagai": modified Freysoldt or Kumagai for anisotropic crystals
     """
     #locpot_path_blk = bulk_entry.data['locpot_path']
-    locpot_path_blk = ""#bulk_entry.data['locpot_path']
+    locpot_path_blk = ""#bulk_entry.data['locpot_path'] #should fix this
     epsilon = bulk_init.epsilon
     locpot_path_def = defect.entry.data['locpot_path']
     charge = defect._charge
     #frac_coords = defect.site.frac_coords  #maybe can use this later...but not neccessary?
     encut = defect.entry.data['encut']
 
-    corr_meth = ChargeCorrection(epsilon,
+    corr_meth = ChargeCorrection(epsilon_tensor,
             locpot_path_blk, locpot_path_def, charge,
             energy_cutoff = encut,
             silence=False, KumagaiBulk=bulk_init)

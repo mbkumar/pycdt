@@ -56,5 +56,6 @@ target/
 
 #danny extra stuff for testing
 pycdt/corrections/DANNYtestingstuff/**
+scripts/ORIGstuff/**
 *.pyc
 *~
