@@ -7,18 +7,20 @@ TODO create a VaspInputSet instead?
 __author__ = "Geoffroy Hautier, Bharat Medasani"
 __copyright__ = "Copyright 2014, The Materials Project"
 __version__ = "1.0"
-__maintainer__ = "Geoffroy Hautier"
-__email__ = "geoffroy@uclouvain.be"
+__maintainer__ = "Bharat Medasani"
+__email__ = "mbkumar@gmail.com"
 __status__ = "Development"
 __date__ = "November 4, 2012"
 
-from pymatgen.io.vasp.inputs import Kpoints, Potcar 
-from pymatgen.io.vasp.sets import MPVaspInputSet
+import os
+from copy import deepcopy
+
 from monty.serialization import loadfn, dumpfn
 from monty.json import MontyDecoder, MontyEncoder
 
-#import json
-import os
+from pymatgen.io.vasp.inputs import Kpoints, Potcar 
+from pymatgen.io.vasp.sets import MPVaspInputSet
+
 
 def make_vasp_defect_files(defects, path_base, user_settings={}, hse=False):
     """
@@ -42,9 +44,11 @@ def make_vasp_defect_files(defects, path_base, user_settings={}, hse=False):
         defects[key] for key in defects if key != 'bulk'])
 
     # User setting dicts
+    user_settings = deepcopy(user_settings)
     user_incar = user_settings.pop('INCAR', {})
     user_incar_blk = user_incar.pop('bulk', {})
     user_incar_def = user_incar.pop('defects', {})
+    tmp = user_incar.pop('dielectric', {})
     user_kpoints = user_settings.pop('KPOINTS', {})
     user_potcar = user_settings.pop('POTCAR', {})
 
@@ -340,8 +344,15 @@ def make_vasp_dielectric_files(struct, path=None, user_settings={},
         'ISPIN': 1, 'LWAVE': False, 'EDIFF': 1e-5,
         'ISMEAR': -5, 'ALGO': 'Fast', 'ISIF': 2})
     incar.update({'IBRION': 8, 'LEPSILON': True, 'LPEAD': True})
-    if 'INCAR' in user_settings:
-        incar.update(user_settings['INCAR'])
+    user_settings = deepcopy(user_settings)
+    print 'in dielectric function'
+    print user_settings
+    user_incar = user_settings.pop('INCAR', {})
+    tmp = user_incar.pop('bulk', {})
+    tmp = user_incar.pop('defects', {})
+    user_incar_diel = user_incar.pop('dielectric', {})
+    incar.update(user_incar)
+    incar.update(user_incar_diel)
     if 'NSW' in incar:
         del incar['NSW']
     if hse == True:

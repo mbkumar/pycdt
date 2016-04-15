@@ -10,6 +10,10 @@ __status__ = "Development"
 __date__ = "November 4, 2012"
 
 from math import sqrt, floor, pi, exp
+from collections import defaultdict 
+from itertools import combinations
+
+import numpy as np
 
 from pymatgen.core.structure import PeriodicSite
 from pymatgen.io.vasp.outputs import Locpot
@@ -119,14 +123,16 @@ def get_correction_kumagai(defect, bulk_init, epsilon_tensor):
             "freysoldt": Freysoldt correction for isotropic crystals
             "kumagai": modified Freysoldt or Kumagai for anisotropic crystals
     """
-    #locpot_path_blk = bulk_entry.data['locpot_path'] #broken
+    #locpot_path_blk = bulk_entry.data['locpot_path']
+    locpot_path_blk = ""#bulk_entry.data['locpot_path'] #should fix this
+    epsilon = bulk_init.epsilon
     locpot_path_def = defect.entry.data['locpot_path']
     charge = defect._charge
     #frac_coords = defect.site.frac_coords  #maybe can use this later...but not neccessary?
     encut = defect.entry.data['encut']
 
     corr_meth = ChargeCorrection(epsilon_tensor,
-            'none', locpot_path_def, charge,
+            locpot_path_blk, locpot_path_def, charge,
             energy_cutoff = encut,
             silence=False, KumagaiBulk=bulk_init)
     #if either locpot already loaded then load pure_locpot= or defect_locpot=
@@ -218,35 +224,12 @@ class DefectsAnalyzer(object):
         """
         self._formation_energies = []
         for d in self._defects:
-            #multiplier = None
-            #atm_blk = self._entry_bulk.composition.num_atoms
-            #atm_def = d.entry.composition.num_atoms 
-            """
-            By Bharat: I don't get the need to use multiplier and
-            the complicated way of determining it below. The code below 
-            is trying to generate 1 in an complicated way. 
-            """
-            #for i in [1,-1,0]:
-            #    if floor((atm_def+i)/atm_blk) == (atm_def+i)/atm_blk:
-            #        multiplier = (atm_def+i)/atm_blk
-            #        break
-            
-
             #compensate each element in defect with the chemical potential
-            """
-            By Bharat: Again an overly complicated way of generating the 
-            multipliers for chemical potentials. And it can be lead to bugs 
-            when used for defect complexes. 
-            """
             mu_needed_coeffs = {}
             for elt in d.entry.composition.elements:
                 el_def_comp = d.entry.composition[elt] 
                 el_blk_comp = self._entry_bulk.composition[elt]
                 mu_needed_coeffs[elt] = el_blk_comp - el_def_comp
-                #if el_def_comp > multiplier*el_blk_comp:
-                #    mu_needed_coeffs[elt] = -1.0
-                #if el_def_comp < multiplier*el_blk_comp:
-                #    mu_needed_coeffs[elt] = 1.0
 
             sum_mus = 0.0
             for elt in mu_needed_coeffs:
@@ -255,7 +238,6 @@ class DefectsAnalyzer(object):
 
             self._formation_energies.append(
                     d.entry.energy - self._entry_bulk.energy + \
-                    #d.entry.energy - multiplier*self._entry_bulk.energy + \
                             sum_mus + d._charge*self._e_vbm + \
                             d.charge_correction)
 
@@ -276,6 +258,26 @@ class DefectsAnalyzer(object):
         self._band_gap = self._band_gap + cbm_correct + vbm_correct
         self._e_vbm = self._e_vbm - vbm_correct
         self._compute_form_en()
+
+    def get_transition_levels(self):
+        xlim = (-0.5, self._band_gap+1.5)
+        nb_steps = 1000
+        x = np.arange(xlim[0], xlim[1], (xlim[1]-xlim[0])/nb_steps)
+ 
+        y = defaultdict(defaultdict)
+        for i, dfct in enumerate(self._defects):
+            yval = self._formation_energies[i] + dfct._charge*x
+            y[dfct._name][dfct._charge] = yval
+
+        transit_levels = defaultdict(defaultdict)
+        for dfct_name in y:
+            q_ys = y[dfct_name]
+            for qpair in combinations(q_ys.keys(),2):
+                if abs(qpair[1]-qpair[0]) == 1:
+                    y_absdiff = abs(q_ys[qpair[1]] - q_ys[qpair[0]])
+                    transit_levels[dfct_name][qpair] = x[np.argmin(y_absdiff)]
+        return transit_levels
+
 
     def correct_bg(self, dict_levels, vbm_correct, cbm_correct):
         """
@@ -306,6 +308,7 @@ class DefectsAnalyzer(object):
             if dict_levels[name]['type'] == 'cbm_like':
                 z = dict_levels[name]['q*'] - self._defects[i]._charge
                 self._formation_energies[i] +=  z * cbm_correct
+
 
     def _get_form_energy(self, ef, i):
         return self._formation_energies[i] + self._defects[i]._charge*ef
