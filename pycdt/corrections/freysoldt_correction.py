@@ -419,13 +419,21 @@ class FreysoldtCorrection(object):
             else:
                 print 'Found defect to be antisite/substitution type at ',blksite,' in bulk, and ',\
                         defsite,' in defect cell'
-        self._pos=blksite
-        self._defpos=defsite
-        if self._pos is None:
-            self._pos=self._defpos
-        elif self._defpos is None:
-            self._defpos=self._pos
+        # self._pos=blksite
+        # self._defpos=defsite
+        # if self._pos is None:
+        #     self._pos=self._defpos
+        # elif self._defpos is None:
+        #     self._defpos=self._pos
 
+        #Turns out it is important to do planar averaging at same position, either you can get rigid shifts due to atomic changes at far away from defect
+        #       Note this means I can clean up some of the code below...
+        if defsite is None: #vacancies
+            self._defpos=blksite
+            self._pos=blksite
+        else: #all else, do w.r.t defect site
+            self._defpos=defsite
+            self._pos=defsite
 
         #at this point, _pos is location to shift to for bulk, _defpos is location to sample for defect locpot
         # If the user input self._pos then no way to know type of defect aside from looking at number of sites
