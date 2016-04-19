@@ -200,6 +200,12 @@ class PostProcess(object):
 
     def get_chempot_limits(self, structure=None):
         """
+        TODO 1: get rid of MPRester pulling of structure. When you run this your structure should already be known
+            It is an unneccssary complication for people who have structures that are not in the MP data base...
+        TODO 2: smarter names for chemical potential limits (i.e. "C-rich" for when subs exist in a C calc)
+        TODO 3: allow for dependent elements to be used (i.e. PDA.get_chempot_range_stability_phase(target_comp, open_elt))
+            (2 and 3 are related - since we want to allow for an option where we have the dependent chem pot limits)
+
         Returns atomic chempots from mpid or structure input
 
         accounts for all different defect phases
@@ -219,8 +225,7 @@ class PostProcess(object):
         bulk_composition = structure.composition #composition object
 
         def get_chempots_from_entries(list_species, list_spec_symbol, comp, exceptions=[]):
-            #function for retrieving phase diagram
-            #TODO: fix approach for when substituions included
+            #function for retrieving chemical potentials based on all species of interest
             if not self._mapi_key:
                 with MPRester() as mp:
                     entries = mp.get_entries_in_chemsys(list_spec_symbol)
@@ -251,55 +256,47 @@ class PostProcess(object):
                         limnom+=' rich'
                     chemdict = {el.symbol:chempots[el] for el in pd.elements}
                     chem_lims[limnom]=chemdict
-            # if len(list_species) == 1:
-            #     print('this is elemental system! Using bulk value.')
-            #     vals = [entry.energy_per_atom for entry in entries]
-            #     chempot = {list_species[0]: min(vals)}
-            #     return chempot
-            # else:
-            #     pd = PhaseDiagram(entries)
-            #     chem_lims = {}
-            #     for specie in list_species:
-            #         if specie in exceptions: #not considering non-native species as open...
-            #             continue
-            #         mu_lims = PDAnalyzer(pd).get_chempot_range_stability_phase(
-            #                 comp, specie)
-            #         sp_symb = specie.symbol
-            #         chem_lims[sp_symb] = {'rich': {},'poor': {}}
-            #         for el in mu_lims.keys():
-            #             chem_lims[sp_symb]['rich'][el.symbol] = mu_lims[el][1]
-            #             chem_lims[sp_symb]['poor'][el.symbol] = mu_lims[el][0]
-            #     return chem_lims
             return chem_lims
 
-        bulkchemlimlist = get_chempots_from_entries(bulk_species, bulk_species_symbol, bulk_composition) #for just this system
-        first_specie = sorted(bulkchemlimlist.keys())[0] #this is so I have a first specie to compare with...
-        chem_lims = bulkchemlimlist.copy()
+        # bulkchemlimlist = get_chempots_from_entries(bulk_species, bulk_species_symbol, bulk_composition) #for just this system
+        # first_specie = sorted(bulkchemlimlist.keys())[0] #this is so I have a first specie to compare with...
+        # chem_lims = bulkchemlimlist.copy()
 
-        #now create list of additional species that may influence chemical potential limits
-        #TODO: currently will probably break...Danny needs to fix in the style of the new above function
-        for sub_el in self._substitution_species: #these are symbols to be added
-            if sub_el in bulk_species_symbol: #skip anti-sites which are considered as subs
+        #Danny approach to subs...want to be consistent in approach to getting chem pots...
+        # ....so limiting regions when including substitutional species also important for native defects...
+        for sub_el in self._substitution_species:
+            if sub_el in bulk_species_symbol: #skip anti-sites which are sometimes considered as subs
                 continue
             else:
-                from pymatgen.core import Element, Composition
-                def_species = bulk_species[:]
-                def_species_symbol = bulk_species_symbol[:]
+                from pymatgen.core import Element
+                bulk_species.append(Element(sub_el))
+                bulk_species_symbol.append(sub_el)
 
-                def_species.append(Element(sub_el))
-                def_species_symbol.append(sub_el)
+        chem_lims = get_chempots_from_entries(bulk_species, bulk_species_symbol, bulk_composition)
 
-                def_chemlimlist = get_chempots_from_entries(def_species, def_species_symbol, bulk_composition, exceptions=[Element(sub_el)])
-                for richlims in bulkchemlimlist[first_specie].keys():
-                    for elts in bulkchemlimlist[first_specie][richlims].keys():
-                        #bulk elt chempots should be identical. If not then an error has occured?
-                        if def_chemlimlist[first_specie][richlims][elts]!=bulkchemlimlist[first_specie][richlims][elts]:
-                            raise ValueError("Chemical Potential fetching caused error when considering element "
-                                             +str(sub_el)+" in system with "+str(bulk_species_symbol)+" elements")
-                    chem_lims[first_specie][richlims][sub_el] = def_chemlimlist[first_specie][richlims][sub_el] #add new elt to system
+        # #now create list of additional species that may influence chemical potential limits
+        # for sub_el in self._substitution_species: #these are symbols to be added
+        #     if sub_el in bulk_species_symbol: #skip anti-sites which are considered as subs
+        #         continue
+        #     else:
+        #         from pymatgen.core import Element, Composition
+        #         def_species = bulk_species[:]
+        #         def_species_symbol = bulk_species_symbol[:]
+        #
+        #         def_species.append(Element(sub_el))
+        #         def_species_symbol.append(sub_el)
+        #
+        #         def_chemlimlist = get_chempots_from_entries(def_species, def_species_symbol, bulk_composition, exceptions=[Element(sub_el)])
+        #         for richlims in bulkchemlimlist[first_specie].keys():
+        #             for elts in bulkchemlimlist[first_specie][richlims].keys():
+        #                 #bulk elt chempots should be identical. If not then an error has occured?
+        #                 if def_chemlimlist[first_specie][richlims][elts]!=bulkchemlimlist[first_specie][richlims][elts]:
+        #                     raise ValueError("Chemical Potential fetching caused error when considering element "
+        #                                      +str(sub_el)+" in system with "+str(bulk_species_symbol)+" elements")
+        #             chem_lims[first_specie][richlims][sub_el] = def_chemlimlist[first_specie][richlims][sub_el] #add new elt to system
+        #
 
-
-        ##THIS was older method before I created the above method
+        ##Below was older method before I created the above method; dont delete yet because I may want to revert some changes
 
         #species = structure.types_of_specie
         #species_symbol = [s.symbol for s in species]
@@ -347,14 +344,6 @@ class PostProcess(object):
         #     for sp_symb in chem_lims:
         #         chem_lims[sp_symb]['rich'][sub_el] = min(vals)
         #         chem_lims[sp_symb]['poor'][sub_el] = min(vals)
-        #
-        # #make this less confusing for binary systems...
-        # if len(species) == 2:
-        #     first_specie = sorted(chem_lims.keys())[0]
-        #     for key in chem_lims.keys():
-        #         if key is not first_specie:
-        #             del chem_lims[key]
-        #     #chem_lims = chem_lims[chem_lims.keys()[0]]
 
         return chem_lims
 
