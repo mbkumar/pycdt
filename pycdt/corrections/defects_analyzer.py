@@ -140,7 +140,7 @@ def get_correction_kumagai(defect, bulk_init, epsilon_tensor):
     #if want to to change energy tolerance for correction convergence then change madetol= (default is 0.0001)
     # (if known optgamma, set optgamma=, if KumagaiBulk already initialized then set KumagaiBulk=
 
-    corr_val = corr_meth.kumagai(title=None, partflag='All') #should probably split this up to include
+    corr_val = corr_meth.kumagai(title=defect._full_name, partflag='All') #should probably split this up to include
 
     return corr_val
 
