@@ -519,8 +519,8 @@ def wigner_seitz_radius(structure):
     for facet in wz:
         midpt = np.mean(np.array(facet), axis=0)
         dist.append(norm(midpt))
-    wsrad = min(dist)
-    
+        wsrad = min(dist)
+
     return wsrad
 
 
@@ -862,10 +862,13 @@ class KumagaiCorrection(object):
         minlat=min(norm(a1),norm(a2),norm(a3))
         lat_perc_diffs=[100*abs(norm(a1)-norm(lat))/minlat for lat in [a2,a3]]
         lat_perc_diffs.append(100*abs(norm(a2)-norm(a3))/minlat)
-        if all(i < 30 for i in lat_perc_diffs):
-            wsrad = wigner_seitz_radius(self.locpot_blk.structure)
-        else:
-            wsrad = max(norm(a1),norm(a2),norm(a3))/2. #increase sampling region if not cubic (not recommended)
+        if not all(i < 45 for i in lat_perc_diffs):
+            print 'NOTICE! detected that cell was not very cubic. ' \
+                  'Might want to be smarter in way you sample atoms outside wigner-seitz cell with Kumagai scheme'
+            #THIS was how I managed to get identical sampling radius to Kumagai paper...
+            #print 'changing sampling scheme since cell does not have comparable lattice sizes...'
+            #wsrad = max(norm(a1),norm(a2),norm(a3))/2. #increase sampling region if not cubic (not recommended)
+        wsrad = wigner_seitz_radius(self.locpot_blk.structure)
         if not self.silence:
             print ('wsrad', wsrad)
 
