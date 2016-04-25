@@ -91,6 +91,9 @@ def get_correction_freysoldt(defect, bulk_entry, epsilon, title = None):
     charge = defect._charge
     #frac_coords = defect.site.frac_coords  #maybe can use this later...but not neccessary?
     encut = defect.entry.data['encut']
+    if not charge:
+        print 'charge is zero so charge correction is zero'
+        return (0.,None)
 
     corr_meth = ChargeCorrection(epsilon,
             locpot_path_blk, locpot_path_def, charge,
