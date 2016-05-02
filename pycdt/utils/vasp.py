@@ -345,8 +345,8 @@ def make_vasp_dielectric_files(struct, path=None, user_settings={},
         'ISMEAR': -5, 'ALGO': 'Fast', 'ISIF': 2})
     incar.update({'IBRION': 8, 'LEPSILON': True, 'LPEAD': True})
     user_settings = deepcopy(user_settings)
-    print 'in dielectric function'
-    print user_settings
+    #print 'in dielectric function'
+    #print user_settings
     user_incar = user_settings.pop('INCAR', {})
     tmp = user_incar.pop('bulk', {})
     tmp = user_incar.pop('defects', {})
