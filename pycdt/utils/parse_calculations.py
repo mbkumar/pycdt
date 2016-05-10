@@ -219,12 +219,8 @@ class PostProcess(object):
         """
         if not structure:
             if not self._mpid:
-                try:
-                    st = Poscar.from_file(os.path.join(self._root_fldr,"bulk","POSCAR"))
-                    structure = st.structure
-                except:
-                    st = Vasprun(os.path.join(self._root_fldr,"bulk","vasprun.xml"))
-                    structure = st.final_structure
+                    bulkvr = Vasprun(os.path.join(self._root_fldr,"bulk","vasprun.xml"))
+                    structure = bulkvr.final_structure
             elif not self._mapi_key:
                 with MPRester() as mp:
                     structure = mp.get_structure_by_material_id(self._mpid)
@@ -248,7 +244,10 @@ class PostProcess(object):
                     entries = mp.get_entries_in_chemsys(list_spec_symbol)
             if  not entries:
                 raise ValueError("Could not fetch entries for atomic chempots!")
-            #this could be where we physically insert a computed entry into phase diagram
+            #if no mp-id present, then physically insert the computed entry into phase diagram
+            #note there is no gurantee the structure is stable with respect to decomposition into other phases...
+            if not self._mpid:
+                entries.append(bulkvr.get_computed_entry())
             # (for when it doesn't exist in MP database)
             pd = PhaseDiagram(entries)
             chem_lims = {}
