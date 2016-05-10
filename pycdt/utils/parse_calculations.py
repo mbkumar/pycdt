@@ -22,7 +22,7 @@ from monty.serialization import loadfn, dumpfn
 from monty.json import MontyEncoder, MontyDecoder
 from pymatgen.matproj.rest import MPRester
 from pymatgen.io.vasp.outputs import Vasprun
-from pymatgen.io.vasp.inputs import Potcar
+from pymatgen.io.vasp.inputs import Potcar, Poscar
 from pymatgen.electronic_structure.bandstructure import BandStructure
 from pymatgen.entries.computed_entries import ComputedStructureEntry
 from pymatgen.phasediagram.pdmaker import PhaseDiagram
@@ -182,20 +182,27 @@ class PostProcess(object):
             mpid (str): MP-ID for which the valence band maximum is to
                 be fetched from the Materials Project database
         """
-
-        if not self._mapi_key:
-            with MPRester() as mp:
-                bs = mp.get_bandstructure_by_material_id(self._mpid)
+        if self._mpid is None:
+                print 'No mp-id provided, will fetch CBM/VBM details from the bulk calculation.' \
+                      '\nNote that it would be better to perform real band structure calculation...'
+                vr = Vasprun(os.path.join(self._root_fldr,'bulk','vasprun.xml'))
+                bandgap = vr.eigenvalue_band_properties[0]
+                vbm = vr.eigenvalue_band_properties[2]
         else:
-            with MPRester(self._mapi_key) as mp:
-                bs = mp.get_bandstructure_by_material_id(self._mpid)
-        if not bs:
-            raise ValueError("Could not fetch band structure!")
+            if not self._mapi_key:
+                with MPRester() as mp:
+                    bs = mp.get_bandstructure_by_material_id(self._mpid)
+            else:
+                with MPRester(self._mapi_key) as mp:
+                    bs = mp.get_bandstructure_by_material_id(self._mpid)
+            if not bs:
+                raise ValueError("Could not fetch band structure!")
 
-        vbm = bs.get_vbm()['energy']
-        if not vbm:
-            vbm = 0
-        bandgap = bs.get_band_gap()
+            vbm = bs.get_vbm()['energy']
+            if not vbm:
+                vbm = 0
+            bandgap = bs.get_band_gap()
+
         return (vbm, bandgap)
 
     def get_chempot_limits(self, structure=None):
@@ -211,7 +218,14 @@ class PostProcess(object):
         accounts for all different defect phases
         """
         if not structure:
-            if not self._mapi_key:
+            if not self._mpid:
+                try:
+                    st = Poscar.from_file(os.path.join(self._root_fldr,"bulk","POSCAR"))
+                    structure = st.structure
+                except:
+                    st = Vasprun(os.path.join(self._root_fldr,"bulk","vasprun.xml"))
+                    structure = st.final_structure
+            elif not self._mapi_key:
                 with MPRester() as mp:
                     structure = mp.get_structure_by_material_id(self._mpid)
             else:

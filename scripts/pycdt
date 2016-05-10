@@ -169,11 +169,11 @@ def parse_output(args):
     #plot_results = args.plot_results
     #epsilon = args.epsilon
 
-    # error-checking; TODO allow for code to work without mp-id at this step...should be allowed to parse_output without mp-id
-    #        Will require finding out phase diagram and inserting computed entry manually (assuming GGA used)
+    # error-checking;
     if not mp_id:
-        print_error_message("No Materials Project structure ID provided!")
-        return
+        print_error_message("No Materials Project structure ID provided! (proceeding anyway)")
+        #return
+        mp_id=None
 
     # parse results to get defect data and correction terms
     defect_data = PostProcess(root_fldr, mp_id, mapi_key).compile_all()
