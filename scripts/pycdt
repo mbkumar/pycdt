@@ -305,7 +305,6 @@ def compute_formation_energies(args):
     # Gap
     if not args.bandgap:
         bandgap = defect_data['gap']
-        print(bandgap)
     else:
         bandgap = args.bandgap
 
@@ -318,7 +317,7 @@ def compute_formation_energies(args):
         for defect in defects:
             da.add_parsed_defect(defect)
 
-        if region == mu_range.keys()[0]:   
+        if region == mu_range.keys()[0]:
             da_trans = da.get_transition_levels()
             print ("===============\nDefect Transition Levels (eV):\n==============")
             for dfct_name, trans_lvls in da_trans.items():
