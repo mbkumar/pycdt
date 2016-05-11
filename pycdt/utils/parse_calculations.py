@@ -278,7 +278,7 @@ class PostProcess(object):
                         limnom+=str(sys.reduced_formula)+'-'
                     limnom=limnom[:-1]
                     if len(eltsinfac)==1:
-                        limnom+=' rich'
+                        limnom+='_rich'
                     chemdict = {el.symbol:chempots[el] for el in pd.elements}
                     chem_lims[limnom]=chemdict
             return chem_lims
