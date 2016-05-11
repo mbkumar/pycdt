@@ -201,7 +201,7 @@ class PostProcess(object):
             vbm = bs.get_vbm()['energy']
             if not vbm:
                 vbm = 0
-            bandgap = bs.get_band_gap()
+            bandgap = bs.get_band_gap()['energy']
 
         return (vbm, bandgap)
 
@@ -244,15 +244,27 @@ class PostProcess(object):
                     entries = mp.get_entries_in_chemsys(list_spec_symbol)
             if  not entries:
                 raise ValueError("Could not fetch entries for atomic chempots!")
-            #if no mp-id present, then physically insert the computed entry into phase diagram
-            #note there is no gurantee the structure is stable with respect to decomposition into other phases...
-            if not self._mpid:
-                entries.append(bulkvr.get_computed_entry())
             # (for when it doesn't exist in MP database)
             pd = PhaseDiagram(entries)
             chem_lims = {}
             #fullinfo_chem_lims = []
             PDA=PDAnalyzer(pd)
+            #if no mp-id present, then physically insert the computed entry into phase diagram.
+            #        if it does (and the entry is stable) then don't force entry in
+            if not self._mpid:
+                #(to do)HERE check to see if structure already exists in phase diagram
+                #check to see if structure is unstable
+                blkentry=bulkvr.get_computed_entry()
+                eaboveh=PDA.get_decomp_and_e_above_hull(blkentry,allow_negative=True)[1]
+                if eaboveh<=0:
+                    print 'unknown structure is stable with respect to GGA phase diagram! E_above_hull='+str(eaboveh)
+                    entries.append(blkentry)
+                    pd=PhaseDiagram(entries)
+                    PDA=PDAnalyzer(pd)
+                else:
+                    #this is part where I would instead return the chemical potentails with respect to the atomic chemical pot. elts.
+                    raise ValueError("Structure is unstable with respect to phase diagram! E_above_hull="+str(eaboveh)) #this doesnt kill calc. just raises error and continues
+
             fincomp=comp.reduced_composition
             for i in range(len(pd.facets)):
                 facet=pd.facets[i]
