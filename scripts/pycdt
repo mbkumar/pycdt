@@ -318,9 +318,9 @@ def compute_formation_energies(args):
         for defect in defects:
             da.add_parsed_defect(defect)
 
-        da_trans = da.get_transition_levels()
-        print ("===============\nDefect Transition Levels (eV):\n==============")
-        if region == mu_range.keys()[0]:
+        if region == mu_range.keys()[0]:   
+            da_trans = da.get_transition_levels()
+            print ("===============\nDefect Transition Levels (eV):\n==============")
             for dfct_name, trans_lvls in da_trans.items():
                 print (dfct_name)
                 ky_vals = sorted(trans_lvls.items(), key=lambda x: x[0][0])
