@@ -60,8 +60,8 @@ def get_optimized_sc_scale(inp_struct, final_site_no):
     the final_site_no.
     """
 
-    print 'number of sites in bulk cell=',inp_struct.num_sites,\
-	  '\nnumber of sites in final super cell=', final_site_no
+    print '\nNumber of sites:\n    unit cell = ', inp_struct.num_sites, \
+	  '\n    super cell = ', final_site_no
     target_site = inp_struct.sites[0]
     dictio={}
     result=[]
@@ -112,6 +112,7 @@ class ChargedDefectsStructures(object):
     (optional).
     """
 
+    # To do: remove all oxi input things?!
     def __init__(self, structure, max_min_oxi={}, substitutions={},
                  oxi_states={}, cellmax=128, antisites_flag=True,
                  include_interstitials=False, interstitial_elements=[],
@@ -194,29 +195,37 @@ class ChargedDefectsStructures(object):
                                     " standardizing the input structure.")
 
         struct_species = self.struct.types_of_specie
-        if not oxi_states:
-            if len(struct_species) == 1:
-                oxi_states = {self.struct.types_of_specie[0].symbol: 0}
-            else:
-                vir = ValenceIonicRadiusEvaluator(self.struct)
-                oxi_states = vir.valences
-        self.oxi_states = {}
-        for key,val in oxi_states.items():
-            strip_key = ''.join([s for s in key if s.isalpha()])
-            self.oxi_states[str2unicode(strip_key)] = val
+        self.min_max_oxi_bulk = [0, 0]
+        for elem in self.struct.symbol_set:
+            oxi_elem = Element(elem).oxidation_states
+            if min(oxi_elem) < self.min_max_oxi_bulk[0]:
+                self.min_max_oxi_bulk[0] = min(oxi_elem)
+            if max(oxi_elem) > self.min_max_oxi_bulk[1]:
+                self.min_max_oxi_bulk[1] = max(oxi_elem)
 
-        print 'oxidation states for bulk=',self.oxi_states
+        #if not oxi_states:
+        #    if len(struct_species) == 1:
+        #        oxi_states = {self.struct.types_of_specie[0].symbol: 0}
+        #    else:
+        #        vir = ValenceIonicRadiusEvaluator(self.struct)
+        #        oxi_states = vir.valences
+        #self.oxi_states = {}
+        #for key,val in oxi_states.items():
+        #    strip_key = ''.join([s for s in key if s.isalpha()])
+        #    self.oxi_states[str2unicode(strip_key)] = val
+        #
+        #print 'oxidation states for bulk=',self.oxi_states
 
         if include_interstitials and interstitial_elements:
             for elem_str in interstitial_elements:
                 if not Element.is_valid_symbol(elem_str):
                     raise ValueError("invalid interstitial element"
                             " \"{}\"".format(elem_str))
-                elif elem_str not in self.oxi_states.keys():
-                    self.oxi_states[elem_str] = Element(
-                            elem_str).common_oxidation_states[0]
-                    print("inter oxi_states   "+elem_str+" "+str(
-                            Element(elem_str).common_oxidation_states[0]))
+                #elif elem_str not in self.oxi_states.keys():
+                #    self.oxi_states[elem_str] = Element(
+                #            elem_str).common_oxidation_states[0]
+                #    print("inter oxi_states   "+elem_str+" "+str(
+                #            Element(elem_str).common_oxidation_states[0]))
 
         conv_prim_rat = int(self.struct.num_sites/prim_struct.num_sites)
         sc_scale = get_optimized_sc_scale(self.struct,cellmax)
@@ -227,54 +236,55 @@ class ChargedDefectsStructures(object):
                 'name': 'bulk',
                 'supercell': {'size': sc_scale, 'structure': sc}}
 
-        if not max_min_oxi: 
-            max_min_oxi = {}
-            for s in struct_species:
-                if isinstance(s, Specie):
-                    el = s.element
-                elif isinstance(s, Element):
-                    el = s
-                else:
-                    continue
-                max_oxi = max(el.common_oxidation_states)
-                min_oxi = min(el.common_oxidation_states)
-                max_min_oxi[str2unicode(el.symbol)] = (min_oxi,max_oxi)
-            for s, subspecies in self.substitutions.items():
-                for subspecie in subspecies:
-                    el = Element(subspecie)
-                    max_oxi = max(el.common_oxidation_states)
-                    min_oxi = min(el.common_oxidation_states)
-                    max_min_oxi[str2unicode(el.symbol)] = (min_oxi,max_oxi)
-            if include_interstitials and interstitial_elements:
-                for elem_str in interstitial_elements:
-                    if elem_str not in max_min_oxi.keys():
-                        elem = Element(elem_str)
-                        max_oxi = max(elem.common_oxidation_states)
-                        min_oxi = min(elem.common_oxidation_states)
-                        max_min_oxi[elem_str] = (min_oxi, max_oxi)
-        print 'max/min oxidation states=',max_min_oxi
-        self.max_min_oxi = max_min_oxi
+        #if not max_min_oxi: 
+        #    max_min_oxi = {}
+        #    for s in struct_species:
+        #        if isinstance(s, Specie):
+        #            el = s.element
+        #        elif isinstance(s, Element):
+        #            el = s
+        #        else:
+        #            continue
+        #        max_oxi = max(el.common_oxidation_states)
+        #        min_oxi = min(el.common_oxidation_states)
+        #        max_min_oxi[str2unicode(el.symbol)] = (min_oxi,max_oxi)
+        #    for s, subspecies in self.substitutions.items():
+        #        for subspecie in subspecies:
+        #            el = Element(subspecie)
+        #            max_oxi = max(el.common_oxidation_states)
+        #            min_oxi = min(el.common_oxidation_states)
+        #            max_min_oxi[str2unicode(el.symbol)] = (min_oxi,max_oxi)
+        #    if include_interstitials and interstitial_elements:
+        #        for elem_str in interstitial_elements:
+        #            if elem_str not in max_min_oxi.keys():
+        #                elem = Element(elem_str)
+        #                max_oxi = max(elem.common_oxidation_states)
+        #                min_oxi = min(elem.common_oxidation_states)
+        #                max_min_oxi[elem_str] = (min_oxi, max_oxi)
+        #print 'max/min oxidation states=',max_min_oxi
+        #self.max_min_oxi = max_min_oxi
 
-        if self.charge_states=='liberal': 
-        #check that all substitutions exist for all species 
-		subelts=[]
-		for s, subspecies in self.substitutions.items():
-			for j in subspecies:
-				subelts.append(j)
-		subeltlis=list(set(subelts))
-		warnlist=['\nWARNING - because of liberal setting, \
-			all substitution elements are tried on each native element']
-		for s,subspecies in self.substitutions.items():
-			tmp=[]
-			for j in subeltlis:
-				if j not in subspecies:
-					tmp.append(j)
-					self.substitutions[s].append(j)
-			if tmp:
-				warnlist.append(str(tmp)+' added to substitution list of '+str(s))
-		if len(warnlist)!=1:
-			for j in warnlist: print j			
-		print 'final sub dictionary=',self.substitutions,'\n'
+        #if self.charge_states=='liberal': 
+        ##check that all substitutions exist for all species 
+	#	subelts=[]
+	#	for s, subspecies in self.substitutions.items():
+	#		for j in subspecies:
+	#			subelts.append(j)
+        #        # Remove possible duplicates.
+        #        subeltlis=list(set(subelts))
+	#	warnlist=['\nWARNING - because of liberal setting, \
+	#		all substitution elements are tried on each native element']
+	#	for s,subspecies in self.substitutions.items():
+	#		tmp=[]
+	#		for j in subeltlis:
+	#			if j not in subspecies:
+	#				tmp.append(j)
+	#				self.substitutions[s].append(j)
+	#		if tmp:
+	#			warnlist.append(str(tmp)+' added to substitution list of '+str(s))
+	#	if len(warnlist)!=1:
+	#		for j in warnlist: print j			
+	#	print 'final sub dictionary=',self.substitutions,'\n'
 
         vacancies = []
         as_defs = []
@@ -283,7 +293,7 @@ class ChargedDefectsStructures(object):
         vac = Vacancy(self.struct, {}, {})
         vac_scs = vac.make_supercells_with_defects(sc_scale)
 
-        print 'oxidation states = ', self.oxi_states
+        #print 'oxidation states = ', self.oxi_states
         for i in range(vac.defectsite_count()):
             vac_site = vac.get_defectsite(i)
             site_mult = vac.get_defectsite_multiplicity(i)
@@ -293,24 +303,35 @@ class ChargedDefectsStructures(object):
             vac_sc = vac_scs[i+1]
             vac_sc_site = list(set(vac_scs[0].sites) - set(vac_sc.sites))[0]
 
-            list_charges=[]
-            print 'vac_symbol=', vac_symbol
-            vac_oxi_state = self.oxi_states[str2unicode(vac_symbol)]
-            if vac_oxi_state < 0:
-                min_oxi = min(vac_oxi_state, self.max_min_oxi[vac_symbol][0])
-		if self.charge_states=='liberal':	
-			max_oxi = 2
-		else:
-                	max_oxi = 0
-            elif vac_oxi_state > 0:
-                max_oxi = max(vac_oxi_state, self.max_min_oxi[vac_symbol][1])
-		if self.charge_states=='liberal':
-			min_oxi = -2
-		else:
-                	min_oxi = 0
-            for c in range(min_oxi, max_oxi+1):
-                list_charges.append(-c)
-            print 'charge states for ',vac_symbol,' vacancy =',list_charges
+            # We trim the range by decreasing the max. oxi. state by 2,
+            # which we found by testing the charge assignment model
+            # implemented here against literature values on
+            # diamond and zinc blende-lattice structures.
+            # The objective was to successfully include all literature
+            # charge states for all structures in the test set,
+            # while simultaneously minimizing the number of overhead
+            # charge states prodcued by the procedure below.
+            charges_vac = [-c for c in range(
+                    self.min_max_oxi_bulk[0],
+                    (self.min_max_oxi_bulk[1]+1)-2)]
+
+            #print 'vac_symbol=', vac_symbol
+            #vac_oxi_state = self.oxi_states[str2unicode(vac_symbol)]
+            #if vac_oxi_state < 0:
+            #    min_oxi = min(vac_oxi_state, self.max_min_oxi[vac_symbol][0])
+	    #	if self.charge_states=='liberal':	
+	    #		max_oxi = 2
+	    #	else:
+            #    	max_oxi = 0
+            #elif vac_oxi_state > 0:
+            #    max_oxi = max(vac_oxi_state, self.max_min_oxi[vac_symbol][1])
+	    #	if self.charge_states=='liberal':
+	    #		min_oxi = -2
+	    #	else:
+            #    	min_oxi = 0
+            #for c in range(min_oxi, max_oxi+1):
+            #    charges_vac.append(-c)
+            #print 'charge states for ',vac_symbol,' vacancy =', charges_vac
 
             vacancies.append({
                 'name': "vac_{}_{}".format(i+1, vac_symbol),
@@ -320,31 +341,39 @@ class ChargedDefectsStructures(object):
                 'site_specie': vac_symbol,
                 'site_multiplicity': site_mult,
                 'supercell': {'size': sc_scale,'structure': vac_sc},
-                'charges': list_charges })
+                'charges': charges_vac})
 
             # Antisite defects generation
 
             if antisites_flag:
+                # Similar to the vacancy charge-assignment procedure,
+                # we trim the range by decreasing the max. oxi. state by 2
+                # for antisites, too, based on insights from the
+                # test set.
+                charges_as = [c for c in range(
+                        self.min_max_oxi_bulk[0],
+                        (self.min_max_oxi_bulk[1]+1)-2)]
+
                 for as_specie in set(struct_species)-set([vac_specie]):
                     as_symbol = as_specie.symbol
                     as_sc = vac_sc.copy()
                     as_sc.append(as_symbol, vac_sc_site.frac_coords)
-                    if vac_oxi_state > 0:
-                        oxi_max = max(self.max_min_oxi[as_symbol][1],0)
-                        oxi_min = 0
-                    else:
-                        oxi_max = 0
-                        oxi_min = min(self.max_min_oxi[as_symbol][0],0)
-                    if self.charge_states=='liberal' and oxi_min==oxi_max:
-                        if oxi_min - vac_oxi_state > 0:
-                            charges = list(range(-1,oxi_min-vac_oxi_state+1))
-                        else:
-                            charges = list(range(oxi_min-vac_oxi_state-1,1))
-                    else:
-                        charges = [c - vac_oxi_state for c in range(
-                            oxi_min, oxi_max+1)]
-		    print 'charges for ',as_symbol,' on ', \
-				vac_symbol,'=',charges
+                    #if vac_oxi_state > 0:
+                    #    oxi_max = max(self.max_min_oxi[as_symbol][1],0)
+                    #    oxi_min = 0
+                    #else:
+                    #    oxi_max = 0
+                    #    oxi_min = min(self.max_min_oxi[as_symbol][0],0)
+                    #if self.charge_states=='liberal' and oxi_min==oxi_max:
+                    #    if oxi_min - vac_oxi_state > 0:
+                    #        charges_as = list(range(-1,oxi_min-vac_oxi_state+1))
+                    #    else:
+                    #        charges_as = list(range(oxi_min-vac_oxi_state-1,1))
+                    #else:
+                    #    charges_as = [c - vac_oxi_state for c in range(
+                    #        oxi_min, oxi_max+1)]
+		    #print 'charges for ',as_symbol,' on ', \
+                    #      vac_symbol,'=', charges_as
 
                     as_defs.append({
                         'name': "as_{}_{}_on_{}".format(
@@ -356,29 +385,45 @@ class ChargedDefectsStructures(object):
                         'substitution_specie': as_symbol,
                         'site_multiplicity': site_mult,
                         'supercell': {'size': sc_scale,'structure': as_sc},
-                        'charges': charges})
+                        'charges': charges_as})
 
             # Substitutional defects generation
 	    if vac_symbol in self.substitutions:
                 for subspecie_symbol in self.substitutions[vac_symbol]:
                     sub_sc = vac_sc.copy()
                     sub_sc.append(subspecie_symbol, vac_sc_site.frac_coords)
-                    if vac_oxi_state > 0:
-                        oxi_max = max(self.max_min_oxi[subspecie_symbol][1],0)
-                        oxi_min = 0
-                    else:
-                        oxi_max = 0
-                        oxi_min = min(self.max_min_oxi[subspecie_symbol][0],0)
-                    if self.charge_states=='liberal' and oxi_min==oxi_max:
-                        if oxi_min - vac_oxi_state > 0:
-                            charges = list(range(-1,oxi_min-vac_oxi_state+1))
-                        else:
-                            charges = list(range(oxi_min-vac_oxi_state-1,1))
-                    else:
-                        charges = [c - vac_oxi_state for c in range(
-                            oxi_min, oxi_max+1)]
-                    print 'charges for ',subspecie_symbol,' on',vac_symbol, \
-				' substitution=',charges
+
+                    #if vac_oxi_state > 0:
+                    #    oxi_max = max(self.max_min_oxi[subspecie_symbol][1],0)
+                    #    oxi_min = 0
+                    #else:
+                    #    oxi_max = 0
+                    #    oxi_min = min(self.max_min_oxi[subspecie_symbol][0],0)
+                    #if self.charge_states=='liberal' and oxi_min==oxi_max:
+                    #    if oxi_min - vac_oxi_state > 0:
+                    #        charges_sub = list(range(-1,oxi_min-vac_oxi_state+1))
+                    #    else:
+                    #        charges_sub = list(range(oxi_min-vac_oxi_state-1,1))
+                    #else:
+                    #    charges_sub = [c - vac_oxi_state for c in range(
+                    #        oxi_min, oxi_max+1)]
+                    #print 'charges for ', subspecie_symbol,' on', vac_symbol, \
+                    #            ' substitution=', charges_sub
+
+                    # Similar to the vacancy charge-assignment procedure,
+                    # we trim the range, this time however,
+                    # by decreasing the max. oxi. state by 3 instead of 2,
+                    # based on insights from our test set.
+                    # Also note that we include the oxidation states of the
+                    # new species (i.e., of the species that substitutes
+                    # a lattice atom).
+                    oxi_sub = Element(subspecie_symbol).oxidation_states
+                    min_max_oxi_bulk_sub = \
+                            [min(oxi_sub + self.min_max_oxi_bulk), \
+                            max(oxi_sub + self.min_max_oxi_bulk)]
+                    charges_sub = [c for c in range(
+                            min_max_oxi_bulk_sub[0],
+                            (min_max_oxi_bulk_sub[1]+1)-3)]
 
                     sub_defs.append({
                         'name': "sub_{}_{}_on_{}".format(
@@ -390,7 +435,7 @@ class ChargedDefectsStructures(object):
                         'substitution_specie':subspecie_symbol,
                         'site_multiplicity':site_mult,
                         'supercell':{'size':sc_scale,'structure':sub_sc},
-                        'charges':charges})
+                        'charges':charges_sub})
 
         self.defects['vacancies'] = vacancies 
         self.defects['substitutions'] = sub_defs
@@ -432,8 +477,6 @@ class ChargedDefectsStructures(object):
                         self.struct.composition.elements]
             if len(inter_elems) == 0:
                 raise RuntimeError("empty element list for interstitials")
-            #print(str(inter_elems))
-            #quit()
             if not intersites and gen_inter:
                 intersites = []
                 smi = StructureMotifInterstitial(
@@ -475,21 +518,30 @@ class ChargedDefectsStructures(object):
                     sc_with_inter.append(elt,
                         site_sc.frac_coords)
 
-                    charges=[]
-                    print 'inter_symbol=', elt
-                    min_oxi = self.max_min_oxi[elt][0]
-                    max_oxi = self.max_min_oxi[elt][1]
-                    if min_oxi > 0 and max_oxi > 0:
-                        min_oxi = min_oxi - 2
-                        if min_oxi > 0:
-                            min_oxi = 0
-                    elif min_oxi < 0 and max_oxi < 0:
-                        max_oxi = max_oxi + 2
-                        if max_oxi < 0:
-                            max_oxi = 0
-                    for c in range(min_oxi, max_oxi+1):
-                        charges.append(c)
-                    print 'charge states for ',elt,' interstitial =',charges
+                    # Similar to the vacancy & antisite
+                    # charge-assignment procedure,
+                    # we trim the range by decreasing the max. oxi. state by 2
+                    # for interstitials, too, based on insights from the
+                    # test set.
+                    charges_inter = [c for c in range(
+                            self.min_max_oxi_bulk[0],
+                            (self.min_max_oxi_bulk[1]+1)-2)]
+
+                    #charges_inter=[]
+                    #print 'inter_symbol=', elt
+                    #min_oxi = self.max_min_oxi[elt][0]
+                    #max_oxi = self.max_min_oxi[elt][1]
+                    #if min_oxi > 0 and max_oxi > 0:
+                    #    min_oxi = min_oxi - 2
+                    #    if min_oxi > 0:
+                    #        min_oxi = 0
+                    #elif min_oxi < 0 and max_oxi < 0:
+                    #    max_oxi = max_oxi + 2
+                    #    if max_oxi < 0:
+                    #        max_oxi = 0
+                    #for c in range(min_oxi, max_oxi+1):
+                    #    charges_inter.append(c)
+                    #print 'charge states for ',elt,' interstitial =', charges_inter
 
                     interstitials.append({
                             'name': name,
@@ -499,24 +551,22 @@ class ChargedDefectsStructures(object):
                             'site_specie': Element(elt),
                             'site_multiplicity': site_mult,
                             'supercell': {'size': sc_scale, 'structure': sc_with_inter},
-                            'charges': charges})
-
+                            'charges': charges_inter})
 
             self.defects['interstitials'] = interstitials
 
-	print '\nNumber of jobs created:'
+	print("\nNumber of jobs created:")
 	tottmp=0
 	for j in self.defects.keys():
 		if j=='bulk':
-			print 'bulk'
+			print("    bulk = 1")
 			tottmp+=1
 		else:
-			print j
+			print("    {}:".format(j))
 			for lis in self.defects[j]:
-				print '   ',lis['name'],'=',len(lis['charges'])
+				print("        {} = {}".format(lis['name'], len(lis['charges'])))
 				tottmp+=len(lis['charges'])
-	print 'Total (non dielectric) jobs created = ',tottmp,'\n'
-
+	print("Total (non dielectric) jobs created = {}\n".format(tottmp))
 
     def make_defect_complexes(max_complex_size=0, include_vacancies=True):
 
