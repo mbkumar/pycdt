@@ -169,11 +169,11 @@ def parse_output(args):
     #plot_results = args.plot_results
     #epsilon = args.epsilon
 
-    # error-checking; TODO allow for code to work without mp-id at this step...should be allowed to parse_output without mp-id
-    #        Will require finding out phase diagram and inserting computed entry manually (assuming GGA used)
+    # error-checking;
     if not mp_id:
-        print_error_message("No Materials Project structure ID provided!")
-        return
+        print_error_message("No Materials Project structure ID provided! (proceeding anyway)")
+        #return
+        mp_id=None
 
     # parse results to get defect data and correction terms
     defect_data = PostProcess(root_fldr, mp_id, mapi_key).compile_all()
@@ -282,7 +282,7 @@ def compute_formation_energies(args):
 
     # parse results to get defect data and correction terms
     defect_data = loadfn(defect_data_file_name, cls=MontyDecoder)
-    epsilon_tensor = args.epsilon_tensor
+    epsilon_tensor = args.epsilon_tensor #this is unneccessary...
     if epsilon_tensor is None:
         epsilon_tensor = defect_data['epsilon']
     defects = defect_data['defects']
@@ -312,41 +312,26 @@ def compute_formation_energies(args):
     blk_entry = defect_data['bulk_entry']
     mu_range = defect_data['mu_range']
 
-    poor_mu = mu_range.values()[0]['poor'] # Only one pair in mu_range dict
-    rich_mu = mu_range.values()[0]['rich']
-    specie = mu_range.keys()[0]
-    #o_poor_da = DefectsAnalyzer(blk_entry, vbm, o_poor_mu, bandgap['energy'])
-    #o_rich_da = DefectsAnalyzer(blk_entry, vbm, o_rich_mu, bandgap['energy'])
-    poor_da = DefectsAnalyzer(blk_entry, vbm, poor_mu, bandgap)
-    rich_da = DefectsAnalyzer(blk_entry, vbm, rich_mu, bandgap)
-    for defect in defects:
-        rich_da.add_parsed_defect(defect)
-        poor_da.add_parsed_defect(defect)
+    for region, mu in mu_range.items():
+        da = DefectsAnalyzer(blk_entry, vbm, mu, bandgap)
+        for defect in defects:
+            da.add_parsed_defect(defect)
 
-    rich_da_trans = rich_da.get_transition_levels()
-    poor_da_trans = poor_da.get_transition_levels()
+        if region == mu_range.keys()[0]:
+            da_trans = da.get_transition_levels()
+            print ("===============\nDefect Transition Levels (eV):\n==============")
+            for dfct_name, trans_lvls in da_trans.items():
+                print (dfct_name)
+                ky_vals = sorted(trans_lvls.items(), key=lambda x: x[0][0])
+                for qpair, trans_lvl in ky_vals:
+                    print ("{}: {}".format(qpair, trans_lvl))
 
-    print ("===============\nDefect Transition Levels (eV):\n==============")
-    print (specie, " RICH\n------------")
-    for dfct_name, trans_lvls in rich_da_trans.items():
-        print (dfct_name)
-        ky_vals = sorted(trans_lvls.items(), key=lambda x: x[0][0])
-        for qpair, trans_lvl in ky_vals:
-            print ("{}: {}".format(qpair, trans_lvl))
-    print ("\n", specie, " POOR\n--------------")
-    for dfct_name, trans_lvls in poor_da_trans.items():
-        print (dfct_name)
-        ky_vals = sorted(trans_lvls.items(), key=lambda x: x[0][0])
-        for qpair, trans_lvl in ky_vals:
-            print ("{}: {}".format(qpair, trans_lvl))
-     
-    if args.plot_results:
-        plotter = DefectPlotter(rich_da)
-        form_en_plot = plotter.get_plot_form_energy()
-        form_en_plot.savefig(specie+'_rich_defect_form_energy.eps')
-        plotter = DefectPlotter(poor_da)
-        form_en_plot = plotter.get_plot_form_energy()
-        form_en_plot.savefig(specie+'_poor_defect_form_energy.eps')
+        if args.plot_results:
+            plotter = DefectPlotter(da)
+            form_en_plot = plotter.get_plot_form_energy()
+            form_en_plot.savefig(region+'_region_defect_form_energy.eps', bbox_inches='tight')
+            print('printed ',region,' plot')
+
 
 
 def main():
@@ -407,7 +392,7 @@ def main():
         " in json format.\nDefault is \"corrections.json\";" \
         " \"None\" suppresses output."
     plot_results_string = "Optional flag to indicate that results" \
-        " should not be plotted."
+        " should be plotted."
     epsilon_string = "Optional: provide a dielectric constant to be" \
         " used in the correction terms of the defect-formation energies.\n" \
         "Only a scalar is accepted.\nIf not provided, the dielectric" \
