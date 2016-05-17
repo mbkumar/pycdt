@@ -22,7 +22,7 @@ from monty.serialization import loadfn, dumpfn
 from monty.json import MontyEncoder, MontyDecoder
 from pymatgen.matproj.rest import MPRester
 from pymatgen.io.vasp.outputs import Vasprun
-from pymatgen.io.vasp.inputs import Potcar
+from pymatgen.io.vasp.inputs import Potcar, Poscar
 from pymatgen.electronic_structure.bandstructure import BandStructure
 from pymatgen.entries.computed_entries import ComputedStructureEntry
 from pymatgen.phasediagram.pdmaker import PhaseDiagram
@@ -182,20 +182,27 @@ class PostProcess(object):
             mpid (str): MP-ID for which the valence band maximum is to
                 be fetched from the Materials Project database
         """
-
-        if not self._mapi_key:
-            with MPRester() as mp:
-                bs = mp.get_bandstructure_by_material_id(self._mpid)
+        if self._mpid is None:
+                print 'No mp-id provided, will fetch CBM/VBM details from the bulk calculation.' \
+                      '\nNote that it would be better to perform real band structure calculation...'
+                vr = Vasprun(os.path.join(self._root_fldr,'bulk','vasprun.xml'))
+                bandgap = vr.eigenvalue_band_properties[0]
+                vbm = vr.eigenvalue_band_properties[2]
         else:
-            with MPRester(self._mapi_key) as mp:
-                bs = mp.get_bandstructure_by_material_id(self._mpid)
-        if not bs:
-            raise ValueError("Could not fetch band structure!")
+            if not self._mapi_key:
+                with MPRester() as mp:
+                    bs = mp.get_bandstructure_by_material_id(self._mpid)
+            else:
+                with MPRester(self._mapi_key) as mp:
+                    bs = mp.get_bandstructure_by_material_id(self._mpid)
+            if not bs:
+                raise ValueError("Could not fetch band structure!")
 
-        vbm = bs.get_vbm()['energy']
-        if not vbm:
-            vbm = 0
-        bandgap = bs.get_band_gap()
+            vbm = bs.get_vbm()['energy']
+            if not vbm:
+                vbm = 0
+            bandgap = bs.get_band_gap()['energy']
+
         return (vbm, bandgap)
 
     def get_chempot_limits(self, structure=None):
@@ -211,7 +218,10 @@ class PostProcess(object):
         accounts for all different defect phases
         """
         if not structure:
-            if not self._mapi_key:
+            if not self._mpid:
+                    bulkvr = Vasprun(os.path.join(self._root_fldr,"bulk","vasprun.xml"))
+                    structure = bulkvr.final_structure
+            elif not self._mapi_key:
                 with MPRester() as mp:
                     structure = mp.get_structure_by_material_id(self._mpid)
             else:
@@ -234,12 +244,27 @@ class PostProcess(object):
                     entries = mp.get_entries_in_chemsys(list_spec_symbol)
             if  not entries:
                 raise ValueError("Could not fetch entries for atomic chempots!")
-            #this could be where we physically insert a computed entry into phase diagram
             # (for when it doesn't exist in MP database)
             pd = PhaseDiagram(entries)
             chem_lims = {}
             #fullinfo_chem_lims = []
             PDA=PDAnalyzer(pd)
+            #if no mp-id present, then physically insert the computed entry into phase diagram.
+            #        if it does (and the entry is stable) then don't force entry in
+            if not self._mpid:
+                #(to do)HERE check to see if structure already exists in phase diagram
+                #check to see if structure is unstable
+                blkentry=bulkvr.get_computed_entry()
+                eaboveh=PDA.get_decomp_and_e_above_hull(blkentry,allow_negative=True)[1]
+                if eaboveh<=0:
+                    print 'unknown structure is stable with respect to GGA phase diagram! E_above_hull='+str(eaboveh)
+                    entries.append(blkentry)
+                    pd=PhaseDiagram(entries)
+                    PDA=PDAnalyzer(pd)
+                else:
+                    #this is part where I would instead return the chemical potentails with respect to the atomic chemical pot. elts.
+                    raise ValueError("Structure is unstable with respect to phase diagram! E_above_hull="+str(eaboveh)) #this doesnt kill calc. just raises error and continues
+
             fincomp=comp.reduced_composition
             for i in range(len(pd.facets)):
                 facet=pd.facets[i]
@@ -253,7 +278,7 @@ class PostProcess(object):
                         limnom+=str(sys.reduced_formula)+'-'
                     limnom=limnom[:-1]
                     if len(eltsinfac)==1:
-                        limnom+=' rich'
+                        limnom+='_rich'
                     chemdict = {el.symbol:chempots[el] for el in pd.elements}
                     chem_lims[limnom]=chemdict
             return chem_lims
