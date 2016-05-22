@@ -60,29 +60,42 @@ def get_optimized_sc_scale(inp_struct, final_site_no):
     the final_site_no.
     """
 
-    print '\nNumber of sites:\n    unit cell = ', inp_struct.num_sites, \
-	  '\n    super cell = ', final_site_no
-    target_site = inp_struct.sites[0]
+    #print '\nNumber of sites:\n    unit cell = ', inp_struct.num_sites, \
+	#  '\n    super cell = ', final_site_no
+    #target_site = inp_struct.sites[0]
+    #print ('target_site coords', target_site.coords)
+    if final_site_no < len(inp_struct.sites):
+        final_site_no = len(inp_struct.sites)
+
     dictio={}
     result=[]
     for k1 in range(1,6):
         for k2 in range(1,6):
             for k3 in range(1,6):
                 struct = inp_struct.copy()
-                struct.make_supercell([k1,k2,k3])
+                struct.make_supercell([k1, k2, k3])
                 if len(struct.sites) > final_site_no:
                     continue
-                site_target=None
-                index=None
-                for i in range(struct.num_sites):
-                    s=struct._sites[i]
-                    if s.distance_from_point(target_site.coords)<0.001:
-                        index=i
+
+                #index=None
+                #for i, s in enumerate(struct._sites):
+                #    #print ('site and distance', s.coords, s.distance_from_point(target_site.coords))
+                #    print ('site and distance', s.coords, s.distance(target_site))
+                #    if s.distance(target_site)<0.001:
+                #        index=i
+                #if index is None:
+                #    raise RuntimeError('could not find reference site in' \
+                #            ' supercell structure.')
                 min_dist = 1000.0
                 for a in range(-1,2):
                     for b in range(-1,2):
                         for c in range(-1,2):
-                            distance = struct.get_distance(index,index,(a,b,c))
+                            try:
+                                distance = struct.get_distance(0,0,(a,b,c))
+                                #distance = struct.get_distance(index,index,(a,b,c))
+                            except:
+                                print index, a, b, c
+                                raise
                             if  distance < min_dist and distance>0.00001:
                                 min_dist = distance
                 min_dist = round(min_dist, 3)
@@ -100,6 +113,8 @@ def get_optimized_sc_scale(inp_struct, final_site_no):
         if c>min_dist:
             biggest=dictio[c]['supercell']
             min_dist=c
+    if biggest is None or min_dist < 0.0:
+        raise RuntimeError('could not find any supercell scaling vector')
     return biggest
 
 
