@@ -134,7 +134,7 @@ def get_correction_kumagai(defect, bulk_init, epsilon_tensor):
     #frac_coords = defect.site.frac_coords  #maybe can use this later...but not neccessary?
     encut = defect.entry.data['encut']
 
-    corr_meth = ChargeCorrection(epsilon_tensor,
+    corr_meth = ChargeCorrection(epsilon,
             locpot_path_blk, locpot_path_def, charge,
             energy_cutoff = encut,
             silence=False, KumagaiBulk=bulk_init)
