@@ -63,8 +63,10 @@ class DefectPlotter(object):
 
         width,height = 12,8
         plt = get_publication_quality_plot(width, height)
-        for c in y:
-            plt.plot(x, y[c], linewidth=3)
+        import matplotlib.cm as cm
+        colors=cm.jet(np.linspace(0, 1, len(y)))
+        for c,cnt in zip(y,range(len(y))):
+            plt.plot(x, y[c], linewidth=3, color=colors[cnt])
         plt.plot([min_lim, max_lim], [0, 0], 'k-')
 
         def get_legends(types):
