@@ -387,7 +387,7 @@ class FreysoldtCorrection(object):
             print 'Defect Correction without alignment (eV): ', PCfreycorr
         return PCfreycorr
 
-    def potalign(self, title=None,  widthsample=0.5, axis=None):
+    def potalign(self, title=None,  widthsample=1., axis=None):
         #Accounts for defects in arbitrary positions
         #title is for name of plot, if you dont want a plot then leave it as None
         #widthsample is the width of the region in between defects where the potential alignment correction is averaged
