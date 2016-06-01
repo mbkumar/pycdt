@@ -62,9 +62,11 @@ class DefectPlotter(object):
             y[t] = y_tmp
 
         width,height = 12,8
-        plt = get_publication_quality_plot(width, height)
+        #plt = get_publication_quality_plot(width, height) #I think this is broken with new pymatgen?
+        import matplotlib.pyplot as plt
+        plt.clf()
         import matplotlib.cm as cm
-        colors=cm.jet(np.linspace(0, 1, len(y)))
+        colors=cm.Dark2(np.linspace(0, 1, len(y)))
         for c,cnt in zip(y,range(len(y))):
             plt.plot(x, y[c], linewidth=3, color=colors[cnt])
         plt.plot([min_lim, max_lim], [0, 0], 'k-')
@@ -84,7 +86,7 @@ class DefectPlotter(object):
                 legends.append(legend)
             return legends
 
-        plt.legend(get_legends(y.keys()),fontsize=2*width)
+        plt.legend(get_legends(y.keys()),fontsize=1.8*width,loc=8)
         plt.axvline(x=0.0, linestyle='--', color='k', linewidth=3)
         plt.axvline(x=self._analyzer._band_gap, linestyle='--', color='k', linewidth=3)
         if ylim is not None:
