@@ -967,9 +967,9 @@ class KumagaiCorrection(object):
                         for u in forplot[inkey][k]:
                             ylis.append(u)
                     plt.plot(forplot[inkey]['r'], forplot[inkey]['Vqb'], color=collis[i], marker='^', linestyle='None',
-                             label=str(inkey) + ': V_{q/b}')
+                             label=str(inkey) + ': $V_{q/b}$')
                     plt.plot(forplot[inkey]['r'], forplot[inkey]['Vpc'], color=collis[i], marker='o', linestyle='None',
-                             label=str(inkey) + ': Vpc')
+                             label=str(inkey) + ': $V_{pc}$')
                 full = []
                 for i in forplot.keys():
                     for k in range(len(forplot[i]['Vpc'])):
@@ -979,19 +979,19 @@ class KumagaiCorrection(object):
                 for i in realfull:
                     r.append(i[0])
                     y.append(i[1])
-                plt.plot(r, y, color=collis[-1], marker='x', linestyle='None', label='V_{q/b} - Vpc')
+                plt.plot(r, y, color=collis[-1], marker='x', linestyle='None', label='$V_{q/b} - V_{pc}$')
                 plt.xlabel('Distance from defect (A)')
                 plt.ylabel('Potential (V)')
                 x = np.arange(wsrad, max(self.locpot_blk.structure.lattice.abc), 0.01)
                 plt.fill_between(x, min(ylis) - 1, max(ylis) + 1, facecolor='red', alpha=0.15, label='sampling region')
-                plt.axhline(y=potalign, linewidth=0.5, color='red', label='pot. align.')
+                plt.axhline(y=potalign, linewidth=0.5, color='red', label='pot. alignment')
                 plt.legend(loc=8)
                 plt.axhline(y=0, linewidth=0.2, color='black')
                 plt.ylim([min(ylis) - .5, max(ylis) + .5])
                 plt.xlim([0, max(rlis) + 3])
 
-                plt.title(str(title) + ' atomic site potential plot')
-                plt.savefig(str(title) + 'kumagaisiteavgPlot.png')
+                plt.title(str(title) + ' atomic site averaging potential plot')
+                plt.savefig(str(title) + 'kumagaisiteavgPlot.pdf')
             else:
                 from monty.serialization import dumpfn
                 from monty.json import MontyEncoder

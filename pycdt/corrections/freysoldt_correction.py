@@ -539,14 +539,14 @@ class FreysoldtCorrection(object):
                 ymin=min(min(v_R),min(defavg - pureavg),min(finalshift))
                 ymax=max(max(v_R),max(defavg - pureavg),max(finalshift))
                 plt.ylim(np.floor(ymin),np.ceil(ymax))
-                plt.xlabel('planar average along axis ' + str(axis+1))
-                plt.ylabel('Potential')
+                plt.xlabel('planar average along axis ' + str(axis+1)+' (Angstrom)')
+                plt.ylabel('Potential (V)')
                 plt.legend(loc=9)
                 plt.axhline(y=0, linewidth=0.2, color='black')
                 #plt.axhline(y=C, linewidth=0.2, color='black')
-                plt.title(str(title) + ' defect potential')
+                plt.title(str(title) + ' planar averaged electrostatic potential')
                 plt.xlim(0,max(x))
-                plt.savefig(str(title)+'FreyplnravgPlot.png')
+                plt.savefig(str(title)+'FreyplnravgPlot.pdf')
             else:
                 #this is because current uploading format for written is bad for numpy arrays...
                 #Might want to update this in future so that dumping format is smarter than just dumping/loading a string
