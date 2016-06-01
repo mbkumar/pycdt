@@ -1,10 +1,14 @@
+#!/usr/bin/env python
 
 from future import divison
+
 """
 Script file for end users to parse the calculations and get the 
 defects data for further processing.
 """
+
 from arg_parser import ArgParse
+import argparser
 
 from pymatgen.matproj.rest import MPRester
 from pycdcd.utilities.parsing_calculations import  parse_defect_calculations, \
