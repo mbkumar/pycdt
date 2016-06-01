@@ -29,26 +29,6 @@ try:
 except:
     gen_inter = False
 
-def get_sc_scale(inp_struct, final_site_no):
-    """
-    Get the scaling to generate supercells with atoms less than the
-    final_site_no.
-    """
-
-    lengths = inp_struct.lattice.abc
-    no_sites = inp_struct.num_sites
-    mult = (final_site_no/no_sites*lengths[0]*lengths[1]*lengths[2]) ** (1/3)
-    num_mult = [int(round(mult/l)) for l in lengths]
-    num_mult = [i if i > 0 else 1 for i in num_mult]
-    sc = copy.deepcopy(inp_struct)
-    sc.make_supercell(num_mult)
-    if sc.num_sites > final_site_no:
-        max_sc_dim = max(num_mult)
-        i = num_mult.index(max_sc_dim)
-        num_mult[i] -= 1
-
-    return num_mult
-
 def get_optimized_sc_scale(inp_struct, final_site_no):
 
     """
