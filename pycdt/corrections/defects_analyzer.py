@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 
-
-__author__ = "Geoffroy Hautier, Bharat Medasani"
+__author__ = "Geoffroy Hautier, Bharat Medasani,  Danny Broberg"
 __copyright__ = "Copyright 2014, The Materials Project"
 __version__ = "1.0"
 __maintainer__ = "Geoffroy Hautier, Bharat Medasani"
@@ -9,7 +8,7 @@ __email__ = "geoffroy@uclouvain.be, mbkumar@gmail.com"
 __status__ = "Development"
 __date__ = "November 4, 2012"
 
-from math import sqrt, floor, pi, exp
+from math import sqrt, pi, exp
 from collections import defaultdict 
 from itertools import combinations
 
@@ -22,7 +21,7 @@ from pymatgen.symmetry.analyzer import SpacegroupAnalyzer
 
 from pycdt.corrections.finite_size_charge_correction import ChargeCorrection
 
-#some constants
+#some physical constants
 kb = 8.6173324e-5
 hbar = 6.58211928e-16
 conv = sqrt((9.1*1e-31)**3)*sqrt((1.6*1e-19)**3)/((1.05*1e-34)**3)
@@ -75,7 +74,7 @@ class ParsedDefect(object):
 
 def get_correction_freysoldt(defect, bulk_entry, epsilon, title = None):
     """
-    Function to compute the correction for each defect.
+    Function to compute the isotropic freysoldt correction for each defect.
     Args:
         defect: ParsedDefect object
         bulk_entry: ComputedStructureEntry corresponding to bulk
@@ -83,40 +82,36 @@ def get_correction_freysoldt(defect, bulk_entry, epsilon, title = None):
     """
     if type(bulk_entry) is Locpot:
         locpot_blk = bulk_entry
-        locpot_path_blk = 'fakepath' #this doesnt matter if Locpot is already loaded
+        locpot_path_blk = ''
     else:
         locpot_blk = None
         locpot_path_blk = bulk_entry.data['locpot_path']
     locpot_path_def = defect.entry.data['locpot_path']
     charge = defect._charge
-    #frac_coords = defect.site.frac_coords  #maybe can use this later...but not neccessary?
+    #frac_coords = defect.site.frac_coords  #maybe should be using this
     encut = defect.entry.data['encut']
     if not charge:
         print 'charge is zero so charge correction is zero'
         return (0.,None)
 
+    #if either locpot is already loaded then load pure_locpot= or defect_locpot=
+    # if you want to load position then can load it with pos=
+    #if want to to change energy tolerance for correction convergence then change madetol= (default is 0.0001)
+    # (for kumagai) if known optgamma, set optgamma=, if KumagaiBulk already initialized then set KumagaiBulk=
     corr_meth = ChargeCorrection(epsilon,
             locpot_path_blk, locpot_path_def, charge,
             pure_locpot = locpot_blk, #for quicker loading of bulk locpot objects...
             energy_cutoff = encut,
             silence=False)
-    #if either locpot already loaded then load pure_locpot= or defect_locpot=
-    # if you want to load position then can load it with pos=
-    #if want to to change energy tolerance for correction convergence then change madetol= (default is 0.0001)
-    # (for kumagai) if known optgamma, set optgamma=, if KumagaiBulk already initialized then set KumagaiBulk=?
 
-    corr_val = corr_meth.freysoldt(title=title, axis=0, partflag='All') #could do an averaging over three axes but this works for now...
+    #could do an averaging over three axes but one axis works fine isotropic systems
+    corr_val = corr_meth.freysoldt(title=title, axis=0, partflag='All')
 
-    #return sum(corr_val)/len(corr_val)
     return (corr_val,corr_meth._purelocpot)
 
 
 def get_correction_kumagai(defect, bulk_init, epsilon_tensor):
     """
-    --------------------------------------------------------------
-    TODO: Make easy way to store KumagaiBulk object for doing several successive Kumagai calculations?
-    TODO: allow for bulk_init input to be a string to bulkLocpot so that you can build
-    --------------------------------------------------------------
     Function to compute the correction for each defect.
     Args:
         defect: ParsedDefect object
@@ -131,17 +126,17 @@ def get_correction_kumagai(defect, bulk_init, epsilon_tensor):
     epsilon = bulk_init.epsilon
     locpot_path_def = defect.entry.data['locpot_path']
     charge = defect._charge
-    #frac_coords = defect.site.frac_coords  #maybe can use this later...but not neccessary?
+    #frac_coords = defect.site.frac_coords  #maybe can use this later
     encut = defect.entry.data['encut']
 
-    corr_meth = ChargeCorrection(epsilon,
-            locpot_path_blk, locpot_path_def, charge,
-            energy_cutoff = encut,
-            silence=False, KumagaiBulk=bulk_init)
     #if either locpot already loaded then load pure_locpot= or defect_locpot=
     # if you want to load position then can load it with pos=
     #if want to to change energy tolerance for correction convergence then change madetol= (default is 0.0001)
     # (if known optgamma, set optgamma=, if KumagaiBulk already initialized then set KumagaiBulk=
+    corr_meth = ChargeCorrection(epsilon,
+            locpot_path_blk, locpot_path_def, charge,
+            energy_cutoff = encut,
+            silence=False, KumagaiBulk=bulk_init)
 
     corr_val = corr_meth.kumagai(title=defect._full_name, partflag='All') #should probably split this up to include
 
