@@ -14,16 +14,13 @@ __email__ = 'mbkumar@gmail.com'
 __date__  = "Sep 14, 2014"
 
 import os
-import sys
 import glob
-from argparse import ArgumentParser
 
 from monty.serialization import loadfn, dumpfn
 from monty.json import MontyEncoder, MontyDecoder
 from pymatgen.matproj.rest import MPRester
 from pymatgen.io.vasp.outputs import Vasprun
-from pymatgen.io.vasp.inputs import Potcar, Poscar
-from pymatgen.electronic_structure.bandstructure import BandStructure
+from pymatgen.io.vasp.inputs import Potcar
 from pymatgen.entries.computed_entries import ComputedStructureEntry
 from pymatgen.phasediagram.pdmaker import PhaseDiagram
 from pymatgen.phasediagram.pdanalyzer import PDAnalyzer
@@ -134,7 +131,7 @@ class PostProcess(object):
                     if error_msg:
                         print(fldr_name, 'charge- ', chrg, error_msg)
                         print("But parsing of the rest of the calculations")
-                        continue  # The successful calculations maybe useful
+                        continue
                     if 'substitution_specie' in trans_dict:
                         self._substitution_species.add(
                                 trans_dict['substitution_specie'])
@@ -231,9 +228,9 @@ class PostProcess(object):
             if  not structure:
                 raise ValueError("Could not fetch structure for atomic chempots!")
 
-        bulk_species = structure.types_of_specie #element object list
-        bulk_species_symbol = [s.symbol for s in bulk_species] #symbol list
-        bulk_composition = structure.composition #composition object
+        bulk_species = structure.types_of_specie
+        bulk_species_symbol = [s.symbol for s in bulk_species]
+        bulk_composition = structure.composition
 
         def get_chempots_from_entries(structure, list_spec_symbol, comp, exceptions=[]):
             """
@@ -271,7 +268,6 @@ class PostProcess(object):
                             '-'.join(list_spec_symbol),"phase diagram")
                    common_approach = True
                 elif (self._mpid in full_idlist) and not (self._mpid in stable_idlist):
-                    #in MP, but not stable. check to see if stable structure composition exists
                     redcomp = comp.reduced_composition
                     common_approach = False
                     for i in pd.stable_entries:
@@ -331,7 +327,8 @@ class PostProcess(object):
                     eltsinfac=[pd.qhull_entries[j].composition.reduced_composition for j in facet]
                     if fincomp in eltsinfac:
                         chempots = PDA.get_facet_chempots(facet)
-                        eltsinfac.remove(fincomp)
+                        if len(eltsinfac)!=1:
+                            eltsinfac.remove(fincomp)
                         limnom=''
                         for sys in eltsinfac:
                             limnom+=str(sys.reduced_formula)+'-'
@@ -379,10 +376,9 @@ class PostProcess(object):
 
             return chem_lims
 
-        #Danny approach to subs...want to be consistent in approach to getting chem pots...
-        # ....so limiting regions when including substitutional species also important for native defects...
+        #want to include all sub species within the chemical potential description
         for sub_el in self._substitution_species:
-            if sub_el in bulk_species_symbol: #skip anti-sites which are sometimes considered as subs
+            if sub_el in bulk_species_symbol:
                 continue
             else:
                 from pymatgen.core import Element
