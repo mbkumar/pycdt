@@ -19,19 +19,14 @@ If you use the corrections implemented in this module, cite
 __author__ = 'Danny Broberg, Bharat Medasani'
 __email__ = 'dbroberg@gmail.com, mbkumar@gmail.com'
 
-import sys
 import math
-import os
 
 import numpy as np
-#import matplotlib #cause nersc freaks out when you uncomment these...
-#matplotlib.use('agg')
-#import matplotlib.pyplot as plt
 
 from pymatgen.io.vasp.outputs import Locpot
 from pymatgen.core.lattice import Lattice
 
-norm = np.linalg.norm  # define globally
+norm = np.linalg.norm
 
 # Define conversion_constants
 hart_to_ev = 27.2114
@@ -71,17 +66,21 @@ def cleanlat(dat):
     return norm(dat[0]), norm(dat[1]), norm(dat[2])
 
 def genrecip(a1, a2, a3, encut):
-    # latt vectors in bohr, encut=eV
-    # generate reciprocal lattice vectors with value less than encut
-    # define recip vectors first, (units of 1/angstrom).
+    """
+    Args:
+        a1, a2, a3: lattice vectors in bohr
+        encut: energy cut off in eV
+    Returns:
+        reciprocal lattice vectors with energy less than encut
+    """
     vol = np.dot(a1, np.cross(a2, a3))  # 1/bohr^3
     b1 = (2 * np.pi / vol) * np.cross(a2, a3)  # units 1/bohr
     b2 = (2 * np.pi / vol) * np.cross(a3, a1)
     b3 = (2 * np.pi / vol) * np.cross(a1, a2)
     recip = []
     flag = 0
+
     # create list of recip space vectors that satisfy |i*b1+j*b2+k*b3|<=encut
-    #start by enumerating to find max i that doesn't upset the encut condition
     tol = 0
     while flag != 1:
         if 3.80986 * ((tol * (1 / ang_to_bohr) * min(norm(b1), norm(b2), norm(b3))) ** 2) < encut:
@@ -89,15 +88,15 @@ def genrecip(a1, a2, a3, encut):
             tol = tol + 1
         else:
             flag = 1
-    #now look though all options for recip vectors to see what vectors are less than energy val
+
     for i in range(-tol, tol + 1):
         for j in range(-tol, tol + 1):
             for k in range(-tol, tol + 1):
                 vec = (i * b1 + j * b2 + k * b3)
                 en = 3.80986 * (((1 / ang_to_bohr) * norm(vec))** 2)
-                #en = 3.80986 * (((ang_to_bohr) * norm(vec))** 2)  #isn't the line above  here what we want? Depends what units of recip vector are
                 if (en <= encut and en != 0):
                     recip.append([i * b1[m] + j * b2[m] + k * b3[m] for m in range(3)])
+
     return recip  #output is 1/bohr recip
 
 def generate_reciprocal_vectors_squared(a1, a2, a3, encut):
@@ -156,6 +155,7 @@ def find_defect_pos(sb,sd):
         vactype=False
         interstittype=False
     sitematching=[]
+
     for i in sb.sites:
         blksite,defsite=closestsites(sb,sd,i.coords)
         if vactype and blksite[0].specie.symbol != defsite[0].specie.symbol:
@@ -165,6 +165,7 @@ def find_defect_pos(sb,sd):
         elif blksite[0].specie.symbol != defsite[0].specie.symbol: #subs or antisite type
             return blksite[0].coords, defsite[0].coords
         sitematching.append([blksite[0],blksite[1],defsite[0],defsite[1]])
+
     if vactype: #just in case site type is same for closest site to vacancy
         sitematching.sort(key=lambda x:x[3])
         vacant=sitematching[-1]
@@ -173,22 +174,26 @@ def find_defect_pos(sb,sd):
         sitematching.sort(key=lambda x:x[1])
         interstit=sitematching[-1]
         return  None, interstit[2].coords
+
     return None,None #if you get here there is an error
 
 
 def kumagai_init(s1, dieltens, sil=True):
     angset = s1.lattice.get_cartesian_coords(1)
+
     if not sil:
         print 'defect lattice constants are (in angstroms)' + str(cleanlat(angset))
     [a1, a2, a3] = ang_to_bohr * angset  # convert to bohr
     bohrset = [a1, a2, a3]
     vol = np.dot(a1, np.cross(a2, a3))
+
     if not sil:
         print 'converted to bohr for atomic units, lat consts are:' + str(cleanlat([a1, a2, a3]))
     determ = np.linalg.det(dieltens)
     invdiel = np.linalg.inv(dieltens)
     if not sil:
         print 'inv dielectric tensor is ' + str(invdiel)
+
     return angset, bohrset, vol, determ, invdiel
 
 
@@ -256,11 +261,10 @@ def get_g_sum_at_r(g_sum, locpot_bulk, r):
     Returns:
         reciprocal summ value at g_sum[i_rx,j_ry,k_rz]
     """
-    #abc=locpot_bulk.structure.lattice.abc
-    fraccoord=locpot_bulk.structure.lattice.get_fractional_coords(r) #neccessary fix for non-cubic cells...
-    # for i in range(3):
-    #     r[i]=r[i]/abc[i] #translate to fractional coords for use in getgridind
+
+    fraccoord=locpot_bulk.structure.lattice.get_fractional_coords(r)
     i, j, k = getgridind(locpot_bulk, fraccoord)
+
     return g_sum[i, j, k]
 
 
@@ -314,12 +318,9 @@ def anisotropic_pc_energy(structure, g_sum, dieltens, q, gamma, tolerance,
     angset, [a1, a2, a3], vol, determ, invdiel = kumagai_init(
             structure, dieltens, sil=silence)
 
-    #g_sum = reciprocal_sum(locpot_bulk, dieltens, q, gamma, silence=silence)
-
     g_part = q*g_sum[0,0,0]
     r_part = real_sum(a1, a2, a3, [0,0,0], q, dieltens, gamma, tolerance, True)
 
-    #now add up total madelung potential part with two extra parts:
     #self interaction term
     selfint = q*np.pi / (vol * (gamma**2))
     if not silence:
@@ -351,11 +352,12 @@ def getgridind(locpot, r, gridavg=0.0):
     TODO: Once final, remove the getgridind inside disttrans function
     """
     abc=locpot.structure.lattice.abc
-    #abclats=locpot.structure.lattice.matrix #for getting correct distances in a non-orthogonal basis?
     grdind = []
+
     if gridavg:
         radvals=[] #radius in terms of indices
         dxvals=[]
+
     for i in range(3):
         if r[i] < 0:
             while r[i]<0:
@@ -368,7 +370,7 @@ def getgridind(locpot, r, gridavg=0.0):
         dx = x[1] - x[0]
         x_rprojection_delta_abs = np.absolute(x - r[i])
         ind = np.argmin(x_rprojection_delta_abs)
-        if x_rprojection_delta_abs[ind] > dx*1.1: #included this tolerance to avoid numerical errors that can occur...
+        if x_rprojection_delta_abs[ind] > dx*1.1: #to avoid numerical errors
             print i,ind,r
             print x_rprojection_delta_abs
             raise ValueError("Input position is not within the locpot grid")
@@ -376,19 +378,18 @@ def getgridind(locpot, r, gridavg=0.0):
         if gridavg:
             radvals.append(int(np.ceil(gridavg/dx)))
             dxvals.append(dx)
-    #grdind = [grdind] # To be consistent with non-zero gridavg #this breaks next part...
+
     grid_dim = locpot.dim
     if gridavg:
         grdindfull=[]
         for i in range(-radvals[0], radvals[0]+1):
             for j in range(-radvals[1], radvals[1]+1):
                 for k in range(-radvals[2], radvals[2]+1):
-                    dtoc = [i*dxvals[0], j*dxvals[1], k*dxvals[2]] #I wonder if this breaks if the trans vectors aren't orthogonal?
-                    #dtoc = i*abclats[0]/grid_dim[0]+j*abclats[1]/grid_dim[1]+k*abclats[2]/grid_dim[2] #alternative for when trans vecs arent orthogonal?
+                    dtoc = [i*dxvals[0], j*dxvals[1], k*dxvals[2]]
                     if norm(dtoc) < gridavg:
                         ival = (i+grdind[0]) % grid_dim[0]
                         jval = (j+grdind[1]) % grid_dim[1]
-                        kval = (k+grdind[2]) % grid_dim[2] #this was a big bug! last 2 was a 1...
+                        kval = (k+grdind[2]) % grid_dim[2]
                         grdindfull.append((ival,jval,kval))
         grdind=grdindfull
 
@@ -397,7 +398,7 @@ def getgridind(locpot, r, gridavg=0.0):
 
 def disttrans(locpot_blk, locpot_def,  silence=False):
     """
-    this is function for calculating distance from defect to each atom and finding NGX grid pts at each atom
+    for calculating distance from defect to each atom and finding NGX grid pts at each atom
     Args:
         locpot_blk: Bulk locpot object
         locpot_def: Defect locpot object
@@ -433,7 +434,6 @@ def disttrans(locpot_blk, locpot_def,  silence=False):
     else: #for interstitial list
         sitelist=defstruct.sites[:]
 
-
     #better image getter since pymatgen wasnt working
     def returnclosestr(vec):
         from operator import itemgetter
@@ -450,17 +450,15 @@ def disttrans(locpot_blk, locpot_def,  silence=False):
         return listvals[0] #will return [dist,r to defect, and transvec for defect]
 
     grid_sites = {}  # dictionary with indices keys in order of structure list
-    radlist = {'Li' : 0.97, 'O' : 0.72, 'Ti' : 1.28}  #this is a specific thing for Li2TiO3...
     for i in sitelist:
-        if np.array_equal(i.coords,def_ccoord): #skip defect site
+        if np.array_equal(i.coords,def_ccoord):
             print 'This is defect! Skipping ',i
             continue
-        #radius=i.specie.atomic_radius
+
         radius=1
-        blksite,defsite=closestsites(struct,defstruct,i.coords) #returns (site object, dist) for both bulk and defect cells
+        blksite,defsite=closestsites(struct,defstruct,i.coords)
 
         blkindex=struct.index(blksite[0])
-        #defindex=defstruct.index(defsite[0])
 
         cart_coord = blksite[0].coords
         frac_coord = blksite[0].frac_coords
@@ -471,31 +469,19 @@ def disttrans(locpot_blk, locpot_def,  silence=False):
         cart_reldef=closeimage[1]
         defdist=closeimage[0]
 
-        ## this seemed broken for whatever reason
-        # dist, img = struct.lattice.get_distance_and_image(def_fcoord,
-        #                                                   frac_coord)
-        # defdist, defimg = defstruct.lattice.get_distance_and_image(defcell_def_fcoord,
-        #                                                   dfrac_coord)
-        # # cart_reldef = np.dot((frac_coord + img), defstruct.lattice._matrix) \
-        # #               - def_ccoord
-        # cart_reldef = np.dot((dfrac_coord + img), struct.lattice._matrix) \
-        #           - defcell_def_ccoord
         if abs(norm(cart_reldef) - defdist) > 0.1:
             print('image locater issue encountered for site=', blkindex,
                   '(in def cell) distance should be ', defdist, ' but calculated to be ',
                   norm(cart_reldef))
             #return #dont want to break the code here, but want flag to exist...what to do?
 
-        #rad=radlist[i.species_string]
-        rad = 1.0 # Temporary hack by Bharat
+        rad = 1.0
         if blkindex in grid_sites:
             print '(WARNING) index ',blkindex,' already exists in potinddict! overwriting information. '
 
         grid_sites[blkindex] = {'dist': defdist,'cart': dcart_coord,
                 'cart_reldef': cart_reldef,
-                #'defgrid':getgridind(locpot_def,  dfrac_coord, gridavg=float(radius)),
                 'defgrid':getgridind(locpot_def,  dfrac_coord, gridavg=rad),
-                #'bulkgrid': getgridind(locpot_blk,  frac_coord, gridavg=float(radius)),
                 'bulkgrid': getgridind(locpot_blk,  frac_coord, gridavg=rad),
                 'siteobj':[i.coords,i.frac_coords,i.species_string]}
 
@@ -513,9 +499,9 @@ def wigner_seitz_radius(structure):
     except:
         lat = Lattice(structure.structure.lattice_vectors())
 
-    wz = lat.get_wigner_seitz_cell() #list of WS cell face vertices
+    wz = lat.get_wigner_seitz_cell()
 
-    dist = [] #distance to midpoints of WS cell facets
+    dist = []
     for facet in wz:
         midpt = np.mean(np.array(facet), axis=0)
         dist.append(norm(midpt))
@@ -576,6 +562,7 @@ class KumagaiBulkInit(object):
         angset, [a1, a2, a3], vol, determ, invdiel = kumagai_init(
                 structure, dieltens, sil=silence)
         optgam = None
+
         #do brute force recip summation
         def get_recippart(encut, gamma):
             recip = genrecip(a1, a2, a3, encut)
@@ -584,7 +571,7 @@ class KumagaiBulkInit(object):
                 Gdotdiel = np.dot(rec, np.dot(dieltens, rec))
                 summand = math.exp(-Gdotdiel / (4 * (gamma ** 2))) / Gdotdiel
                 recippart += summand
-            recippart *= 4*np.pi/vol # q is taken as 1
+            recippart *= 4*np.pi/vol
             return recippart, 0.0, len(recip)
 
         def do_summation(gamma):
@@ -638,7 +625,7 @@ class KumagaiBulkInit(object):
                 print('Had problem in gamma optimization process.')
                 return None
 
-            if gamma > 50:  #kind of an arbitrary number for cut off...
+            if gamma > 50:
                 print('WARNING. could not optimize gamma before gamma =', 50)
                 return None
 
@@ -721,37 +708,39 @@ class KumagaiCorrection(object):
             energy_cutoff=520, madetol=0.0001, silence=False, lengths=None):
         """
         Args:
-            dielectric_tensor: Macroscopic dielectric tensor 
+            dielectric_tensor: Macroscopic dielectric tensor
                  Include ionic also if defect is relaxed, othewise ion clamped.
-                 Can be a matrix, array or scalar.
+                 Can be a matrix array or scalar.
             bulk_locpot: Bulk Locpot file path OR Bulk Locpot Object
             defect_locpot: Defect Locpot file path OR defect Locpot Object
-            q (int): Charge associated with the defect.
+            q: Charge associated with the defect (not of the homogen. background). Typically integer
             gamma:  Convergence parameter. Obtained from KumagaiBulkPart
             g_sum: value that is dependent on the Bulk only. Obtained from KumagaiBulkPart
             energy_cutoff: Energy for plane wave cutoff (in eV).
                  If not given, Materials Project default 520 eV is used.
-            madetol: Tolerance (double or float)
+            madetol: Tolerance for convergence of energy terms in eV (double or float)
             silence: Flag for disabling/enabling  messages (Bool)
+            lengths: Lengths of axes, for speeding up plotting slightly
         """
         if isinstance(dielectric_tensor, int) or \
                 isinstance(dielectric_tensor, float):
             self.dieltens = np.diag(
-                np.ones(3) * dielectric_tensor)  #this would make kumagai correction pointless
+                np.ones(3) * dielectric_tensor)
         else:
-            self.dieltens = np.array(dielectric_tensor)  #full dielectric tensor
+            self.dieltens = np.array(dielectric_tensor)
 
-        self.locpot_blk = bulk_locpot  #location of purelocpot OR locpot object
-        self.locpot_def = defect_locpot  #location of defectlocpot OR locpotobject
-        self.madetol = madetol #tolerance for convergence of energy terms in eV
-        self.q = q  #charge of defect (not of the homogen. background)
-        self.encut = energy_cutoff  #encut (eV) for calculation
-        self.silence = silence  #for silencing printflags
+        self.locpot_blk = bulk_locpot
+        self.locpot_def = defect_locpot
+        self.madetol = madetol
+        self.q = q
+        self.encut = energy_cutoff
+        self.silence = silence
+
         if not gamma:
             bi=KumagaiBulkInit(bulk_locpot, self.dieltens, encut=energy_cutoff, tolerance=madetol,
                  silence=silence)
             self.gamma=bi.gamma
-            self.g_sum=bi.g_sum #even if you already put in g_sum, if gamma changed then you need to recompute g_sum
+            self.g_sum=bi.g_sum
         else:
             self.gamma = gamma
             if g_sum is None:
@@ -760,7 +749,8 @@ class KumagaiCorrection(object):
                 self.g_sum = bi.g_sum
             else:
                 self.g_sum = g_sum
-        self.lengths=lengths #mainly used for quick plotting when structure isnt available...
+
+        self.lengths=lengths
 
     def correction(self, title=None, partflag='All'):
         """
@@ -787,9 +777,7 @@ class KumagaiCorrection(object):
 
         if partflag!='pc':
             if not self.silence:
-                #print '\nPC calc done, correction =', round(energy_pc, 4),
                 print 'Now run potential alignment script'
-            #structure = self.locpot_blk.structure
             potalign = self.potalign(title=title)
 
         if not self.silence:
@@ -822,13 +810,13 @@ class KumagaiCorrection(object):
 
         energy_pc = anisotropic_pc_energy(
                 self.locpot_blk.structure, self.g_sum, self.dieltens, self.q,
-                self.gamma, self.madetol, silence=self.silence)  #returns PCenergy in eV
+                self.gamma, self.madetol, silence=self.silence)
 
         if not self.silence:
             print 'PC energy determined to be ', energy_pc, ' eV (', \
-                    energy_pc/hart_to_ev, ' Hartree)'  #27.2114 eV/1 hartree
+                    energy_pc/hart_to_ev, ' Hartree)'
 
-        return energy_pc  #PC energy in eV
+        return energy_pc
 
     def potalign(self, title=None):
         """
@@ -855,19 +843,14 @@ class KumagaiCorrection(object):
         angset, [a1, a2, a3], vol, determ, invdiel = kumagai_init(
                 self.locpot_blk.structure, self.dieltens, sil=self.silence)
 
-        #calculate distance matrix for plotting
         potinddict = disttrans(self.locpot_blk, self.locpot_def,silence=self.silence)
 
-        #get sampling radius (with special exception if lat constants not close to each other)
         minlat=min(norm(a1),norm(a2),norm(a3))
         lat_perc_diffs=[100*abs(norm(a1)-norm(lat))/minlat for lat in [a2,a3]]
         lat_perc_diffs.append(100*abs(norm(a2)-norm(a3))/minlat)
         if not all(i < 45 for i in lat_perc_diffs):
             print 'NOTICE! detected that cell was not very cubic. ' \
                   'Might want to be smarter in way you sample atoms outside wigner-seitz cell with Kumagai scheme'
-            #THIS was how I managed to get identical sampling radius to Kumagai paper...
-            #print 'changing sampling scheme since cell does not have comparable lattice sizes...'
-            #wsrad = max(norm(a1),norm(a2),norm(a3))/2. #increase sampling region if not cubic (not recommended)
         wsrad = wigner_seitz_radius(self.locpot_blk.structure)
         if not self.silence:
             print ('wsrad', wsrad)
@@ -918,12 +901,11 @@ class KumagaiCorrection(object):
             if not self.silence:
                 print 'Has anisotropic madelung potential =', v_pc
                 print 'DFT bulk/defect difference = ', v_qb
-                print 'atoms left to calculate = ' + str(len(potinddict.keys()) - jup) #this is broken if you arent plotting
+                print 'atoms left to calculate = ' + str(len(potinddict.keys()) - jup)
         if not self.silence:
             print '--------------------------------------'
 
-        #parse and plot if title is not None
-        if title:  #to make shading region prettier
+        if title:
             fullspecset = self.locpot_blk.structure.species
             specset = list(set(fullspecset))
             shade, forplot = {}, {}
@@ -1013,7 +995,7 @@ class KumagaiCorrection(object):
 
         """
         if type(self.locpot_blk) is not Locpot and not self.lengths:
-            self.locpot_blk=Locpot.from_file(self.locpot_blk) #do this for plotting axes sizes...
+            self.locpot_blk=Locpot.from_file(self.locpot_blk)
 
         from monty.serialization import loadfn
         from monty.json import MontyDecoder

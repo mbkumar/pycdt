@@ -99,7 +99,7 @@ class ChargeCorrection(object):
                 'pc' for just point charge correction, or
                'potalign' for just potalign correction, or
                'All' for both, or
-               'AllSplit' for individual parts split up
+               'AllSplit' for individual parts split up (form [PC,potterm,full])
         """
 
         from freysoldt_correction import FreysoldtCorrection
@@ -140,7 +140,7 @@ class ChargeCorrection(object):
                 'pc' for just point charge correction, or
                'potalign' for just pot. align correction, or
                'All' for both, or
-               'AllSplit' for individual parts split up
+               'AllSplit' for individual parts split up (form [PC,potterm,full])
         """
 
         from kumagai_correction import KumagaiBulkInit, KumagaiCorrection
@@ -184,7 +184,7 @@ class ChargeCorrection(object):
                 'pc' for just point charge correction, or
                'potalign' for just potalign correction, or
                'All' for both, or
-               'AllSplit' for individual parts split up
+               'AllSplit' for individual parts split up (form [PC,potterm,full])
         """
 
         if not pos:
