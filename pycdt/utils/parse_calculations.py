@@ -25,7 +25,7 @@ from pymatgen.entries.computed_entries import ComputedStructureEntry
 from pymatgen.phasediagram.pdmaker import PhaseDiagram
 from pymatgen.phasediagram.pdanalyzer import PDAnalyzer
 
-from pycdt.corrections.defects_analyzer import ParsedDefect 
+from pycdt.corrections.defects_analyzer import ComputedDefect 
 
 
 class PostProcess(object):
@@ -48,7 +48,7 @@ class PostProcess(object):
 
     def parse_defect_calculations(self):
         """
-        Parses the defect calculations as ComputedStructureEntries/ParsedDefects.
+        Parses the defect calculations as ComputedStructureEntries/ComputedDefects.
         Charge correction is missing in the first run.
         """
         parsed_defects = []
@@ -158,7 +158,7 @@ class PostProcess(object):
                     comp_def_entry = ComputedStructureEntry(
                             struct, energy, data=comp_data)
                     parsed_defects.append(
-                            ParsedDefect( 
+                            ComputedDefect( 
                                 comp_def_entry, site_in_bulk=site, 
                                 charge=chrg, name=fldr_name))
 
