@@ -127,12 +127,14 @@ class ChargeCorrection(object):
             self._purelocpot=s._purelocpot
         if (type(s._deflocpot) is Locpot) and (type(self._deflocpot) is not Locpot):
             self._deflocpot=s._deflocpot
+        if not self._pos: #want them in fractional coords
+            self._pos = self._purelocpot.structure.lattice.get_fractional_coords(s._pos)
 
         print '\n Final Freysoldt',nomtype,'value is ',freyval
 
         return freyval
 
-    def kumagai(self,title=None, partflag='All'):
+    def kumagai(self,title=None, partflag='All', bulk_outcar_path=None, def_outcar_path=None):
         """
         Args:
             title: set if you want to plot the atomic site averaged potential
@@ -141,19 +143,23 @@ class ChargeCorrection(object):
                'potalign' for just pot. align correction, or
                'All' for both, or
                'AllSplit' for individual parts split up (form [PC,potterm,full])
+            bulk_outcar_path: path to Bulk OUTCAR (quicker method for performing kumagai code)
+            def_outcar_path: path to defect OUTCAR
         """
 
         from kumagai_correction import KumagaiBulkInit, KumagaiCorrection
 
         if self._KumagaiBulk is None:
-             self._KumagaiBulk=KumagaiBulkInit(self._purelocpot, self._dieltens, encut=self._encut,
-                tolerance=self._madetol, silence=self._silence, optgamma=self._optgamma)
+             self._KumagaiBulk=KumagaiBulkInit(self._purelocpot.structure, self._purelocpot.dim, self._dieltens, encut=self._encut,
+                tolerance=self._madetol, silence=self._silence, optgamma=self._optgamma) #this will break if _purelocpot object not loaded yet
 
-        if (type(self._KumagaiBulk.bulk_locpot) is Locpot) and (type(self._purelocpot) is not Locpot):
-             self._purelocpot=self._KumagaiBulk.bulk_locpot
-
-        s=KumagaiCorrection(self._dieltens, self._purelocpot, self._deflocpot, self._q, gamma=self._KumagaiBulk.gamma,
-                g_sum=self._KumagaiBulk.g_sum, energy_cutoff=self._encut, madetol=self._madetol, silence=self._silence)
+        if bulk_outcar_path is None:
+            s=KumagaiCorrection(self._dieltens, self._purelocpot, self._deflocpot, self._q, gamma=self._KumagaiBulk.gamma,
+                    g_sum=self._KumagaiBulk.g_sum, energy_cutoff=self._encut, madetol=self._madetol, silence=self._silence)
+        else:
+            s=KumagaiCorrection(self._dieltens, bulk_outcar_path, def_outcar_path, self._q, gamma=self._KumagaiBulk.gamma,
+                    g_sum=self._KumagaiBulk.g_sum, energy_cutoff=self._encut, madetol=self._madetol, silence=self._silence,
+                    structure=self._purelocpot.structure, defstructure=self._deflocpot.structure) #will break if locpot objects not loaded yet...
 
         if partflag in ['All','AllSplit']:
             nomtype='full correction'
@@ -169,6 +175,8 @@ class ChargeCorrection(object):
             self._purelocpot=s.locpot_blk
         if (type(s.locpot_def) is Locpot) and (type(self._deflocpot) is not Locpot):
             self._deflocpot=s.locpot_def
+        if not self._pos: #want them in fractional coords
+            self._pos = self._purelocpot.structure.lattice.get_fractional_coords(s._pos)
 
         print '\n Final Kumagai',nomtype,'value is ',kumval
 
@@ -196,7 +204,7 @@ class ChargeCorrection(object):
         from sxdefect_correction import FreysoldtCorrection as SXD
 
         s=SXD(self._path_purelocpot, self._path_deflocpot, self._q, self._dielectricconst, pos,
-                                        self._encut, axiscalcs = axiscalcs, lengths=lengths)
+                                        self._encut, lengths=lengths)
 
         if partflag in ['All','AllSplit']:
             nomtype='full correction'
@@ -205,15 +213,9 @@ class ChargeCorrection(object):
         elif partflag=='potalign':
             nomtype='potential alignment correction'
 
-        sxvals=s.run_correction(print_pot_flag=print_pot_flag,partflag=partflag)
+        sxvals=s.run_correction(print_pot_flag=print_pot_flag, partflag=partflag)
 
         print '\n Final Sxdefectalign ',nomtype,' correction value is ',sxvals
 
         return sxvals
-
-
-
-if __name__ == '__main__':
-
-
 

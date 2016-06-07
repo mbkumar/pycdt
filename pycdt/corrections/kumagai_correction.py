@@ -23,7 +23,7 @@ import math
 
 import numpy as np
 
-from pymatgen.io.vasp.outputs import Locpot
+from pymatgen.io.vasp.outputs import Locpot, Outcar
 from pymatgen.core.lattice import Lattice
 
 norm = np.linalg.norm
@@ -178,8 +178,8 @@ def find_defect_pos(sb,sd):
     return None,None #if you get here there is an error
 
 
-def kumagai_init(s1, dieltens, sil=True):
-    angset = s1.lattice.get_cartesian_coords(1)
+def kumagai_init(structure, dieltens, sil=True):
+    angset = structure.lattice.get_cartesian_coords(1)
 
     if not sil:
         print 'defect lattice constants are (in angstroms)' + str(cleanlat(angset))
@@ -252,29 +252,31 @@ def real_sum(a1, a2, a3, r, q, dieltens, gamma, tolerance, silence=True):
     return r_sum
 
 
-def get_g_sum_at_r(g_sum, locpot_bulk, r):
+def get_g_sum_at_r(g_sum, structure, dim, r):
     """
     Args:
         g_sum: Reciprocal summation calculated from reciprocal_sum method
-        locpot_bulk: Bulk locpot 
+        structure: Bulk structure pymatgen object
+        dim : ngxf dimension
         r: Position relative to defect (in cartesian coords)
     Returns:
         reciprocal summ value at g_sum[i_rx,j_ry,k_rz]
     """
 
-    fraccoord=locpot_bulk.structure.lattice.get_fractional_coords(r)
-    i, j, k = getgridind(locpot_bulk, fraccoord)
+    fraccoord=structure.lattice.get_fractional_coords(r)
+    i, j, k = getgridind(structure, dim, fraccoord)
 
     return g_sum[i, j, k]
 
 
-def anisotropic_madelung_potential(locpot_bulk, g_sum, r, dieltens, q,  gamma, tolerance,
+def anisotropic_madelung_potential(structure, dim, g_sum, r, dieltens, q,  gamma, tolerance,
                                   silence=True):
     """
     Compute the anisotropic Madelung potential at r not equal to 0.
     For r=(0,0,0) use anisotropic_pc_energy function
     Args:
-        locpot_bulk: locpot object for bulk supercell
+        structure: Bulk pymatgen structure type
+        dim : ngxf dimension
         g_sum: Precomputed reciprocal sum for all r_vectors
         r: r vector (in cartesian coordinates) relative to defect position. 
            Non zero r is expected
@@ -284,11 +286,10 @@ def anisotropic_madelung_potential(locpot_bulk, g_sum, r, dieltens, q,  gamma, t
         gamma (float): Convergence parameter 
         silence (bool): Verbosity flag. If False, messages are printed.
     """
-    structure = locpot_bulk.structure
     angset, [a1, a2, a3], vol, determ, invdiel = kumagai_init(
             structure, dieltens, sil=silence)
 
-    recippartreal = q * get_g_sum_at_r(g_sum, locpot_bulk, r)
+    recippartreal = q * get_g_sum_at_r(g_sum, structure, dim, r)
     directpart = real_sum(a1, a2, a3, r, q, dieltens, gamma, tolerance,
                           silence)
 
@@ -298,17 +299,17 @@ def anisotropic_madelung_potential(locpot_bulk, g_sum, r, dieltens, q,  gamma, t
     if not silence:
         print ('self interaction piece is {}'.format(selfint * hart_to_ev))
 
-    pot = (hart_to_ev/-q) * (directpart + recippartreal - selfint)
+    #pot = (hart_to_ev/-q) * (directpart + recippartreal - selfint)
+    pot = hart_to_ev * (directpart + recippartreal - selfint)  #reverted dividing by q to match kumagai data...
 
     return pot
-
 
 def anisotropic_pc_energy(structure, g_sum, dieltens, q, gamma, tolerance,
                           silence=True):
     """
     Compute the anistropic periodic point charge interaction energy.
     Args:
-        structure: Bulk structure type
+        structure: Bulk pymatgen structure type
         g_sum : comes from KumagaiBulkInit class
         dieltens: dielectric tensor
         q: Point charge (in units of e+)
@@ -340,18 +341,19 @@ def anisotropic_pc_energy(structure, g_sum, dieltens, q, gamma, tolerance,
     return pc_energy
 
 
-def getgridind(locpot, r, gridavg=0.0):
+def getgridind(structure, dim, r, gridavg=0.0):
     """
     Computes the index of a point, r, in the locpot grid
     Args:
-        locpot: Can be any volumentric data object
+        structure: Pymatgen structure object
+        dim: dimension of FFT grid (NGXF dimension list in VASP)
         r: Relative co-ordinates with respect to abc lattice vectors
         gridavg: If you want to do atomic site averaging, set gridavg to the radius of the atom at r
     Returns:
         [i,j,k]: Indices as list
     TODO: Once final, remove the getgridind inside disttrans function
     """
-    abc=locpot.structure.lattice.abc
+    abc=structure.lattice.abc
     grdind = []
 
     if gridavg:
@@ -366,7 +368,8 @@ def getgridind(locpot, r, gridavg=0.0):
             while r[i]>=1:
                 r[i]-=1
         r[i] *= abc[i]
-        x = locpot.get_axis_grid(i)
+        num_pts = dim[i]
+        x = [now_num / float(num_pts) * abc[i] for now_num in range(num_pts)]
         dx = x[1] - x[0]
         x_rprojection_delta_abs = np.absolute(x - r[i])
         ind = np.argmin(x_rprojection_delta_abs)
@@ -379,7 +382,6 @@ def getgridind(locpot, r, gridavg=0.0):
             radvals.append(int(np.ceil(gridavg/dx)))
             dxvals.append(dx)
 
-    grid_dim = locpot.dim
     if gridavg:
         grdindfull=[]
         for i in range(-radvals[0], radvals[0]+1):
@@ -387,27 +389,25 @@ def getgridind(locpot, r, gridavg=0.0):
                 for k in range(-radvals[2], radvals[2]+1):
                     dtoc = [i*dxvals[0], j*dxvals[1], k*dxvals[2]]
                     if norm(dtoc) < gridavg:
-                        ival = (i+grdind[0]) % grid_dim[0]
-                        jval = (j+grdind[1]) % grid_dim[1]
-                        kval = (k+grdind[2]) % grid_dim[2]
+                        ival = (i+grdind[0]) % dim[0]
+                        jval = (j+grdind[1]) % dim[1]
+                        kval = (k+grdind[2]) % dim[2]
                         grdindfull.append((ival,jval,kval))
         grdind=grdindfull
 
     return grdind
 
 
-def disttrans(locpot_blk, locpot_def,  silence=False):
+def disttrans(struct, defstruct, dim, silence=False):
     """
     for calculating distance from defect to each atom and finding NGX grid pts at each atom
     Args:
-        locpot_blk: Bulk locpot object
-        locpot_def: Defect locpot object
+        struct: Bulk structure object
+        defstruct: Defect structure object
     """
-    struct = locpot_blk.structure
-    defstruct = locpot_def.structure
 
     #Find defect location in bulk and defect cells
-    blksite,defsite=find_defect_pos(struct,defstruct)
+    blksite,defsite = find_defect_pos(struct,defstruct)
     if blksite is None and defsite is None:
         print 'Error. Not able to determine defect site...'
         return
@@ -459,6 +459,7 @@ def disttrans(locpot_blk, locpot_def,  silence=False):
         blksite,defsite=closestsites(struct,defstruct,i.coords)
 
         blkindex=struct.index(blksite[0])
+        defindex=defstruct.index(defsite[0])
 
         cart_coord = blksite[0].coords
         frac_coord = blksite[0].frac_coords
@@ -481,9 +482,10 @@ def disttrans(locpot_blk, locpot_def,  silence=False):
 
         grid_sites[blkindex] = {'dist': defdist,'cart': dcart_coord,
                 'cart_reldef': cart_reldef,
-                'defgrid':getgridind(locpot_def,  dfrac_coord, gridavg=rad),
-                'bulkgrid': getgridind(locpot_blk,  frac_coord, gridavg=rad),
-                'siteobj':[i.coords,i.frac_coords,i.species_string]}
+                'defgrid':getgridind(struct, dim,  dfrac_coord, gridavg=rad),
+                'bulkgrid': getgridind(defstruct, dim,  frac_coord, gridavg=rad),
+                'siteobj':[i.coords,i.frac_coords,i.species_string],
+                'bulk_site_index':blkindex, 'def_site_index':defindex}
 
     return grid_sites
 
@@ -510,29 +512,65 @@ def wigner_seitz_radius(structure):
     return wsrad
 
 
+def read_ES_avg(location_outcar):
+    #reads NGXF information and Electrostatic potential at each atomic site from VASP OUTCAR file
+    with open(location_outcar,'r') as file:
+        tmp_out_dat = file.read()
+
+        out_dat = tmp_out_dat.split('\n')
+        start_line = 0
+        end_line = 0
+        ngxf_line = 0
+        for line_num, line in enumerate(out_dat):
+            if "dimension x,y,z NGXF" in line:
+                ngxf_line = line_num
+            elif "average (electrostatic) potential at core" in line:
+                start_line = line_num
+                end_line = 0 #make sure to zero end_line if there are multiple electrostatic read outs
+            elif start_line and not end_line and not len(line.split()):
+                end_line = line_num
+
+        ngxlineout = out_dat[ngxf_line].split()
+        ngxf_dims = map(int, ngxlineout[3:8:2])
+
+        rad_line = out_dat[start_line+1].split()
+        radii = [float(rad) for rad in rad_line[5:]]
+
+        ES_data = {'sampling_radii': radii, 'ngxf_dims': ngxf_dims}
+        pot = []
+        for line_num in range(start_line+3, end_line):
+            line = out_dat[line_num].split()
+            #site_num = map(lambda x: int(x)-1,line[::2])
+            avg_es = map(float,line[1::2])
+            #ES_data.update(dict(zip(site_num,avg_es)))
+            pot += avg_es
+        ES_data.update({'potential': pot})
+
+        return ES_data
+
+    return None
+
+
 class KumagaiBulkInit(object):
     """
     Compute the anisotropic madelung potential array from the bulk 
     locpot. This helps in evaluating the bulk supercell related
     part once to speed up the calculations.
     """
-    def __init__(self, bulk_locpot_path, epsilon, encut=520, tolerance=0.0001, 
+    def __init__(self, structure, dim, epsilon, encut=520, tolerance=0.0001,
                  silence=True, optgamma=False):
         """
         Args
-            bulk_locpot_path: Path of bulk locpot file OR bulk Locpot Object
+            structure: Pymatgen structure object of bulk cell
+            dim: fine FFT grid dimensions as a list (for vasp this is NGXF grid dimensions)
             epsilon: Dielectric tensor
             encut (float): Energy cutoff for optimal gamma
             tolerance (float): Accuracy parameter
             silence (bool): If True, intermediate steps are not printed
             optgamma: if you know optimized gamma already set this to it, otherwise it will be optimized
         """
-        if type(bulk_locpot_path) is Locpot:
-            self.bulk_locpot = bulk_locpot_path
-        else:
-            if not silence:
-                print 'Loading bulk Locpot'
-            self.bulk_locpot = Locpot.from_file(bulk_locpot_path)
+        self.structure = structure
+        self.dim = dim
         self.epsilon = epsilon
         self.encut = encut
         self.tolerance = tolerance
@@ -548,19 +586,10 @@ class KumagaiBulkInit(object):
         Find optimal gamma by evaluating the brute force reciprocal
         summation and seeing when the values are on the order of 1
         this calculation is the anisotropic Madelung potential at r = (0, 0, 0)
-        Args:
-            structure: Bulk supercell structure
-            dieltens: dielectric tensor
-            madetol: Tolerance parameter for numerical convergence
-            silence (bool): Verbosity flag. If False, messages are printed.
+        Note this only requires the STRUCTURE not the LOCPOT object.
         """
-        structure = self.bulk_locpot.structure
-        dieltens = self.epsilon
-        silence = self.silence
-        madetol = self.tolerance
-
         angset, [a1, a2, a3], vol, determ, invdiel = kumagai_init(
-                structure, dieltens, sil=silence)
+                self.structure, self.epsilon, sil=self.silence)
         optgam = None
 
         #do brute force recip summation
@@ -568,7 +597,7 @@ class KumagaiBulkInit(object):
             recip = genrecip(a1, a2, a3, encut)
             recippart = 0.0
             for rec in recip:
-                Gdotdiel = np.dot(rec, np.dot(dieltens, rec))
+                Gdotdiel = np.dot(rec, np.dot(self.epsilon, rec))
                 summand = math.exp(-Gdotdiel / (4 * (gamma ** 2))) / Gdotdiel
                 recippart += summand
             recippart *= 4*np.pi/vol
@@ -582,7 +611,7 @@ class KumagaiBulkInit(object):
             encut += 10
             recippartreal, recippartimag, len_recip = get_recippart(encut, gamma)
             converge = [recippartreal1, recippartreal]
-            while abs(abs(converge[0]) - abs(converge[1])) * hart_to_ev > madetol:
+            while abs(abs(converge[0]) - abs(converge[1])) * hart_to_ev > self.tolerance:
                 encut += 10
                 recippartreal, recippartimag, len_recip = get_recippart(encut, gamma)
                 converge.reverse()
@@ -592,17 +621,17 @@ class KumagaiBulkInit(object):
                             'Optimal gamma not found at {} eV cutoff'.format(
                                 self.encut))
 
-            if abs(recippartimag) * hart_to_ev > madetol:
-                if not silence:
+            if abs(recippartimag) * hart_to_ev > self.tolerance:
+                if not self.silence:
                     print("Problem with convergence of imaginary part of recip sum."),
                     print("imag sum value is {} (eV)".format( recippartimag * hart_to_ev))
                 return None, None
-            if not silence:
+            if not self.silence:
                 print('recip sum converged to {} (eV) at encut= {}'.format(
                             recippartreal * hart_to_ev, encut))
                 print('Number of reciprocal vectors is {}'.format(len_recip))
             if (abs(converge[1]) * hart_to_ev < 1 and not optgam):
-                if not silence:
+                if not self.silence:
                     print('Reciprocal summation value is less than 1 eV.')
                     print('This might lead to errors in the reciprocal summation.')
                     print('Changing gamma now.')
@@ -635,25 +664,16 @@ class KumagaiBulkInit(object):
         """
         Compute the reciprocal summation in the anisotropic Madelung 
         potential.
-        Args:
-            locpot_bulk: Bulk calculation potential file
-            dieltens: dielectric tensor
-            silence (bool): Verbosity flag. If False, messages are printed.
-            optgam (float): Convergence parameter (optional)
+
         TODO: Get the input to fft cut by half by using rfft instead of fft
         """
-        locpot_bulk = self.bulk_locpot
-        dieltens = self.epsilon 
-        gamma = self.gamma
-        silence = self.silence
-        structure = locpot_bulk.structure
 
-        if not silence:
+        if not self.silence:
             print 'calculating the reciprocal summation in Madeling potential'
         over_atob = 1.0/ang_to_bohr
         atob3=ang_to_bohr**3
 
-        latt = structure.lattice
+        latt = self.structure.lattice
         vol = latt.volume*atob3 # in Bohr^3
 
         reci_latt = latt.reciprocal_lattice
@@ -662,8 +682,7 @@ class KumagaiBulkInit(object):
         b2 = np.array(b2)*over_atob
         b3 = np.array(b3)*over_atob
 
-        ndim = locpot_bulk.dim
-        nx, ny, nz = ndim
+        nx, ny, nz = self.dim
         ind1 = np.arange(nx)
         for i in range(nx/2, nx):
             ind1[i] = i - nx
@@ -674,13 +693,13 @@ class KumagaiBulkInit(object):
         for i in range(nz/2, nz):
             ind3[i] = i - nz
 
-        g_array = np.zeros(ndim, np.dtype('c16'))
-        gamm2 = 4*(gamma**2)
+        g_array = np.zeros(self.dim, np.dtype('c16'))
+        gamm2 = 4*(self.gamma**2)
         for i in ind1:
             for j in ind2:
                 for k in ind3:
                     g = i*b1 + j*b2 + k*b3
-                    g_eps_g = np.dot(g, np.dot(dieltens, g))
+                    g_eps_g = np.dot(g, np.dot(self.epsilon, g))
                     if i == j == k == 0:
                         continue
                     else:
@@ -692,7 +711,7 @@ class KumagaiBulkInit(object):
         r_arr_real = np.real(r_array)
         r_arr_imag = np.imag(r_array)
 
-        if not silence:
+        if not self.silence:
             max_imag = r_arr_imag.max()
             print 'Max imaginary part found to be ', max_imag
 
@@ -703,16 +722,19 @@ class KumagaiCorrection(object):
     Class that implements the extended freysoldt correction developed 
     by Kumagai.
     """
-    def __init__(self, dielectric_tensor, bulk_locpot,
-            defect_locpot, q, gamma=None, g_sum=None,
-            energy_cutoff=520, madetol=0.0001, silence=False, lengths=None):
+    def __init__(self, dielectric_tensor, bulk_file_path,
+            defect_file_path, q, gamma=None, g_sum=None,
+            energy_cutoff=520, madetol=0.0001, silence=False,
+            lengths=None, structure=None, defstructure=None):
         """
         Args:
             dielectric_tensor: Macroscopic dielectric tensor
                  Include ionic also if defect is relaxed, othewise ion clamped.
                  Can be a matrix array or scalar.
-            bulk_locpot: Bulk Locpot file path OR Bulk Locpot Object
-            defect_locpot: Defect Locpot file path OR defect Locpot Object
+            bulk_file_path: (Bulk Locpot file path OR Bulk Locpot Pymatgen Object)
+                    OR  (Bulk Outcar file path OR Bulk Outcar Pymatgen Object) <- faster method
+            defect_file_path: (Defect Locpot file path OR Defect Locpot Pymatgen Object)
+                    OR  (Defect Outcar file path OR Bulk Defect Pymatgen Object) <- faster method
             q: Charge associated with the defect (not of the homogen. background). Typically integer
             gamma:  Convergence parameter. Obtained from KumagaiBulkPart
             g_sum: value that is dependent on the Bulk only. Obtained from KumagaiBulkPart
@@ -721,7 +743,13 @@ class KumagaiCorrection(object):
             madetol: Tolerance for convergence of energy terms in eV (double or float)
             silence: Flag for disabling/enabling  messages (Bool)
             lengths: Lengths of axes, for speeding up plotting slightly
+            structure: bulk Pymatgen structure object. Need to specify this if using Outcar method for atomic site avg.
+                (If you specify outcar files for bulk_file_path but dont specify structure then code will break)
+                (TO DO: resolve this dumb dependency by being smarter about where structure comes from?)
+            defstructure: defect Pymatgen structure object. only needed if using Outcar method...
         """
+        if not silence:
+            print '\nThis is Anisotropic Freysoldt (Kumagai) Correction'
         if isinstance(dielectric_tensor, int) or \
                 isinstance(dielectric_tensor, float):
             self.dieltens = np.diag(
@@ -729,22 +757,49 @@ class KumagaiCorrection(object):
         else:
             self.dieltens = np.array(dielectric_tensor)
 
-        self.locpot_blk = bulk_locpot
-        self.locpot_def = defect_locpot
+        if type(bulk_file_path) is Locpot:
+            self.locpot_blk = bulk_file_path
+            self.locpot_def = defect_file_path
+            self.outcar_blk = None
+            self.outcar_def = None
+            self.dim = bulk_file_path.dim
+            self.do_outcar_method = False
+        elif "LOCPOT" in bulk_file_path:
+            if not silence:
+                print 'Loading bulk Locpot'
+            self.locpot_blk = Locpot.from_file(bulk_file_path)
+            self.locpot_def = defect_file_path
+            self.outcar_blk = None
+            self.outcar_def = None
+            self.dim = self.locpot_blk.dim
+            self.do_outcar_method = False
+        elif ("OUTCAR" in bulk_file_path) or (type(bulk_file_path) is Outcar):
+            self.do_outcar_method = True
+            self.locpot_blk = None
+            self.locpot_def = None
+            self.outcar_blk = bulk_file_path
+            self.outcar_def = defect_file_path
+            #this would be part where I read dims in from Outcar pymatgen attribute
+            #for now use hack function
+            tmpdict = read_ES_avg(bulk_file_path)
+            self.dim = tmpdict['ngxf_dims']
+
         self.madetol = madetol
         self.q = q
         self.encut = energy_cutoff
         self.silence = silence
+        self.structure = structure
+        self.defstructure = defstructure
 
         if not gamma:
-            bi=KumagaiBulkInit(bulk_locpot, self.dieltens, encut=energy_cutoff, tolerance=madetol,
+            bi=KumagaiBulkInit(self.structure, self.dim, self.dieltens, encut=energy_cutoff, tolerance=madetol,
                  silence=silence)
             self.gamma=bi.gamma
             self.g_sum=bi.g_sum
         else:
             self.gamma = gamma
             if g_sum is None:
-                bi=KumagaiBulkInit(bulk_locpot, self.dieltens, encut=energy_cutoff, tolerance=madetol,
+                bi=KumagaiBulkInit(self.structure, self.dim, self.dieltens, encut=energy_cutoff, tolerance=madetol,
                         silence=silence,optgamma=gamma)
                 self.g_sum = bi.g_sum
             else:
@@ -787,29 +842,31 @@ class KumagaiCorrection(object):
             if partflag!='pc':
                 print 'potential alignment = ', round(potalign, 5)
             if partflag in ['All','AllSplit']:
-                print 'TOTAL Kumagai correction = ', round(energy_pc - potalign, 5)
+                print 'TOTAL Kumagai correction = ', round(energy_pc + potalign, 5)
 
         if partflag=='pc':
             return round(energy_pc,5)
         elif partflag=='potalign':
             return round(potalign,5)
         elif partflag=='All':
-            return round(energy_pc-potalign,5)
+            return round(energy_pc+potalign,5)
         else:
-            return [round(energy_pc,5),round(potalign,5),round(energy_pc-potalign,5)]
+            return [round(energy_pc,5),round(potalign,5),round(energy_pc+potalign,5)]
 
 
     def pc(self):
+        #this only needs structure object. This could be sped up a lot
         if not self.silence:
             print '\nrun Kumagai PC calculation'
 
-        if not type(self.locpot_blk) is Locpot:
+        if (not type(self.locpot_blk) is Locpot) and not self.structure:
             if not self.silence:
                 print 'Load bulk Locpot'
             self.locpot_blk=Locpot.from_file(self.locpot_blk)
+            self.structure = self.locpot_blk.structure
 
         energy_pc = anisotropic_pc_energy(
-                self.locpot_blk.structure, self.g_sum, self.dieltens, self.q,
+                self.structure, self.g_sum, self.dieltens, self.q,
                 self.gamma, self.madetol, silence=self.silence)
 
         if not self.silence:
@@ -822,28 +879,27 @@ class KumagaiCorrection(object):
         """
         Potential alignment for Kumagai method
         Args:
-            gamma: Convergence parameter
-            locpot_blk: Bulk locpot object
-            locpot_def: Defect locpot object
             title: Title for the plot. None will not generate the plot
         """
         if not self.silence:
             print ('\nrun Kumagai potential calculation (atomic site averaging)')
 
-        if not type(self.locpot_blk) is Locpot:
+        if (not type(self.locpot_blk) is Locpot) and not self.structure: #if structure not specified the locpot_path is loaded
             if not self.silence:
                 print 'Load bulk Locpot'
             self.locpot_blk=Locpot.from_file(self.locpot_blk)
+            self.structure = self.locpot_blk.structure
 
-        if not type(self.locpot_def) is Locpot:
+        if (not type(self.locpot_def) is Locpot) and not self.defstructure:
             if not self.silence:
                 print 'Load defect Locpot'
             self.locpot_def=Locpot.from_file(self.locpot_def)
+            self.defstructure = self.locpot_def
 
         angset, [a1, a2, a3], vol, determ, invdiel = kumagai_init(
-                self.locpot_blk.structure, self.dieltens, sil=self.silence)
+                self.structure, self.dieltens, sil=self.silence)
 
-        potinddict = disttrans(self.locpot_blk, self.locpot_def,silence=self.silence)
+        potinddict = disttrans(self.structure, self.defstructure, self.dim, silence=self.silence)
 
         minlat=min(norm(a1),norm(a2),norm(a3))
         lat_perc_diffs=[100*abs(norm(a1)-norm(lat))/minlat for lat in [a2,a3]]
@@ -851,7 +907,7 @@ class KumagaiCorrection(object):
         if not all(i < 45 for i in lat_perc_diffs):
             print 'NOTICE! detected that cell was not very cubic. ' \
                   'Might want to be smarter in way you sample atoms outside wigner-seitz cell with Kumagai scheme'
-        wsrad = wigner_seitz_radius(self.locpot_blk.structure)
+        wsrad = wigner_seitz_radius(self.structure)
         if not self.silence:
             print ('wsrad', wsrad)
 
@@ -861,9 +917,14 @@ class KumagaiCorrection(object):
             else:
                 potinddict[i]['OutsideWS'] = False
 
-        #calculate potential value at each atomic site
-        puredat = self.locpot_blk.data["total"]
-        defdat = self.locpot_def.data["total"]
+        if not self.do_outcar_method:
+            puredat = self.locpot_blk.data["total"]
+            defdat = self.locpot_def.data["total"]
+        else:
+            #note this is hack until we get OUTCAR object attribute working for ES potential
+            puredat = read_ES_avg(self.outcar_blk)
+            defdat = read_ES_avg(self.outcar_def)
+
         jup = 0
         for i in potinddict.keys():
             jup += 1
@@ -874,24 +935,34 @@ class KumagaiCorrection(object):
                 print '-------------------------------------'
                 print "calculate alignment potential data for atom " + str(i) \
                       + " (dist=" + str(potinddict[i]['dist']) + ")"
-            ##single point routine
-            #dx, dy, dz = potinddict[i]['defgrid']
-            #dx, dy, dz = potinddict[i]['bulkgrid']
-            #bx, by, bz = potinddict[i]['bulkgrid']
-            #v_qb = defdat[dx][dy][dz] - puredat[bx][by][bz]
-            #averaging routine
-            bulkvals=[]
-            defvals=[]
-            for u,v,w in potinddict[i]['bulkgrid']:
-                bulkvals.append(puredat[u][v][w])
-            for u,v,w in potinddict[i]['defgrid']:
-                defvals.append(defdat[u][v][w])
-            print 'defdat val = ',np.mean(defvals)
-            print 'puredat val = ',np.mean(bulkvals)
-            v_qb = np.mean(defvals) - np.mean(bulkvals)
+
+            if not self.do_outcar_method:
+                #NOTE this method needs to be improved a bit by specifying radius type based on ENAUG or something?
+
+                ##single point routine
+                #dx, dy, dz = potinddict[i]['defgrid']
+                #dx, dy, dz = potinddict[i]['bulkgrid']
+                #bx, by, bz = potinddict[i]['bulkgrid']
+                #v_qb = defdat[dx][dy][dz] - puredat[bx][by][bz]
+
+                #averaging point routine
+                bulkvals=[]
+                defvals=[]
+                for u,v,w in potinddict[i]['bulkgrid']:
+                    bulkvals.append(puredat[u][v][w])
+                for u,v,w in potinddict[i]['defgrid']:
+                    defvals.append(defdat[u][v][w])
+                print 'defdat val = ',np.mean(defvals)
+                print 'puredat val = ',np.mean(bulkvals)
+                v_qb = np.mean(defvals) - np.mean(bulkvals)
+            else:
+                defindex = potinddict[i]['def_site_index'] #assuming this is zero defined...
+                bulkindex = potinddict[i]['bulk_site_index']
+                v_qb = defdat['potential'][defindex] - puredat['potential'][bulkindex]
+
 
             cart_reldef = potinddict[i]['cart_reldef']
-            v_pc = anisotropic_madelung_potential(self.locpot_blk, self.g_sum,
+            v_pc = anisotropic_madelung_potential(self.structure, self.dim, self.g_sum,
                     cart_reldef, self.dieltens, self.q, self.gamma,
                     self.madetol, silence=True)
             v_qb*=-1 #change charge sign convention
@@ -906,7 +977,7 @@ class KumagaiCorrection(object):
             print '--------------------------------------'
 
         if title:
-            fullspecset = self.locpot_blk.structure.species
+            fullspecset = self.structure.species
             specset = list(set(fullspecset))
             shade, forplot = {}, {}
             for i in specset:
@@ -964,10 +1035,10 @@ class KumagaiCorrection(object):
                 plt.plot(r, y, color=collis[-1], marker='x', linestyle='None', label='$V_{q/b} - V_{pc}$')
                 plt.xlabel('Distance from defect (A)')
                 plt.ylabel('Potential (V)')
-                x = np.arange(wsrad, max(self.locpot_blk.structure.lattice.abc), 0.01)
+                x = np.arange(wsrad, max(self.structure.lattice.abc), 0.01)
                 plt.fill_between(x, min(ylis) - 1, max(ylis) + 1, facecolor='red', alpha=0.15, label='sampling region')
                 plt.axhline(y=potalign, linewidth=0.5, color='red', label='pot. alignment')
-                plt.legend(loc=8)
+                plt.legend()
                 plt.axhline(y=0, linewidth=0.2, color='black')
                 plt.ylim([min(ylis) - .5, max(ylis) + .5])
                 plt.xlim([0, max(rlis) + 3])
@@ -983,10 +1054,10 @@ class KumagaiCorrection(object):
 
         if self.silence == False:
             print 'Atomic site method potential alignment term is ' + str(np.mean(forcorrection))
-            print 'this yields total (q*align) Kumagai potential correction energy of ' \
-                  + str(self.q * np.mean(forcorrection)) + ' (eV) '
+            print 'this yields total (-q*align) Kumagai potential correction energy of ' \
+                  + str(- self.q * np.mean(forcorrection)) + ' (eV) '
 
-        return self.q * np.mean(forcorrection) #double check sign convention of charge here....
+        return -self.q * np.mean(forcorrection)
 
     def plot_from_datfile(self,name='KumagaiData.json',title='default'):
         """

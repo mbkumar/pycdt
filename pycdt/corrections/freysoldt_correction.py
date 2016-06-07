@@ -65,7 +65,7 @@ def genrecip(a1, a2, a3, encut):
         a1, a2, a3: lattice vectors in bohr
         encut: energy cut off in eV
     Returns:
-        recirpocal lattice vecotrs with energy less than encut
+        reciprocal lattice vectors with energy less than encut
     """
 
     # define recip vectors first, (units of 1/angstrom).
