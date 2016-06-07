@@ -838,9 +838,9 @@ class KumagaiCorrection(object):
         if not self.silence:
             print '\n\nKumagai Correction details:'
             if partflag!='potalign':
-                print 'PCenergy = ', round(energy_pc, 5)
+                print 'PCenergy (E_lat) = ', round(energy_pc, 5)
             if partflag!='pc':
-                print 'potential alignment = ', round(potalign, 5)
+                print 'potential alignment (-q*delta V) = ', round(potalign, 5)
             if partflag in ['All','AllSplit']:
                 print 'TOTAL Kumagai correction = ', round(energy_pc + potalign, 5)
 

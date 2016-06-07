@@ -302,20 +302,20 @@ class FreysoldtCorrection(object):
         if not self._silence:
             print '\n\nFreysoldt Correction details:'
             if partflag!='potalign':
-                print 'PCenergy = ', round(energy_pc, 5)
+                print 'PCenergy (E_lat) = ', round(energy_pc, 5)
             if partflag!='pc':
-                print 'potential alignment = ', round(potalign, 5)
+                print 'potential alignment (-q*delta V) = ', round(potalign, 5)
             if partflag in ['All','AllSplit']:
-                print 'TOTAL Freysoldt correction = ', round(energy_pc - potalign, 5)
+                print 'TOTAL Freysoldt correction = ', round(energy_pc + potalign, 5)
 
         if partflag=='pc':
             return round(energy_pc,5)
         elif partflag=='potalign':
             return round(potalign,5)
         elif partflag=='All':
-            return round(energy_pc-potalign,5)
+            return round(energy_pc+potalign,5)
         else:
-            return [round(energy_pc,5),round(potalign,5),round(energy_pc-potalign,5)]
+            return [round(energy_pc,5),round(potalign,5),round(energy_pc+potalign,5)]
 
     def pc(self,struct=None):
         """
@@ -531,7 +531,7 @@ class FreysoldtCorrection(object):
 
         if not self._silence:
            print 'C value is averaged to be ' + str(C) + ' eV, '
-           print 'Pot. align correction is then (eV) : ' + str(float(self._q) * float(C))
+           print 'Pot. align correction (-q*delta V) is then (eV) : ' + str(-float(self._q) * float(C))
         if title:
             if title!='written':
                 import matplotlib.pyplot as plt
@@ -571,7 +571,7 @@ class FreysoldtCorrection(object):
                 with open(fname,'w') as f:
                     f.write(str(forplotting))
 
-        return float(self._q)*C  #pot align energy correction (eV), add to the energy output of PCfrey
+        return -float(self._q)*C  #pot align energy correction (eV), add to energy output of PCfrey
 
     def plot_from_datfile(self,name='FreyAxisData.dat',title='default'):
         """
