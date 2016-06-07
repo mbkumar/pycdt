@@ -16,6 +16,7 @@ __status__ = "Development"
 __date__ = "Janurary 6, 2016"
 
 import copy
+import abc 
 
 from monty.string import str2unicode
 from pymatgen.core.structure import PeriodicSite
@@ -79,6 +80,51 @@ def get_optimized_sc_scale(inp_struct, final_site_no):
         raise RuntimeError('could not find any supercell scaling vector')
     return biggest
 
+class DefectCharger:
+    __metaclass__ = abc.ABCMeta
+
+    @abc.abstractmethod
+    def get_defect_charges(defect_type):
+        raise NotImplemented
+
+
+class DefectChargerSemiconductor(DefectCharger):
+    """
+    Charge assignment based on the oxidation states referenced from 
+    semiconductor database. Targetted materials are shallow and some wideband
+    semiconductors. For these systems, antisites are common and their
+    charge assignment for antisites follows vacancies
+
+    """
+    def __init__(self, **keywords):
+        pass
+
+    def get_defect_charges(defect_type):
+        pass
+
+
+class DefectChargerInsulator(DefectCharger)
+    """
+    Conservative charge assignment based on the oxidation statess determined 
+    by bond valence. Targetted materials are wideband semiconductors and 
+    insulators. AxBy where A is cation and B is anion will have charge 
+    assignments {A: [0:y], B:[-x:0]}. For these systems, antisites typically
+    have very high formation energies and are ignored.
+    """
+    def __init__(self, **keywords):
+        pass
+
+    def get_defect_charges(defect_type):
+        pass
+
+
+
+def charge_assignment_user():
+    """
+    Charge assignment is based on the user specified charge state range for
+    each species. Judgement is completely suspended
+    """
+    pass
 
 class ChargedDefectsStructures(object):
     """
