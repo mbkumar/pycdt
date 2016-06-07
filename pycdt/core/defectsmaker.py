@@ -22,7 +22,8 @@ from monty.string import str2unicode
 from pymatgen.core.structure import PeriodicSite
 from pymatgen.core.periodic_table import Element
 from pymatgen.symmetry.analyzer import SpacegroupAnalyzer
-from pymatgen.analysis.defects.point_defects import Vacancy
+from pymatgen.analysis.defects.point_defects import Vacancy, \
+        ValenceIonicRadiusEvaluator as VIRE
 try:
     from pymatgen.analysis.defects.alt_interstitial_class import \
             StructureMotifInterstitial
@@ -139,11 +140,80 @@ class DefectChargerInsulator(DefectCharger)
     assignments {A: [0:y], B:[-x:0]}. For these systems, antisites typically
     have very high formation energies and are ignored.
     """
-    def __init__(self, **keywords):
-        pass
+    def __init__(self, structure):
+        struct_species = structure.types_of_specie
+        if len(struct_species) == 1:
+            oxi_states = {self.struct.types_of_specie[0].symbol: 0}
+        else:
+            vir = ValenceIonicRadiusEvaluator(self.struct)
+            oxi_states = vir.valences
+        self.oxi_states = {}
+        for key,val in oxi_states.items():
+            strip_key = ''.join([s for s in key if s.isalpha()])
+            self.oxi_states[str2unicode(strip_key)] = val
 
-    def get_charges(defect_type):
-        raise NotImplementedError
+        self.min_max_oxi = {}
+        for s in struct_species:
+            if isinstance(s, Specie):
+                el = s.element
+            elif isinstance(s, Element):
+                el = s
+            else:
+                continue
+            max_oxi = max(el.common_oxidation_states)
+            min_oxi = min(el.common_oxidation_states)
+            self.min_max_oxi[str2unicode(el.symbol)] = (min_oxi,max_oxi)
+        
+    def get_charges(defect_type, site_specie, sub_specie):
+        if defect_type == 'vacancy':
+            vac_symbol = site_specie.symbol
+            vac_oxi_state = self.oxi_states[str2unicode(vac_symbol)]
+            if vac_oxi_state < 0:
+                min_oxi = min(vac_oxi_state, self.min_max_oxi[vac_symbol][0])
+                max_oxi = 0
+            elif vac_oxi_state > 0:
+                max_oxi = max(vac_oxi_state, self.min_max_oxi[vac_symbol][1])
+                min_oxi = 0
+            return [-c for c in in range(min_oxi, max_oxi+1)]
+        #print 'charge states for ',vac_symbol,' vacancy =', charges_vac
+
+        elif defect_type == 'antisite':
+            vac_symbol = site_specie.symbol
+            vac_oxi_state = self.oxi_states[str2unicode(vac_symbol)]
+            as_symbol = sub_spcie.symbol
+            if vac_oxi_state > 0:
+                oxi_max = max(self.min_max_oxi[as_symbol][1],0)
+                oxi_min = 0
+            else:
+                oxi_max = 0
+                oxi_min = min(self.min_max_oxi[as_symbol][0],0)
+            return [c - vac_oxi_state for c in range(
+                        oxi_min, oxi_max+1)]
+    
+        elif defect_type == 'substitution':
+            vac_symbol = site_specie.symbol
+            vac_oxi_state = self.oxi_states[str2unicode(vac_symbol)]
+            subst_symbol = sub_spcie.symbol
+
+            max_oxi_sub = max(sub_specie.common_oxidation_states)
+            min_oxi_sub = min(sub_specie.common_oxidation_states)
+            if vac_oxi_state > 0:
+                oxi_max = max(max_oxi_sub,0)
+                oxi_min = 0
+            else:
+                oxi_max = 0
+                oxi_min = min(min_oxi_sub,0)
+            return [c - vac_oxi_state for c in range(oxi_min, oxi_max+1)]
+        
+        elif defect_type == 'interstitial':
+            print 'inter_symbol=', elt
+            min_oxi = min(sub_specie.common_oxidation_states)
+            max_oxi = max(sub_specie.common_oxidation_states)
+            if min_oxi > 0 and max_oxi > 0:
+                min_oxi = 0
+            elif min_oxi < 0 and max_oxi < 0:
+                max_oxi = 0
+            return range(min_oxi, max_oxi+1)
 
 
 
