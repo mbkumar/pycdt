@@ -80,12 +80,13 @@ def get_optimized_sc_scale(inp_struct, final_site_no):
         raise RuntimeError('could not find any supercell scaling vector')
     return biggest
 
+
 class DefectCharger:
     __metaclass__ = abc.ABCMeta
 
     @abc.abstractmethod
-    def get_defect_charges(defect_type):
-        raise NotImplemented
+    def get_charges(defect_type):
+        raise NotImplementedError
 
 
 class DefectChargerSemiconductor(DefectCharger):
@@ -96,11 +97,38 @@ class DefectChargerSemiconductor(DefectCharger):
     charge assignment for antisites follows vacancies
 
     """
-    def __init__(self, **keywords):
-        pass
+    def __init__(self, structure):
+        self.min_max_oxi_bulk = [0, 0]
 
-    def get_defect_charges(defect_type):
-        pass
+        for elem in structure.symbol_set:
+            oxi_elem = Element(elem).oxidation_states
+            if min(oxi_elem) < self.min_max_oxi_bulk[0]:
+                self.min_max_oxi_bulk[0] = min(oxi_elem)
+            if max(oxi_elem) > self.min_max_oxi_bulk[1]:
+                self.min_max_oxi_bulk[1] = max(oxi_elem)
+
+    def get_charges(defect_type, *args):
+        min_max_oxi = self.min_max_oxi_bulk
+
+        if defect_type == 'vacancy':
+            return [-c for c in range(
+                min_max_oxi[0], (min_max_oxi[1]+1)-2)]
+
+        elif defect_type == 'antisite':
+            return range(min_max_oxi[0], (min_max_oxi[1]+1)-2)
+
+        elif defect_type == 'substitution':
+            oxi_sub = Element(args[0]).oxidation_states
+            min_max_oxi_sub = [
+                    min(oxi_sub + min_max_oxi,
+                    max(oxi_sub + min_max_oxi)]
+            return range(min_max_oxi_sub[0], (min_max_oxi_sub[1]+1)-3)
+
+        elif defect_type == 'interstitial':
+            return range(min_max_oxi[0], (min_max_oxi[1]+1)-2)]
+
+        else:
+            raise ValueError("Defect type not understood")
 
 
 class DefectChargerInsulator(DefectCharger)
@@ -114,8 +142,8 @@ class DefectChargerInsulator(DefectCharger)
     def __init__(self, **keywords):
         pass
 
-    def get_defect_charges(defect_type):
-        pass
+    def get_charges(defect_type):
+        raise NotImplementedError
 
 
 
@@ -133,11 +161,11 @@ class ChargedDefectsStructures(object):
     and vacancies are generated.  Interstitial finding is also implemented
     (optional).
     """
-    def __init__(self, structure, max_min_oxi={}, substitutions={},
-                 oxi_states={}, cellmax=128, antisites_flag=True,
-                 include_interstitials=False, interstitial_elements=[],
-                 intersites=[],
-                 standardized=False, charge_states='liberal'):
+    def __init__(self, structure,  max_min_oxi={}, substitutions={}, 
+                 oxi_states={}, cellmax=128, antisites_flag=True, 
+                 include_interstitials=False, interstitial_elements=[], 
+                 intersites=[], standardized=False, 
+                 struct_type='semiconductor'):
         """
         Args:
             structure (Structure):
@@ -179,15 +207,17 @@ class ChargedDefectsStructures(object):
                 for generating the defect configurations (default is False).
                 The primitive standard structure is obtained from the
                 SpacegroupAnalyzer class with a symprec of 0.01.
-            charge_states (string):
-                Options are 'liberal' and 'conservative'. If liberal is selected,
-                more charge states are computed.
+            struct_type (string):
+                Options are 'semiconductor' and 'insulator'. If semiconductor 
+                is selected, charge states based on database of semiconductors
+                is used to assign defect charges. For insulators, defect 
+                charges are conservatively assigned. 
         """
 
         self.defects = []
         self.cellmax = cellmax
         self.substitutions = {}
-        self.charge_states = charge_states
+        self.struct_type = struct_type
         for key,val in substitutions.items():
             self.substitutions[str2unicode(key)] = val
 
@@ -214,14 +244,13 @@ class ChargedDefectsStructures(object):
                                     " standardizing the input structure.")
 
         struct_species = self.struct.types_of_specie
-        self.min_max_oxi_bulk = [0, 0]
-        for elem in self.struct.symbol_set:
-            oxi_elem = Element(elem).oxidation_states
-            if min(oxi_elem) < self.min_max_oxi_bulk[0]:
-                self.min_max_oxi_bulk[0] = min(oxi_elem)
-            if max(oxi_elem) > self.min_max_oxi_bulk[1]:
-                self.min_max_oxi_bulk[1] = max(oxi_elem)
-
+        if self.struct_type == 'semiconductor':
+            self.defect_charger = DefectChargerSemicondctor(self.struct)
+        elif self.struct_type == 'insulator':
+            self.defect_charger = DefectChargerInsulator(self.struct)
+        else:
+            raise NotImplementedError
+        
         if include_interstitials and interstitial_elements:
             for elem_str in interstitial_elements:
                 if not Element.is_valid_symbol(elem_str):
@@ -261,9 +290,7 @@ class ChargedDefectsStructures(object):
             # charge states for all structures in the test set,
             # while simultaneously minimizing the number of overhead
             # charge states prodcued by the procedure below.
-            charges_vac = [-c for c in range(
-                    self.min_max_oxi_bulk[0],
-                    (self.min_max_oxi_bulk[1]+1)-2)]
+            charges_vac = self.defect_charger.get_charges('vacancy')
 
             vacancies.append({
                 'name': "vac_{}_{}".format(i+1, vac_symbol),
@@ -281,9 +308,8 @@ class ChargedDefectsStructures(object):
                 # we trim the range by decreasing the max. oxi. state by 2
                 # for antisites, too, based on insights from the
                 # test set.
-                charges_as = [c for c in range(
-                        self.min_max_oxi_bulk[0],
-                        (self.min_max_oxi_bulk[1]+1)-2)]
+
+                charges_as = self.defect_charger.get_charges('antisite')
 
                 for as_specie in set(struct_species)-set([vac_specie]):
                     as_symbol = as_specie.symbol
@@ -315,14 +341,9 @@ class ChargedDefectsStructures(object):
                     # Also note that we include the oxidation states of the
                     # new species (i.e., of the species that substitutes
                     # a lattice atom).
-                    oxi_sub = Element(subspecie_symbol).oxidation_states
-                    min_max_oxi_bulk_sub = \
-                            [min(oxi_sub + self.min_max_oxi_bulk), \
-                            max(oxi_sub + self.min_max_oxi_bulk)]
-                    charges_sub = [c for c in range(
-                            min_max_oxi_bulk_sub[0],
-                            (min_max_oxi_bulk_sub[1]+1)-3)]
-
+                    charges_sub = self.defect_charger.get_charges(
+                            'substution', subspecie_symbol)
+                    
                     sub_defs.append({
                         'name': "sub_{}_{}_on_{}".format(
                             i+1, subspecie_symbol, vac_symbol),
@@ -397,9 +418,8 @@ class ChargedDefectsStructures(object):
                     # we trim the range by decreasing the max. oxi. state by 2
                     # for interstitials, too, based on insights from the
                     # test set.
-                    charges_inter = [c for c in range(
-                            self.min_max_oxi_bulk[0],
-                            (self.min_max_oxi_bulk[1]+1)-2)]
+                    charges_inter = self.defect_charger.get_charges(
+                            'interstitial')
 
                     interstitials.append({
                             'name': name,
