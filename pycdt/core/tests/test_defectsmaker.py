@@ -13,7 +13,7 @@ __date__ = "May 6, 2015"
 import unittest
 import os
 
-from pycdt.core.defectsmaker import ChargedDefectsStructures
+from pycdt.core.defectsmaker import *
 
 class GetOptimizedScScaleTest(unittest.TestCase):
     def setUp(self):
@@ -23,6 +23,40 @@ class GetOptimizedScScaleTest(unittest.TestCase):
         pass
 
     def test_smallercell_wanted(self):
+        pass
+
+
+class DefectChargerSemiconductorTest(unittest.TestCase):
+    def setUp(self):
+        pass
+
+    def test_vacancy_charges(self):
+        pass
+
+    def test_antisite_charges(self):
+        pass
+
+    def test_substitution_charges(self):
+        pass
+
+    def test_interstitial_charges(self):
+        pass
+
+
+class DefectChargerInsulatorTest(unittest.TestCase):
+    def setUp(self):
+        pass
+
+    def test_vacancy_charges(self):
+        pass
+
+    def test_antisite_charges(self):
+        pass
+
+    def test_substitution_charges(self):
+        pass
+
+    def test_interstitial_charges(self):
         pass
 
 
