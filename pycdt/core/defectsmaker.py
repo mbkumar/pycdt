@@ -56,7 +56,7 @@ def get_optimized_sc_scale(inp_struct, final_site_no):
                             try:
                                 distance = struct.get_distance(0,0,(a,b,c))
                             except:
-                                print index, a, b, c  #THIS WILL BREAK since index not defined
+                                print a, b, c 
                                 raise
                             if  distance < min_dist and distance>0.00001:
                                 min_dist = distance
