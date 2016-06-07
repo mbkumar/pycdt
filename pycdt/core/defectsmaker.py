@@ -56,7 +56,7 @@ def get_optimized_sc_scale(inp_struct, final_site_no):
                             try:
                                 distance = struct.get_distance(0,0,(a,b,c))
                             except:
-                                print index, a, b, c  #THIS WILL BREAK since index not defined
+                                print a, b, c 
                                 raise
                             if  distance < min_dist and distance>0.00001:
                                 min_dist = distance
@@ -379,25 +379,6 @@ class ChargedDefectsStructures(object):
                     print("        {} = {}".format(lis['name'], len(lis['charges'])))
                     tottmp+=len(lis['charges'])
         print("Total (non dielectric) jobs created = {}\n".format(tottmp))
-
-    def make_defect_complexes(max_complex_size=0, include_vacancies=True):
-        """
-        Function to generate defect complexes
-        Args:
-            max_complex_size: max. number of defects in a complex.
-                If zero, the max size possible is considered based 
-                on no. of subsitutions
-            include_vacancies: Include vacancies in the defect complex
-        """
-
-        if not max_complex_size:
-            max_complex_size = len(self.defects['substitutions'])
-            if include_vacancies:
-                max_complex_size += 1
-
-        complexes = []
-        for size in range(2, max_complex_size+1):
-            continue
 
     def make_interstitial(self, target_site, sc_scale):
         """

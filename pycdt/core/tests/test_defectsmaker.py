@@ -15,15 +15,33 @@ import os
 
 from pycdt.core.defectsmaker import ChargedDefectsStructures
 
+class GetOptimizedScScaleTest(unittest.TestCase):
+    def setUp(self):
+        pass
+
+    def test_biggercell_wanted(self):
+        pass
+
+    def test_smallercell_wanted(self):
+        pass
+
+
 class ChargedDefectsStructuresTest(unittest.TestCase):
     def setUp(self):
         pass
 
-    def test_intrinsic_defects_only(self):
+    def test_vacancies(self):
         pass
 
-    def test_antisites_n_substitutions(self):
+    def test_antisites(self):
         pass
+
+    def test_substitutions(self):
+        pass
+
+    def test_interstitials(self):
+        pass
+
 
     def test_anion_on_cation_substitution(self):
         """

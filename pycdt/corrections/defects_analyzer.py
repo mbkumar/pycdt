@@ -26,7 +26,7 @@ kb = 8.6173324e-5
 hbar = 6.58211928e-16
 conv = sqrt((9.1*1e-31)**3)*sqrt((1.6*1e-19)**3)/((1.05*1e-34)**3)
 
-class ParsedDefect(object):
+class ComputedDefect(object):
     """
     Holds all the info concerning a defect computation: 
     composition+structure, energy, correction on energy and name
@@ -64,7 +64,7 @@ class ParsedDefect(object):
 
     @classmethod
     def from_dict(cls, d):
-        return ParsedDefect(
+        return ComputedDefect(
                 ComputedStructureEntry.from_dict(d['entry']), 
                 PeriodicSite.from_dict(d['site']),
                 charge=d.get('charge',0.0),
@@ -76,7 +76,7 @@ def get_correction_freysoldt(defect, bulk_entry, epsilon, title = None):
     """
     Function to compute the isotropic freysoldt correction for each defect.
     Args:
-        defect: ParsedDefect object
+        defect: ComputedDefect object
         bulk_entry: ComputedStructureEntry corresponding to bulk
         epsilon: dielectric constant
     """
@@ -114,7 +114,7 @@ def get_correction_kumagai(defect, bulk_init, epsilon_tensor):
     """
     Function to compute the correction for each defect.
     Args:
-        defect: ParsedDefect object
+        defect: ComputedDefect object
         bulk_init: KumagainBulkInit class object
         epsilon_tensor: Dielectric tenson
         type: 
@@ -185,7 +185,7 @@ class DefectsAnalyzer(object):
                 entry_bulk, d['e_vbm'], 
                 {el: d['mu_elts'][el] for el in d['mu_elts']}, d['band_gap'])
         for ddict in d['defects']:
-            analyzer.add_defect(ParsedDefect.from_dict(ddict))
+            analyzer.add_defect(ComputedDefect.from_dict(ddict))
         return analyzer
 
     def add_parsed_defect(self, defect):
