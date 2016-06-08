@@ -382,7 +382,7 @@ class FreysoldtCorrection(object):
             self.prepare_files()
             s = self.plot_pot_diff(print_pot_flag='none')
             outputvals.append(np.mean(s[0])) #ES correction
-            outputvals.append(self._charge * np.mean(s[1]))
+            outputvals.append(-self._charge * np.mean(s[1]))
             print('--')
             print('potential alignments determined to be: '+str(s[1]))
             print('get final correction terms')
