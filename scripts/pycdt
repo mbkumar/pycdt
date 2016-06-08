@@ -26,6 +26,7 @@ from monty.json import MontyEncoder, MontyDecoder
 from pymatgen.matproj.rest import MPRester
 from pymatgen.core.structure import Structure
 from pymatgen.symmetry.analyzer import SpacegroupAnalyzer
+from pymatgen.io.vasp.outputs import Locpot
 
 from pycdt.core.defectsmaker import ChargedDefectsStructures
 from pycdt.utils.vasp import make_vasp_defect_files, \
@@ -184,30 +185,26 @@ def compute_corrections(args):
     bulk = defect_data['bulk_entry']
     defects = defect_data['defects']
     corrections = defaultdict(list)
-    blklpt=None  #for storing bulk Locpot object
+    blklpt = Locpot.from_file(bulk.data['locpot_path']) #loading locpot object now is useful for both corrections
     if correction_method=='freysoldt':
         for defect in defects:
             print ('defect_name: ', defect._full_name)
             print ('-----------------------------------------\n\n')
-            if not blklpt:
-                correction,blklpt = get_correction_freysoldt(
-                                    defect, bulk, epsilon,title=defect._full_name)
-            else:
-                correction,blklpt = get_correction_freysoldt(
-                        defect, blklpt, epsilon,title=defect._full_name)
+            correction,blklpt = get_correction_freysoldt(
+                    defect, blklpt, epsilon,title=defect._full_name)
             defect.charge_correction = correction
             corrections[defect._name].append({
                 'charge_correction': correction, 'charge':defect._charge})
     else:    
         locpot_path_blk = bulk.data['locpot_path']
         encut = bulk.data['encut']
-        kumagai_init = KumagaiBulkInit(locpot_path_blk, epsilon, 
+        kumagai_init = KumagaiBulkInit(blklpt.structure, epsilon,
                                        encut, tolerance=0.0001, silence=False)
         for defect in defects:
             print ('defect_name: ', defect._full_name)
             print ('-----------------------------------------\n\n')
-            correction = get_correction_kumagai(
-                    defect, kumagai_init, epsilon)
+            correction = get_correction_kumagai( defect, locpot_path_blk,
+                                        kumagai_init, title=defect._full_name)
             defect.charge_correction = correction
             corrections[defect._name].append({
                 'charge_correction': correction, 'charge':defect._charge})

@@ -150,16 +150,23 @@ class ChargeCorrection(object):
         from kumagai_correction import KumagaiBulkInit, KumagaiCorrection
 
         if self._KumagaiBulk is None:
-             self._KumagaiBulk=KumagaiBulkInit(self._purelocpot.structure, self._purelocpot.dim, self._dieltens, encut=self._encut,
-                tolerance=self._madetol, silence=self._silence, optgamma=self._optgamma) #this will break if _purelocpot object not loaded yet
+            if type(self._purelocpot) is not Locpot:
+                self._purelocpot = Locpot.from_file(self._purelocpot)
+            self._KumagaiBulk=KumagaiBulkInit(self._purelocpot.structure, self._purelocpot.dim, self._dieltens, encut=self._encut,
+                tolerance=self._madetol, silence=self._silence, optgamma=self._optgamma)
 
         if bulk_outcar_path is None:
             s=KumagaiCorrection(self._dieltens, self._purelocpot, self._deflocpot, self._q, gamma=self._KumagaiBulk.gamma,
                     g_sum=self._KumagaiBulk.g_sum, energy_cutoff=self._encut, madetol=self._madetol, silence=self._silence)
         else:
+            if type(self._purelocpot) is not Locpot:
+                self._purelocpot = Locpot.from_file(self._purelocpot)
+            if type(self._deflocpot) is not Locpot:
+                self._deflocpot = Locpot.from_file(self._deflocpot)
+
             s=KumagaiCorrection(self._dieltens, bulk_outcar_path, def_outcar_path, self._q, gamma=self._KumagaiBulk.gamma,
                     g_sum=self._KumagaiBulk.g_sum, energy_cutoff=self._encut, madetol=self._madetol, silence=self._silence,
-                    structure=self._purelocpot.structure, defstructure=self._deflocpot.structure) #will break if locpot objects not loaded yet...
+                    structure=self._purelocpot.structure, defstructure=self._deflocpot.structure)
 
         if partflag in ['All','AllSplit']:
             nomtype='full correction'

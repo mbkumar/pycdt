@@ -13,6 +13,7 @@ from collections import defaultdict
 from itertools import combinations
 
 import numpy as np
+import os
 
 from pymatgen.core.structure import PeriodicSite
 from pymatgen.io.vasp.outputs import Locpot
@@ -110,35 +111,42 @@ def get_correction_freysoldt(defect, bulk_entry, epsilon, title = None):
     return (corr_val,corr_meth._purelocpot)
 
 
-def get_correction_kumagai(defect, bulk_init, epsilon_tensor):
+def get_correction_kumagai(defect, locpot_path_blk, bulk_init, title = None):
     """
     Function to compute the correction for each defect.
     Args:
         defect: ComputedDefect object
+        locpot_path_blk: location to Bulk Locpot
         bulk_init: KumagainBulkInit class object
-        epsilon_tensor: Dielectric tenson
         type: 
             "freysoldt": Freysoldt correction for isotropic crystals
             "kumagai": modified Freysoldt or Kumagai for anisotropic crystals
+
+    notes for ChargeCorrection class below:
+    if either locpot already loaded then load pure_locpot= or defect_locpot=
+    if you want to load position then can load it with pos=
+    if want to to change energy tolerance for correction convergence then change madetol= (default is 0.0001)
+    (if known optgamma, set optgamma=, if KumagaiBulk already initialized then set KumagaiBulk=
     """
-    #locpot_path_blk = bulk_entry.data['locpot_path']
-    locpot_path_blk = ""#bulk_entry.data['locpot_path'] #should fix this
     epsilon = bulk_init.epsilon
     locpot_path_def = defect.entry.data['locpot_path']
     charge = defect._charge
     #frac_coords = defect.site.frac_coords  #maybe can use this later
     encut = defect.entry.data['encut']
-
-    #if either locpot already loaded then load pure_locpot= or defect_locpot=
-    # if you want to load position then can load it with pos=
-    #if want to to change energy tolerance for correction convergence then change madetol= (default is 0.0001)
-    # (if known optgamma, set optgamma=, if KumagaiBulk already initialized then set KumagaiBulk=
     corr_meth = ChargeCorrection(epsilon,
-            locpot_path_blk, locpot_path_def, charge,
-            energy_cutoff = encut,
-            silence=False, KumagaiBulk=bulk_init)
+                locpot_path_blk, locpot_path_def, charge,
+                energy_cutoff = encut,
+                silence=False, KumagaiBulk=bulk_init)
 
-    corr_val = corr_meth.kumagai(title=defect._full_name, partflag='All') #should probably split this up to include
+    bpat,tloc = os.path.split(locpot_path_blk)
+    b_outcar = os.path.join(bpat,'OUTCAR')
+    dpat = os.path.split(locpot_path_def)
+    d_outcar = os.path.join(dpat,'OUTCAR')
+    if os.path.exists(b_outcar) and os.path.exists(d_outcar):
+         corr_val = corr_meth.kumagai(title=title, partflag='All',
+                                      bulk_outcar_path=b_outcar, def_outcar_path=d_outcar)
+    else: #need to be careful about sampling radii if Kumagai method without Outcar is used...
+         corr_val = corr_meth.kumagai(title=title, partflag='All')
 
     return corr_val
 
