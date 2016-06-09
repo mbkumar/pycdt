@@ -181,6 +181,7 @@ class FreysoldtCorrection(object):
         plt.show()
 
     def plot_pot_diff(self, align=[0.0,0.0,0.0], print_pot_flag='written'):
+
         """
         Runs sxdefectalign and obtains three alignment constants for 
         each axis. To obtain Freysoldt correction call this function twice 
@@ -282,7 +283,7 @@ class FreysoldtCorrection(object):
 
             sample_radius = .5 #1 / 2
             xmin = latt_len - (sample_radius-platx) if platx < sample_radius else platx - sample_radius
-            xmax = 1-(latt_len-platx) if platx > latt_len-sample_radius else sample_radius + platx
+            xmax = sample_radius-(latt_len-platx) if platx > latt_len-sample_radius else sample_radius + platx
             print('means sampling region is (', xmin, ',', xmax, ')')
 
             tmpalign=[]
