@@ -108,7 +108,7 @@ class DefectChargerSemiconductor(DefectCharger):
             if max(oxi_elem) > self.min_max_oxi_bulk[1]:
                 self.min_max_oxi_bulk[1] = max(oxi_elem)
 
-    def get_charges(defect_type, *args):
+    def get_charges(self, defect_type, *args):
         min_max_oxi = self.min_max_oxi_bulk
 
         if defect_type == 'vacancy':
@@ -119,20 +119,20 @@ class DefectChargerSemiconductor(DefectCharger):
             return range(min_max_oxi[0], (min_max_oxi[1]+1)-2)
 
         elif defect_type == 'substitution':
-            oxi_sub = Element(args[0]).oxidation_states
+            oxi_sub = list(Element(args[0]).oxidation_states)
             min_max_oxi_sub = [
-                    min(oxi_sub + min_max_oxi,
+                    min(oxi_sub + min_max_oxi),
                     max(oxi_sub + min_max_oxi)]
             return range(min_max_oxi_sub[0], (min_max_oxi_sub[1]+1)-3)
 
         elif defect_type == 'interstitial':
-            return range(min_max_oxi[0], (min_max_oxi[1]+1)-2)]
+            return range(min_max_oxi[0], (min_max_oxi[1]+1)-2)
 
         else:
             raise ValueError("Defect type not understood")
 
 
-class DefectChargerInsulator(DefectCharger)
+class DefectChargerInsulator(DefectCharger):
     """
     Conservative charge assignment based on the oxidation statess determined 
     by bond valence. Targetted materials are wideband semiconductors and 
@@ -174,7 +174,7 @@ class DefectChargerInsulator(DefectCharger)
             elif vac_oxi_state > 0:
                 max_oxi = max(vac_oxi_state, self.min_max_oxi[vac_symbol][1])
                 min_oxi = 0
-            return [-c for c in in range(min_oxi, max_oxi+1)]
+            return [-c for c in range(min_oxi, max_oxi+1)]
         #print 'charge states for ',vac_symbol,' vacancy =', charges_vac
 
         elif defect_type == 'antisite':
