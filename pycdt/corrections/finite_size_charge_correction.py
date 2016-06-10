@@ -108,15 +108,13 @@ class ChargeCorrection(object):
             self._deflocpot, self._q, energy_cutoff=self._encut, madetol=self._madetol,
             silence=self._silence)
 
+        freyval=s.correction(title=title,partflag=partflag)
         if partflag in ['All','AllSplit']:
             nomtype='full correction'
-            freyval=s.correction(title=title,partflag=partflag)
         elif partflag=='pc':
             nomtype='point charge correction'
-            freyval=s.correction(title=title,partflag=partflag)
         elif partflag=='potalign':
             nomtype='potential alignment correction'
-            freyval=s.correction(title=title,partflag=partflag)
         else:
             print partflag,' is incorrect potalign type. Must be "All","AllSplit", "pc", or "potalign".'
             return
