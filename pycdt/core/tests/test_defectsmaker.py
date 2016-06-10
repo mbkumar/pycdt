@@ -73,19 +73,55 @@ class DefectChargerSemiconductorTest(unittest.TestCase):
 
 class DefectChargerInsulatorTest(unittest.TestCase):
     def setUp(self):
-        pass
+        cr2o3_struct = Structure.from_file('POSCAR_Cr2O3')
+        self.def_charger = DefectChargerInsulator(cr2o3_struct)
 
     def test_vacancy_charges(self):
-        pass
+        """
+        For insulators, the range of defect charges expected is
+        -A to 0 or 0 to B, where A is cation charge in its native
+        oxidation state in the compound, and B is the corresponding
+        anion charge.
+        """
+        cr_vac_qs = self.def_charger.get_charges('vacancy', 'Cr')
+        print cr_vac_qs
+        o_vac_qs = self.def_charger.get_charges('vacancy', 'O')
+        print o_vac_qs
+        self.assertIn(0, cr_vac_qs)
+        self.assertIn(-3, cr_vac_qs)
+        self.assertNotIn(-4, cr_vac_qs)
+        self.assertNotIn(1, cr_vac_qs)
+        self.assertIn(0, o_vac_qs)
+        self.assertIn(2, o_vac_qs)
+        self.assertNotIn(3, o_vac_qs)
+        self.assertNotIn(-1, o_vac_qs)
 
     def test_antisite_charges(self):
+        """
+        Anitisites are not expected for insulators.
+        Skipping this.
+        """
         pass
 
     def test_substitution_charges(self):
-        pass
+        ti_on_cr_qs = self.def_charger.get_charges('substitution', 'Cr', 'Ti')
+        self.assertIn(0, ti_on_cr_qs)
+        self.assertIn(1, ti_on_cr_qs)
+        self.assertNotIn(-1, ti_on_cr_qs)
+        self.assertNotIn(2, ti_on_cr_qs)
+        mg_on_cr_qs = self.def_charger.get_charges('substitution', 'Cr', 'Mg')
+        self.assertIn(-1, mg_on_cr_qs)
+        self.assertNotIn(0, mg_on_cr_qs)
+        self.assertNotIn(-2, mg_on_cr_qs)
+        self.assertNotIn(1, mg_on_cr_qs)
 
     def test_interstitial_charges(self):
-        pass
+        ti_inter_qs = self.def_charger.get_charges('interstitial', 'Ti')
+        self.assertIn(0, ti_inter_qs)
+        self.assertIn(4, ti_inter_qs)
+        self.assertNotIn(-1, ti_inter_qs)
+        self.assertNotIn(5, ti_inter_qs)
+
 
 
 class ChargedDefectsStructuresTest(unittest.TestCase):
