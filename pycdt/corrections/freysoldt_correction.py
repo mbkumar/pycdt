@@ -65,7 +65,7 @@ def genrecip(a1, a2, a3, encut):
         a1, a2, a3: lattice vectors in bohr
         encut: energy cut off in eV
     Returns:
-        recirpocal lattice vecotrs with energy less than encut
+        reciprocal lattice vectors with energy less than encut
     """
 
     # define recip vectors first, (units of 1/angstrom).
@@ -302,20 +302,20 @@ class FreysoldtCorrection(object):
         if not self._silence:
             print '\n\nFreysoldt Correction details:'
             if partflag!='potalign':
-                print 'PCenergy = ', round(energy_pc, 5)
+                print 'PCenergy (E_lat) = ', round(energy_pc, 5)
             if partflag!='pc':
-                print 'potential alignment = ', round(potalign, 5)
+                print 'potential alignment (-q*delta V) = ', round(potalign, 5)
             if partflag in ['All','AllSplit']:
-                print 'TOTAL Freysoldt correction = ', round(energy_pc - potalign, 5)
+                print 'TOTAL Freysoldt correction = ', round(energy_pc + potalign, 5)
 
         if partflag=='pc':
             return round(energy_pc,5)
         elif partflag=='potalign':
             return round(potalign,5)
         elif partflag=='All':
-            return round(energy_pc-potalign,5)
+            return round(energy_pc+potalign,5)
         else:
-            return [round(energy_pc,5),round(potalign,5),round(energy_pc-potalign,5)]
+            return [round(energy_pc,5),round(potalign,5),round(energy_pc+potalign,5)]
 
     def pc(self,struct=None):
         """
@@ -442,11 +442,12 @@ class FreysoldtCorrection(object):
 
         #It is important to do planar averaging at same position, otherwise
         #you can get rigid shifts due to atomic changes at far away from defect
+        #note these are cartesian co-ordinate sites...
         if defsite is None: #vacancies
-            self._defpos=blksite
+            #self._defpos=blksite
             self._pos=blksite
         else: #all else, do w.r.t defect site
-            self._defpos=defsite
+            #self._defpos=defsite
             self._pos=defsite
 
         ind = []
@@ -466,23 +467,29 @@ class FreysoldtCorrection(object):
 
         #now shift these planar averages to have defect at origin
         blklat=self._purelocpot.structure.lattice
-        deflat=self._deflocpot.structure.lattice
+        #deflat=self._deflocpot.structure.lattice
         axfracval=blklat.get_fractional_coords(self._pos)[axis]
-        axdefval=deflat.get_fractional_coords(self._defpos)[axis]
+        #axdefval=deflat.get_fractional_coords(self._defpos)[axis]
         axbulkval=axfracval*blklat.abc[axis]
-        axdefval*=deflat.abc[axis]
+        #axdefval*=deflat.abc[axis]
+        if axbulkval<0:
+            axbulkval += blklat.abc[axis]
+        elif axbulkval > blklat.abc[axis]:
+            axbulkval -= blklat.abc[axis]
+
         if axbulkval:
             for i in range(len(x)):
                 if axbulkval<x[i]:
                     break
             rollind=len(x)-i
             pureavg=np.roll(pureavg,rollind)
-        if axdefval:
-            for i in range(len(x)):
-                if axdefval<x[i]:
-                    break
-            rollind=len(x)-i
-            defavg=np.roll(defavg,rollind)
+            defavg = np.roll(defavg,rollind)
+        # if axdefval:
+        #     for i in range(len(x)):
+        #         if axdefval<x[i]:
+        #             break
+        #     rollind=len(x)-i
+        #     defavg=np.roll(defavg,rollind)
 
 
         if not self._silence:
@@ -531,7 +538,7 @@ class FreysoldtCorrection(object):
 
         if not self._silence:
            print 'C value is averaged to be ' + str(C) + ' eV, '
-           print 'Pot. align correction is then (eV) : ' + str(float(self._q) * float(C))
+           print 'Pot. align correction (-q*delta V) is then (eV) : ' + str(-float(self._q) * float(C))
         if title:
             if title!='written':
                 import matplotlib.pyplot as plt
@@ -571,7 +578,7 @@ class FreysoldtCorrection(object):
                 with open(fname,'w') as f:
                     f.write(str(forplotting))
 
-        return float(self._q)*C  #pot align energy correction (eV), add to the energy output of PCfrey
+        return -float(self._q)*C  #pot align energy correction (eV), add to energy output of PCfrey
 
     def plot_from_datfile(self,name='FreyAxisData.dat',title='default'):
         """
