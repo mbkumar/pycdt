@@ -84,21 +84,47 @@ def get_optimized_sc_scale(inp_struct, final_site_no):
 
 class DefectCharger:
     __metaclass__ = abc.ABCMeta
+    """
+    Abstract base class to define the properties of a defect charge generator
+    """
+    def __init__(self, structure):
+        pass
 
     @abc.abstractmethod
-    def get_charges(defect_type):
+    def get_charges(self, defect_type, site_specie=None, sub_specie=None):
+        """
+        Based on the type of defect, site and substitution (if any) species
+        the defect charge states are generated.
+        Args:
+            defect_type (str): Options are vacancy, antisite, substitution,
+                               and interstitial
+            site_specie: Specie on the host lattice site 
+                         For interstitials, use this
+            sub_specie: Specie that is replacing the site specie.
+                        For antisites and substitution defects
+
+        """
         raise NotImplementedError
 
 
 class DefectChargerSemiconductor(DefectCharger):
     """
-    Charge assignment based on the oxidation states referenced from 
+    Charge Generator based on the oxidation states referenced from 
     semiconductor database. Targetted materials are shallow and some wideband
     semiconductors. For these systems, antisites are common and their
     charge assignment for antisites follows vacancies
 
     """
     def __init__(self, structure):
+        """
+        Charge assignment based on the oxidation states referenced from 
+        semiconductor database. Targetted materials are shallow and some 
+        wideband semiconductors. For these systems, antisites are common and 
+        their charge assignment for antisites follows vacancies
+        Args: structure
+            pymatgen structure object to determine the oxidation states
+        """
+
         self.min_max_oxi_bulk = [0, 0]
 
         for elem in structure.symbol_set:
@@ -108,7 +134,18 @@ class DefectChargerSemiconductor(DefectCharger):
             if max(oxi_elem) > self.min_max_oxi_bulk[1]:
                 self.min_max_oxi_bulk[1] = max(oxi_elem)
 
-    def get_charges(self, defect_type, *args):
+    def get_charges(self, defect_type, site_specie=None, sub_specie=None):
+        """
+        Based on the type of defect, site and substitution (if any) species
+        the defect charge states are generated.
+        Args:
+            defect_type (str): Options are vacancy, antisite, substitution,
+                               and interstitial
+            site_specie (Not used): Specie on the host lattice site 
+                         For interstitials, use this
+            sub_specie: Specie that is replacing the site specie.
+                        At present used only for substitution defects
+        """
         min_max_oxi = self.min_max_oxi_bulk
 
         if defect_type == 'vacancy':
@@ -119,7 +156,7 @@ class DefectChargerSemiconductor(DefectCharger):
             return range(min_max_oxi[0], (min_max_oxi[1]+1)-2)
 
         elif defect_type == 'substitution':
-            oxi_sub = list(Element(args[1]).oxidation_states)
+            oxi_sub = list(get_el_sp(sub_specie).oxidation_states)
             min_max_oxi_sub = [
                     min(oxi_sub + min_max_oxi),
                     max(oxi_sub + min_max_oxi)]
@@ -141,6 +178,16 @@ class DefectChargerInsulator(DefectCharger):
     have very high formation energies and are ignored.
     """
     def __init__(self, structure):
+        """
+        Conservative defect charge generator based on the oxidation statess 
+        determined by bond valence. Targetted materials are wideband 
+        semiconductors and insulators. AxBy where A is cation and B is 
+        anion will have charge assignments {A: [0:y], B:[-x:0]}. For these 
+        systems, antisites typically have very high formation energies and 
+        are ignored.
+        Args:
+            structure: pymatgen structure object 
+        """
         struct_species = structure.types_of_specie
         if len(struct_species) == 1:
             oxi_states = {struct_species[0].symbol: 0}
@@ -169,7 +216,15 @@ class DefectChargerInsulator(DefectCharger):
         
     def get_charges(self, defect_type, site_specie=None, sub_specie=None):
         """
-        Return the charges for the defect based on the arguments
+        Based on the type of defect, site and substitution (if any) species
+        the defect charge states are generated.
+        Args:
+            defect_type (str): Options are vacancy, antisite, substitution,
+                               and interstitial
+            site_specie: Specie on the host lattice site 
+                         For interstitials, use this
+            sub_specie: Specie that is replacing the site specie.
+                        For antisites and substitution defects
         """
         print 'site_specie', site_specie
         print 'defect_type', defect_type
@@ -239,14 +294,6 @@ class DefectChargerInsulator(DefectCharger):
             #    max_oxi = 0
             return range(min_oxi, max_oxi+1)
 
-
-
-def charge_assignment_user():
-    """
-    Charge assignment is based on the user specified charge state range for
-    each species. Judgement is completely suspended
-    """
-    pass
 
 class ChargedDefectsStructures(object):
     """
