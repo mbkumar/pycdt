@@ -65,6 +65,7 @@ def generate_input(args):
     oxi_state = args.oxi_state
     oxi_range = args.oxi_range
     antisites = args.antisites
+    struct_type = args.struct_type
     include_interstitials = args.include_interstitials
     interstitial_elements = args.interstitial_elements
     settings = {}
@@ -124,7 +125,7 @@ def generate_input(args):
             substitutions=substitutions,
             include_interstitials=include_interstitials,
             interstitial_elements=interstitial_elements,
-            cellmax=nmax)
+            cellmax=nmax, struct_type=struct_type)
     make_vasp_defect_files(
             def_structs.defects,
             conv_struct.composition.reduced_formula, 
@@ -311,6 +312,15 @@ def main():
         " are expected: the element type for which the oxidation state range is" \
         " to be specified as well as the lower and the upper limit of the" \
         " range (e.g., --oxi_range As -3 5)."
+    struct_type_string = "Structure type to determine the charge range" \
+        " for the defects. Valid options are 'semiconductor' and 'insulator'"\
+        " With 'semiconductor' option, the defect charges are determined by"\
+        " database approach where defect charges found in literature for"\
+        " common semiconductors.\nFor 'insulator' option, a conservative"\
+        " approach is used. For cations, the oxidation states of (0, A) are"\
+        " considered, where A is the cation oxidation in the compound."\
+        " Similarly for anions, (-B, 0) where -B is the oxidation state of"\
+        " anion in the compound."
     no_antisites_string = "Optional flag to indicate that anti-site defects" \
         " should not be generated."
     include_interstitials_string = "Optional flag to indicate that" \
@@ -373,11 +383,18 @@ def main():
     parser_input_files.add_argument("-os", "--oxi_state", action='append',
                                     type=str, nargs=2, dest="oxi_state",
                                     help=oxi_state_string)
+    parser_input_files.add_argument("-t", "--type", default="semiconductor",
+                                    type=str, dest="struct_type", 
+                                    help=struct_type_string)
     parser_input_files.add_argument("-noa", "--no_antisites",
                                     action='store_false', dest="antisites",
                                     help=no_antisites_string)
+    parser_input_files.add_argument("-a", "--antisites",
+                                    action='store_true', dest="antisites",
+                                    help=no_antisites_string)
     parser_input_files.add_argument("-ii", "--include_interstitials",
-                                    action='store_true', dest="include_interstitials",
+                                    action='store_true', 
+                                    dest="include_interstitials",
                                     help=include_interstitials_string)
     parser_input_files.add_argument("interstitial_elements", type=str,
                                     default=[], nargs="*", \
@@ -385,8 +402,9 @@ def main():
     parser_input_files.add_argument("--sub", action='append', type=str,
                                     nargs="+", dest='substitutions',\
                                     help=substitutions_string)
-    parser_input_files.add_argument("-is", "--input_settings_file", default=None,
-                                    type=str, dest="input_settings_file",
+    parser_input_files.add_argument("-is", "--input_settings_file", 
+                                    type=str, default=None,
+                                    dest="input_settings_file",
                                     help=input_settings_string)
     parser_input_files.set_defaults(func=generate_input)
 

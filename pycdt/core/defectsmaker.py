@@ -119,7 +119,7 @@ class DefectChargerSemiconductor(DefectCharger):
             return range(min_max_oxi[0], (min_max_oxi[1]+1)-2)
 
         elif defect_type == 'substitution':
-            oxi_sub = list(Element(args[0]).oxidation_states)
+            oxi_sub = list(Element(args[1]).oxidation_states)
             min_max_oxi_sub = [
                     min(oxi_sub + min_max_oxi),
                     max(oxi_sub + min_max_oxi)]
@@ -189,7 +189,7 @@ class DefectChargerInsulator(DefectCharger):
         elif defect_type == 'antisite':
             vac_symbol = get_el_sp(site_specie).symbol
             vac_oxi_state = self.oxi_states[str2unicode(vac_symbol)]
-            as_symbol = get_el_sp(sub_spcie).symbol
+            as_symbol = get_el_sp(sub_specie).symbol
             if vac_oxi_state > 0:
                 oxi_max = max(self.min_max_oxi[as_symbol][1],0)
                 oxi_min = 0
@@ -384,7 +384,7 @@ class ChargedDefectsStructures(object):
             # charge states for all structures in the test set,
             # while simultaneously minimizing the number of overhead
             # charge states prodcued by the procedure below.
-            charges_vac = self.defect_charger.get_charges('vacancy')
+            charges_vac = self.defect_charger.get_charges('vacancy', vac_specie)
 
             vacancies.append({
                 'name': "vac_{}_{}".format(i+1, vac_symbol),
@@ -403,9 +403,10 @@ class ChargedDefectsStructures(object):
                 # for antisites, too, based on insights from the
                 # test set.
 
-                charges_as = self.defect_charger.get_charges('antisite')
 
                 for as_specie in set(struct_species)-set([vac_specie]):
+                    charges_as = self.defect_charger.get_charges(
+                            'antisite', vac_specie, as_specie)
                     as_symbol = as_specie.symbol
                     as_sc = vac_sc.copy()
                     as_sc.append(as_symbol, vac_sc_site.frac_coords)
@@ -436,7 +437,7 @@ class ChargedDefectsStructures(object):
                     # new species (i.e., of the species that substitutes
                     # a lattice atom).
                     charges_sub = self.defect_charger.get_charges(
-                            'substution', subspecie_symbol)
+                            'substution', vac_symbol, subspecie_symbol)
                     
                     sub_defs.append({
                         'name': "sub_{}_{}_on_{}".format(
@@ -513,7 +514,7 @@ class ChargedDefectsStructures(object):
                     # for interstitials, too, based on insights from the
                     # test set.
                     charges_inter = self.defect_charger.get_charges(
-                            'interstitial')
+                            'interstitial', elt)
 
                     interstitials.append({
                             'name': name,
