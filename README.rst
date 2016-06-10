@@ -2,11 +2,19 @@
 PyCDT
 =====
 
-Python Charge Defects Tool is quite useful for processing the DFT calculations of charged point defects in semiconductors and insulators. It can generate the inputs for required DFT calculations and can processes the output of the DFT calculations to correct the errors arising due to the limitations of supercell methodology in evaluating the long range Coulomb interactions of defect charges. 
+Python Charge Defects Tool (PyCDT) is a python packaged aimed at making 
+charged defects modeling simpler, high throughput ready, and also accessible 
+to researchers who don't have the required background. At present it can do 
+simple defect thermodynamic calculations and error corrections for periodic
+boundary condition density functional calculations of charged defects in 
+semiconductors and insulators. It can also generate the inputs for required 
+DFT calculations and can processes the output of the DFT calculations.
+The code is modular and any DFT code can be integrated into PyCDT for defect 
+calculations. 
 
 Requirements
 ------------
-PyCDT requires pymatgen and optionally sxdefectalign packages.
+PyCDT requires pymatgen (and its dependencies) and optionally sxdefectalign packages.
 
 Source Code
 ------------
