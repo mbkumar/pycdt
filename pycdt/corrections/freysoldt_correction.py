@@ -442,11 +442,12 @@ class FreysoldtCorrection(object):
 
         #It is important to do planar averaging at same position, otherwise
         #you can get rigid shifts due to atomic changes at far away from defect
+        #note these are cartesian co-ordinate sites...
         if defsite is None: #vacancies
-            self._defpos=blksite
+            #self._defpos=blksite
             self._pos=blksite
         else: #all else, do w.r.t defect site
-            self._defpos=defsite
+            #self._defpos=defsite
             self._pos=defsite
 
         ind = []
@@ -466,23 +467,29 @@ class FreysoldtCorrection(object):
 
         #now shift these planar averages to have defect at origin
         blklat=self._purelocpot.structure.lattice
-        deflat=self._deflocpot.structure.lattice
+        #deflat=self._deflocpot.structure.lattice
         axfracval=blklat.get_fractional_coords(self._pos)[axis]
-        axdefval=deflat.get_fractional_coords(self._defpos)[axis]
+        #axdefval=deflat.get_fractional_coords(self._defpos)[axis]
         axbulkval=axfracval*blklat.abc[axis]
-        axdefval*=deflat.abc[axis]
+        #axdefval*=deflat.abc[axis]
+        if axbulkval<0:
+            axbulkval += blklat.abc[axis]
+        elif axbulkval > blklat.abc[axis]:
+            axbulkval -= blklat.abc[axis]
+
         if axbulkval:
             for i in range(len(x)):
                 if axbulkval<x[i]:
                     break
             rollind=len(x)-i
             pureavg=np.roll(pureavg,rollind)
-        if axdefval:
-            for i in range(len(x)):
-                if axdefval<x[i]:
-                    break
-            rollind=len(x)-i
-            defavg=np.roll(defavg,rollind)
+            defavg = np.roll(defavg,rollind)
+        # if axdefval:
+        #     for i in range(len(x)):
+        #         if axdefval<x[i]:
+        #             break
+        #     rollind=len(x)-i
+        #     defavg=np.roll(defavg,rollind)
 
 
         if not self._silence:
