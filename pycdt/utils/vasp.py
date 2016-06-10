@@ -1,9 +1,5 @@
 #!/usr/bin/env python
 
-"""
-TODO create a VaspInputSet instead?
-"""
-
 __author__ = "Geoffroy Hautier, Bharat Medasani"
 __copyright__ = "Copyright 2014, The Materials Project"
 __version__ = "1.0"
@@ -54,8 +50,6 @@ def make_vasp_defect_files(defects, path_base, user_settings={}, hse=False):
 
 
     for defect in comb_defs:
-        #print type(defect)
-        #print defect['charges']
         for charge in defect['charges']:
             s = defect['supercell']
             dict_transf = {
@@ -114,8 +108,7 @@ def make_vasp_defect_files(defects, path_base, user_settings={}, hse=False):
                 incar.write_file(os.path.join(path,"INCAR.gga"))
                 incar.update({
                     'LHFCALC': True, "ALGO": "All", "HFSCREEN": 0.2, 
-                    "PRECFOCK": "Fast", 'NKRED': 2}) #"AEXX": 0.45, 
-                #incar.write_file(os.path.join(path,"INCAR.hse"))
+                    "PRECFOCK": "Fast", 'NKRED': 2})
                 incar.write_file(os.path.join(path,"INCAR.hse1"))
                 del incar['PRECFOCK']
                 del incar['NKRED']
@@ -234,8 +227,7 @@ def make_vasp_defect_files_dos(defects, path_base, user_settings={},
             if charge != 0:
                 incar['NELECT'] = sum_elec-charge
 
-            kpoint=dict_params['KPOINTS'].monkhorst_automatic()		#I think we need better than 222 grid. should use automatic_density with 1000 /atom?
-
+            kpoint=dict_params['KPOINTS'].monkhorst_automatic()
             path = os.path.join(
                     path_base, defect['name'], "charge_"+str(charge))
             try:
@@ -345,8 +337,6 @@ def make_vasp_dielectric_files(struct, path=None, user_settings={},
         'ISMEAR': -5, 'ALGO': 'Fast', 'ISIF': 2})
     incar.update({'IBRION': 8, 'LEPSILON': True, 'LPEAD': True})
     user_settings = deepcopy(user_settings)
-    #print 'in dielectric function'
-    #print user_settings
     user_incar = user_settings.pop('INCAR', {})
     tmp = user_incar.pop('bulk', {})
     tmp = user_incar.pop('defects', {})

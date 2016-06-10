@@ -181,6 +181,7 @@ class FreysoldtCorrection(object):
         plt.show()
 
     def plot_pot_diff(self, align=[0.0,0.0,0.0], print_pot_flag='written'):
+
         """
         Runs sxdefectalign and obtains three alignment constants for 
         each axis. To obtain Freysoldt correction call this function twice 
@@ -280,8 +281,9 @@ class FreysoldtCorrection(object):
                  platx = (self._frac_coords[axis]+0.5) * latt_len
             print("half way between defects is: ", platx)
 
-            xmin = latt_len - (1-platx) if platx < 1 else platx-1
-            xmax = 1-(latt_len-platx) if platx > latt_len-1 else 1+platx
+            sample_radius = .5 #1 / 2
+            xmin = latt_len - (sample_radius-platx) if platx < sample_radius else platx - sample_radius
+            xmax = sample_radius-(latt_len-platx) if platx > latt_len-sample_radius else sample_radius + platx
             print('means sampling region is (', xmin, ',', xmax, ')')
 
             tmpalign=[]
@@ -369,22 +371,25 @@ class FreysoldtCorrection(object):
 
         return [result,platy]
 
-    def run_correction(self):
+    def run_correction(self, print_pot_flag='written', partflag='All'):
         """
         Runs all neccessary parts to get freysoldt corrections out with
         planar averaged potentials
         Change plot_pot_flag if you want plotted planar averages
         set transflag to True if you want to write flags
         """
+        outputvals=[] #for splitting up parts of correction
         with ScratchDir('.'):
             self.prepare_files()
             s = self.plot_pot_diff(print_pot_flag='none')
+            outputvals.append(np.mean(s[0])) #ES correction
+            outputvals.append(-self._charge * np.mean(s[1]))
             print('--')
             print('potential alignments determined to be: '+str(s[1]))
             print('get final correction terms')
             print('--')
             #To get locpot plots use print_pot_flag = 'written' or 'plotfull'
-            vals = self.plot_pot_diff(align=s[1], print_pot_flag='written')
+            vals = self.plot_pot_diff(align=s[1], print_pot_flag=print_pot_flag)
             print('vals is '+str(vals))
             for i in range(3):
                 if np.abs(vals[1][i]) > 0.0001:
@@ -393,8 +398,18 @@ class FreysoldtCorrection(object):
             print('--')
             print('Final Freysoldt sxdefectalign correction values are: ', \
                     str(vals[0]))
+            outputvals.append(np.mean(vals[0]))
 
-        return vals[0]
+        if partflag=='All':
+            return outputvals[2]
+        elif partflag=='AllSplit':
+            return outputvals
+        elif partflag=='pc':
+            return outputvals[0]
+        elif partflag=='potalign':
+            return outputvals[1]
+
+        return None
 
 
 if __name__ == '__main__':

@@ -8,7 +8,7 @@ of charged point defects, supporting multiple correction
 schemes.
 """
 
-__author__ = "Nils E. R. Zimmermann, Bharat Medasani"
+__author__ = "Nils E. R. Zimmermann, Bharat Medasani, Danny Broberg"
 __copyright__ = "Copyright 2012, The Materials Project"
 __version__ = "1"
 __maintainer__ = "Nils E. R. Zimmermann"
@@ -26,6 +26,7 @@ from monty.json import MontyEncoder, MontyDecoder
 from pymatgen.matproj.rest import MPRester
 from pymatgen.core.structure import Structure
 from pymatgen.symmetry.analyzer import SpacegroupAnalyzer
+from pymatgen.io.vasp.outputs import Locpot
 
 from pycdt.core.defectsmaker import ChargedDefectsStructures
 from pycdt.utils.vasp import make_vasp_defect_files, \
@@ -47,12 +48,9 @@ def print_error_message(err_str):
 
 def generate_input(args):
     """
-    Generates input files for VASP calculations that aim to determine
-    formation energies of charged point defects by (possibly) applying
-    correction terms (supported so-far: correction due to Freysoldt
-    et al., Phys. Rev. Lett., 2009).
-    The primitive unit cell is obtained from the MP ID provided during
-    script call.  
+    Generates input files for VASP calculations
+    The primitive unit cell is obtained from the MP ID provided
+    or from structure file pointed at during script call
 
     Args:
         args (Namespace): contains the parsed command-line arguments for
@@ -105,10 +103,6 @@ def generate_input(args):
     if oxi_state:
         for i in range(len(oxi_state)):
             oxi_state_dict[oxi_state[i][0]] = int(oxi_state[i][1])
-        #if len(oxi_state_dict) != conv_struct.ntypesp:
-        #    print_error_message("number of oxidation states"
-        #        " provided does not match number of species in structure!")
-        #    return
 
     # manually set oxidation-state ranges if those were provided
     oxi_range_dict = {}
@@ -116,17 +110,12 @@ def generate_input(args):
         for i in range(len(oxi_range)):
             oxi_range_dict[oxi_range[i][0]] = tuple(
                     [int(oxi_range[i][1]), int(oxi_range[i][2])])
-        #if len(oxi_range_dict) != conv_struct.ntypesp:
-        #    print_error_message("number of distinct oxidation ranges"
-        #        " provided does not match number of species in structure!")
-        #    return
 
     # Substitution defects if those were provided
     substitutions = {}
     if args.substitutions:
         for i, sub in enumerate(args.substitutions):
             substitutions[sub[0]] = sub[1:]
-
 
     # finally, generate VASP input files for defect calculations
     def_structs = ChargedDefectsStructures(
@@ -144,10 +133,7 @@ def generate_input(args):
 
 def parse_output(args):
     """
-    Parses output files from VASP calculations that aim to determine
-    formation energies of charged point defects by (possibly) applying
-    correction terms (supported so-far: correction due to Freysoldt
-    et al., Phys. Rev. Lett., 2009).
+    Parses output files from VASP calculations
 
     Args:
         args (Namespace): contains the parsed command-line arguments for
@@ -158,16 +144,6 @@ def parse_output(args):
     mp_id = args.mp_id
     mapi_key = args.mapi_key
     root_fldr = args.root_fldr
-    #if args.defect_data_file_name == 'None':
-    #    defect_data_file_name = None
-    #else:
-    #    defect_data_file_name = args.defect_data_file_name
-    #if args.corrections_file_name == 'None':
-    #    corrections_file_name = None
-    #else:
-    #    corrections_file_name = args.corrections_file_name
-    #plot_results = args.plot_results
-    #epsilon = args.epsilon
 
     # error-checking;
     if not mp_id:
@@ -177,35 +153,16 @@ def parse_output(args):
 
     # parse results to get defect data and correction terms
     defect_data = PostProcess(root_fldr, mp_id, mapi_key).compile_all()
-    #if defect_data_file_name is not None:
     dumpfn(defect_data, args.defect_data_file_name, cls=MontyEncoder, indent=2)
-    #bulk = defect_data['bulk_entry']
-    #defects = defect_data['defects']
-    #if epsilon is None:
-    #    epsilon = defect_data['epsilon']
-    #else:
-    #    defect_data['epsilon'] = epsilon
-    #corrections = defaultdict(list)
-    #for defect in defects:
-    #    correction = get_correction(defect, bulk, epsilon)
-    #    defect.charge_correction = correction
-    #    corrections[defect._name].append({'charge_correction': correction,'charge':defect._charge})
-
-    # output results, if applicable
-    #if corrections_file_name is not None:
-    #    dumpfn(corrections, corrections_file_name, cls=MontyEncoder, indent=2)
-
-    # plot results, if applicable
-    #if plot_results:
-    #    pass # go on here
 
 
 def compute_corrections(args):
     """
-    TODO: have option to suppress potential plots (but for now want to plot them to make sure correction is working)
+    TODO 1: have option to suppress potential plots (but for now want to plot them to make sure correction is working)
+    TODO 2: also include option for printing pot. plots to defect files, rather than main directory
     ----------
     Computes corrections for the charged point defects
-    Supported so-far: Freysoldt method, Extended Freysoldt method
+    Supported: Isotropic Freysoldt method, Extended Freysoldt method (Kumagai)
 
     Args:
         args (Namespace): contains the parsed command-line arguments for
@@ -218,7 +175,6 @@ def compute_corrections(args):
     plot_results = args.plot_results
     correction_method = args.correction_method
 
-
     # parse results to get defect data and correction terms
     defect_data = loadfn(defect_data_file_name, cls=MontyDecoder)
     if args.epsilon:
@@ -229,32 +185,26 @@ def compute_corrections(args):
     bulk = defect_data['bulk_entry']
     defects = defect_data['defects']
     corrections = defaultdict(list)
-    blklpt=None  #for speeding up correction loop by storing bulk Locpot object
+    blklpt = Locpot.from_file(bulk.data['locpot_path']) #loading locpot object now is useful for both corrections
     if correction_method=='freysoldt':
         for defect in defects:
             print ('defect_name: ', defect._full_name)
             print ('-----------------------------------------\n\n')
-            #correction = get_correction_freysoldt(
-            #        defect, bulk, epsilon)
-            if not blklpt:
-                correction,blklpt = get_correction_freysoldt(
-                                    defect, bulk, epsilon,title=defect._full_name)  #title outputs freysoldt pot. plots
-            else:
-                correction,blklpt = get_correction_freysoldt(
-                        defect, blklpt, epsilon,title=defect._full_name)
+            correction,blklpt = get_correction_freysoldt(
+                    defect, blklpt, epsilon,title=defect._full_name)
             defect.charge_correction = correction
             corrections[defect._name].append({
                 'charge_correction': correction, 'charge':defect._charge})
     else:    
         locpot_path_blk = bulk.data['locpot_path']
         encut = bulk.data['encut']
-        kumagai_init = KumagaiBulkInit(locpot_path_blk, epsilon, 
+        kumagai_init = KumagaiBulkInit(blklpt.structure, epsilon,
                                        encut, tolerance=0.0001, silence=False)
         for defect in defects:
             print ('defect_name: ', defect._full_name)
             print ('-----------------------------------------\n\n')
-            correction = get_correction_kumagai(
-                    defect, kumagai_init, epsilon)
+            correction = get_correction_kumagai( defect, locpot_path_blk,
+                                        kumagai_init, title=defect._full_name)
             defect.charge_correction = correction
             corrections[defect._name].append({
                 'charge_correction': correction, 'charge':defect._charge})
@@ -264,9 +214,8 @@ def compute_corrections(args):
 
 def compute_formation_energies(args):
     """
-    Computes formation energies of charged point defects by (possibly) applying
-    correction terms (supported so-far: correction due to Freysoldt
-    et al., Phys. Rev. Lett., 2009).
+    Computes transition levels and plots formation energy
+    of charged point defects across the band gap
 
     Args:
         args (Namespace): contains the parsed command-line arguments for
@@ -277,12 +226,10 @@ def compute_formation_energies(args):
     defect_data_file_name = args.defect_data_file_name
     corrections_file_name = args.corrections_file_name
     plot_results = args.plot_results
-    #correction_method = args.correction_method
-
 
     # parse results to get defect data and correction terms
     defect_data = loadfn(defect_data_file_name, cls=MontyDecoder)
-    epsilon_tensor = args.epsilon_tensor #this is unneccessary...
+    epsilon_tensor = args.epsilon_tensor
     if epsilon_tensor is None:
         epsilon_tensor = defect_data['epsilon']
     defects = defect_data['defects']
@@ -331,7 +278,6 @@ def compute_formation_energies(args):
             form_en_plot = plotter.get_plot_form_energy()
             form_en_plot.savefig(region+'_region_defect_form_energy.eps', bbox_inches='tight')
             print('printed ',region,' plot')
-
 
 
 def main():
@@ -461,16 +407,6 @@ def main():
                                     default="defect_data.json",
                                     dest="defect_data_file_name",
                                     help=defect_data_file_name_string)
-    #parser_vasp_output.add_argument("-c", "-cfn", "--corrections_file_name",
-    #                                default="corrections.json",
-    #                                dest="corrections_file_name",
-    #                                help=corrections_file_name_string)
-    #parser_vasp_output.add_argument("-np", "-npr", "--not_plot_results",
-    #                                action='store_false', dest="plot_results",
-    #                                help=not_plot_results_string)
-    #parser_vasp_output.add_argument("-e", "-eps", "--epsilon",
-    #                                "--dielectric_constant", default=None,
-    #                                dest="epsilon", help=epsilon_string)
     parser_vasp_output.set_defaults(func = parse_output)
 
     parser_compute_corrections = subparsers.add_parser(

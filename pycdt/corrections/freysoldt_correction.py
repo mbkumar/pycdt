@@ -1,6 +1,5 @@
 """
 This module is Freysoldt correction for isotropic systems
-(basically a python version of sxdefectalign)
 1) Freysoldt correction for isotropic systems.
 includes
    a) PC energy
@@ -17,14 +16,11 @@ import sys
 import math
 
 import numpy as np
-#import matplotlib
-#matplotlib.use('agg')
-#import matplotlib.pyplot as plt
 
 from pymatgen.io.vasp.outputs import Locpot
 from pymatgen.core.structure import Structure
 
-norm = np.linalg.norm  # define globally
+norm = np.linalg.norm
 
 # Define conversion_constants
 hart_to_ev = 27.2114
@@ -64,8 +60,14 @@ def cleanlat(dat):
     return norm(dat[0]), norm(dat[1]), norm(dat[2])
 
 def genrecip(a1, a2, a3, encut):
-    # latt vectors in bohr, encut=eV
-    # generate reciprocal lattice vectors with value less than encut
+    """
+    Args:
+        a1, a2, a3: lattice vectors in bohr
+        encut: energy cut off in eV
+    Returns:
+        reciprocal lattice vectors with energy less than encut
+    """
+
     # define recip vectors first, (units of 1/angstrom).
     vol = np.dot(a1, np.cross(a2, a3))  # 1/bohr^3
     b1 = (2 * np.pi / vol) * np.cross(a2, a3)  # units 1/bohr
@@ -73,25 +75,24 @@ def genrecip(a1, a2, a3, encut):
     b3 = (2 * np.pi / vol) * np.cross(a1, a2)
     recip = []
     flag = 0
+
     # create list of recip space vectors that satisfy |i*b1+j*b2+k*b3|<=encut
-    #start by enumerating to find max i that doesn't upset the encut condition
     tol = 0
     while flag != 1:
         if 3.80986 * ((tol * (1 / ang_to_bohr) * min(norm(b1), norm(b2), norm(b3))) ** 2) < encut:
-            #added the 1.8897 factor because the energy given converts 1/A to eV but b's in 1/bohr
             tol = tol + 1
         else:
             flag = 1
-    #now look though all options for recip vectors to see what vectors are less than energy val
+
     for i in range(-tol, tol + 1):
         for j in range(-tol, tol + 1):
             for k in range(-tol, tol + 1):
                 vec = (i * b1 + j * b2 + k * b3)
                 en = 3.80986 * (((1 / ang_to_bohr) * norm(vec))** 2)
-                #en = 3.80986 * (((ang_to_bohr) * norm(vec))** 2)  #isn't the line above  here what we want? Depends what units of recip vector are
                 if (en <= encut and en != 0):
                     recip.append([i * b1[m] + j * b2[m] + k * b3[m] for m in range(3)])
-    return recip  #output is 1/bohr recip
+
+    return recip
 
 def generate_reciprocal_vectors_squared(a1, a2, a3, encut):
     """
@@ -132,13 +133,15 @@ def closestsites(struct_blk, struct_def, pos):
     bulkclosesites.sort(key=lambda x:x[1])
     defclosesites = struct_def.get_sites_in_sphere(pos, 5)
     defclosesites.sort(key=lambda x:x[1])
+
     return bulkclosesites[0],defclosesites[0] #returns closest (site object, dist) for both bulk and defect
 
 def find_defect_pos(struct_blk, struct_def):
     """
+    output cartesian coords of defect in bulk,defect cells.
+
+    If vacancy defectpos=None, if interstitial bulkpos=None, if antisite/sub then both defined
     """
-    #Will output cartesian coords of defect in bulk,defect cells.
-    #If vacancy defectpos=None, if interstitial bulkpos=None, if antisite/sub then both defined
     if len(struct_blk.sites) > len(struct_def.sites):
         vactype = True
         interstittype = False
@@ -159,6 +162,7 @@ def find_defect_pos(struct_blk, struct_def):
         elif blksite[0].specie.symbol != defsite[0].specie.symbol: #subs or antisite type
             return blksite[0].coords, defsite[0].coords
         sitematching.append([blksite[0],blksite[1],defsite[0],defsite[1]])
+
     if vactype: #just in case site type is same for closest site to vacancy
         sitematching.sort(key=lambda x:x[3])
         vacant = sitematching[-1]
@@ -167,6 +171,7 @@ def find_defect_pos(struct_blk, struct_def):
         sitematching.sort(key=lambda x:x[1])
         interstit = sitematching[-1]
         return  None, interstit[2].coords
+
     return None,None #if you get here there is an error
 
 class QModel():
@@ -224,42 +229,48 @@ class FreysoldtCorrection(object):
             madetol=0.0001, silence=False, q_model=None):
         """
         Args:
-            axis: axis to do Freysoldt averaging over. Has no effect on 
+            axis: axis to do Freysoldt averaging over (zero-defined). Has no effect on
                  Kumagai correction, so better move to Freysoldt potalign
             dielectric_tensor: Macroscopic dielectric tensor 
                  Include ionic also if defect is relaxed, othewise ion clamped.
                  Can be a matrix array or scalar.
-            pure_locpot_path: Bulk Locpot file path
-            defect_locpot_path: Defect Locpot file path
-            q: Charge associated with the defect. Typically integer
+            pure_locpot_path: Bulk Locpot file path OR locpot object
+            defect_locpot_path: Defect Locpot file path OR locpot object
+            q: Charge associated with the defect (not of the homogen. background). Typically integer
             energy_cutoff: Energy for plane wave cutoff (in eV).
                  If not given, Materials Project default 520 eV is used.
-            madetol: Tolerance (double or float)
+            madetol: Tolerance for convergence of energy terms in eV (double or float)
             silence: Flag for disabling/enabling  messages (Bool)
             q_model (QModel object): User defined charge for correction.
                  If not given, highly localized charge is assumed.
         """
-        self._axis = axis  #needs to be zero defined (0,1,2); says which axis to do planar averaging on...\
+        self._axis = axis
         if isinstance(dielectricconst, int) or \
                 isinstance(dielectricconst, float):
             self._dielectricconst = float(dielectricconst)
         else:
             self._dielectricconst = float(np.mean(np.diag(dielectricconst)))
-        self._purelocpot = pure_locpot_path  #location of purelocpot OR locpot object
-        self._deflocpot = defect_locpot_path  #location of defectlocpot OR locpot object
-        self._madetol = madetol #tolerance for convergence of energy terms in eV
-        self._q = q  #charge of defect (not of the homogen. background)
-        self._encut = energy_cutoff  #encut (eV) for calculation
+        self._purelocpot = pure_locpot_path
+        self._deflocpot = defect_locpot_path
+        self._madetol = madetol
+        self._q = q
+        self._encut = energy_cutoff
         self._pos = None #code will determine positions of defect in bulk cell
         self._defpos = None #code will determine defect position in defect cell (after relaxation)
-        self._silence = silence  #for silencing printflags
+        self._silence = silence
         if not q_model:
             self._q_model = QModel()
 
     def correction(self, title=None, partflag='All'):
-        #part flag can be 'pc' for just point charge correction,
-        #        'potalign' for just potalign correction, 'All' for one combined correction,
-        #       or 'AllSplit' for correction in form [PC,potterm,full]
+        """
+        Args:
+            title: set if you want to plot the planar averaged potential
+            partflag: four options
+                'pc' for just point charge correction, or
+               'potalign' for just potalign correction, or
+               'All' for both, or
+               'AllSplit' for individual parts split up (form [PC,potterm,full])
+        """
         if not self._silence:
             print 'This is Freysoldt Correction.'
         if not self._q:
@@ -291,25 +302,28 @@ class FreysoldtCorrection(object):
         if not self._silence:
             print '\n\nFreysoldt Correction details:'
             if partflag!='potalign':
-                print 'PCenergy = ', round(energy_pc, 5)
+                print 'PCenergy (E_lat) = ', round(energy_pc, 5)
             if partflag!='pc':
-                print 'potential alignment = ', round(potalign, 5)
+                print 'potential alignment (-q*delta V) = ', round(potalign, 5)
             if partflag in ['All','AllSplit']:
-                print 'TOTAL Freysoldt correction = ', round(energy_pc - potalign, 5)
+                print 'TOTAL Freysoldt correction = ', round(energy_pc + potalign, 5)
 
         if partflag=='pc':
             return round(energy_pc,5)
         elif partflag=='potalign':
             return round(potalign,5)
         elif partflag=='All':
-            return round(energy_pc-potalign,5)
+            return round(energy_pc+potalign,5)
         else:
-            return [round(energy_pc,5),round(potalign,5),round(energy_pc-potalign,5)]
+            return [round(energy_pc,5),round(potalign,5),round(energy_pc+potalign,5)]
 
     def pc(self,struct=None):
-        #note this ony needs structural info
-        # so s1=structure object speeds this calculation up alot
-        # equivalently fast if input Locpot is a locpot object
+        """
+        Peform Electrostatic Correction
+        note this ony needs structural info
+        so struct input object speeds this calculation up
+        equivalently fast if input Locpot is a locpot object
+        """
         if type(struct) is Structure:
             s1=struct
         else:
@@ -331,7 +345,7 @@ class FreysoldtCorrection(object):
 
         #compute isolated energy
         step = 0.0001
-        encut1 = 20.  #converge to some smaller encut [eV]
+        encut1 = 20.  #converge to some smaller encut first [eV]
         flag = 0
         converge = []
         while (flag != 1):
@@ -381,17 +395,23 @@ class FreysoldtCorrection(object):
         if self._silence == False:
             print 'Eperiodic : ' + str(round(eper, 5)) + ' converged at encut=' + str(encut1 - 20)
             print 'difference (periodic-iso) is ' + str(round(eper - eiso, 6)) + ' hartree'
-            print 'difference in (eV) is ' + str(round((eper - eiso) * hart_to_ev, 4))  #27.2114 eV/1 hartree
+            print 'difference in (eV) is ' + str(round((eper - eiso) * hart_to_ev, 4))
         PCfreycorr = round(((eiso - eper) / self._dielectricconst) * hart_to_ev, 6)  #converted to eV
         if self._silence == False:
             print 'Defect Correction without alignment (eV): ', PCfreycorr
+
         return PCfreycorr
 
-    def potalign(self, title=None,  widthsample=0.5, axis=None):
-        #Accounts for defects in arbitrary positions
-        #title is for name of plot, if you dont want a plot then leave it as None
-        #widthsample is the width of the region in between defects where the potential alignment correction is averaged
-        #axis allows you to override the axis setting of class (good for quickly plotting multiple axes without having to reload Locpot)
+    def potalign(self, title=None,  widthsample=1., axis=None):
+        """
+        For performing planar averaging potential alignment
+
+        Accounts for defects in arbitrary positions
+        title is for name of plot, if you dont want a plot then leave it as None
+        widthsample is the width of the region in between defects where the potential alignment correction is averaged
+        axis allows you to override the axis setting of class
+                (good for quickly plotting multiple axes without having to reload Locpot)
+        """
         if not axis:
             axis=self._axis
         else:
@@ -419,26 +439,18 @@ class FreysoldtCorrection(object):
             else:
                 print 'Found defect to be antisite/substitution type at ',blksite,' in bulk, and ',\
                         defsite,' in defect cell'
-        # self._pos=blksite
-        # self._defpos=defsite
-        # if self._pos is None:
-        #     self._pos=self._defpos
-        # elif self._defpos is None:
-        #     self._defpos=self._pos
 
-        #Turns out it is important to do planar averaging at same position, either you can get rigid shifts due to atomic changes at far away from defect
-        #       Note this means I can clean up some of the code below...
+        #It is important to do planar averaging at same position, otherwise
+        #you can get rigid shifts due to atomic changes at far away from defect
+        #note these are cartesian co-ordinate sites...
         if defsite is None: #vacancies
-            self._defpos=blksite
+            #self._defpos=blksite
             self._pos=blksite
         else: #all else, do w.r.t defect site
-            self._defpos=defsite
+            #self._defpos=defsite
             self._pos=defsite
 
-        #at this point, _pos is location to shift to for bulk, _defpos is location to sample for defect locpot
-        # If the user input self._pos then no way to know type of defect aside from looking at number of sites
-
-        ind = []  #stores axes besides axis
+        ind = []
         for i in range(3):
             if axis == i:
                 continue
@@ -448,29 +460,36 @@ class FreysoldtCorrection(object):
         x = np.array(self._purelocpot.get_axis_grid(axis))  #angstrom
         nx = len(x)
         print 'run Freysoldt potential alignment method'
+
         #perform potential alignment part
         pureavg = self._purelocpot.get_average_along_axis(axis)  #eV
         defavg = self._deflocpot.get_average_along_axis(axis)  #eV
 
-        #now shift these planar averages to have defect at origin...Should I then also worry about shifting x?
+        #now shift these planar averages to have defect at origin
         blklat=self._purelocpot.structure.lattice
-        deflat=self._deflocpot.structure.lattice
+        #deflat=self._deflocpot.structure.lattice
         axfracval=blklat.get_fractional_coords(self._pos)[axis]
-        axdefval=deflat.get_fractional_coords(self._defpos)[axis]
+        #axdefval=deflat.get_fractional_coords(self._defpos)[axis]
         axbulkval=axfracval*blklat.abc[axis]
-        axdefval*=deflat.abc[axis]
+        #axdefval*=deflat.abc[axis]
+        if axbulkval<0:
+            axbulkval += blklat.abc[axis]
+        elif axbulkval > blklat.abc[axis]:
+            axbulkval -= blklat.abc[axis]
+
         if axbulkval:
             for i in range(len(x)):
                 if axbulkval<x[i]:
                     break
-            rollind=len(x)-i #because rolling goes opposite direction
+            rollind=len(x)-i
             pureavg=np.roll(pureavg,rollind)
-        if axdefval:
-            for i in range(len(x)):
-                if axdefval<x[i]:
-                    break
-            rollind=len(x)-i #because rolling goes opposite direction
-            defavg=np.roll(defavg,rollind)
+            defavg = np.roll(defavg,rollind)
+        # if axdefval:
+        #     for i in range(len(x)):
+        #         if axdefval<x[i]:
+        #             break
+        #     rollind=len(x)-i
+        #     defavg=np.roll(defavg,rollind)
 
 
         if not self._silence:
@@ -482,7 +501,7 @@ class FreysoldtCorrection(object):
 
         v_G = np.empty(len(x), np.dtype('c16'))
         epsilon = self._dielectricconst
-        # q needs to be that of the back ground? so added a (-) sign...
+        # q needs to be that of the back ground
         v_G[0] = 4*np.pi * -self._q /epsilon * self._q_model.rho_rec_limit0()
         for i in range(1,nx):
             if (2*i < nx):
@@ -505,8 +524,8 @@ class FreysoldtCorrection(object):
 
         #now get correction and do plots
         short = (defavg - pureavg - v_R)
-        checkdis = int((widthsample / 2) / (x[1]-x[0]))  #index window for getting potential alignment correction
-        mid = len(short) / 2 #what if short has even index?
+        checkdis = int((widthsample / 2) / (x[1]-x[0]))
+        mid = len(short) / 2
 
         tmppot = [short[i] for i in range(mid - checkdis, mid + checkdis)]
         if not self._silence:
@@ -514,16 +533,12 @@ class FreysoldtCorrection(object):
 
         C = -np.mean(tmppot)
         print 'C=',C
-        Cquik = -short[mid]  #this just uses mid point rather than average
         finalshift = [short[j] + C for j in range(len(v_R))]
-        v_R = [v_R[j]-C for j in range(len(v_R))] #make long range model line up with DFT locpot diff
+        v_R = [v_R[j]-C for j in range(len(v_R))]
 
-        #print 'v_R=',v_R
-        #print 'short=',np.array(short)
         if not self._silence:
            print 'C value is averaged to be ' + str(C) + ' eV, '
-           #print 'compare with quicker C value (value halfway between defects) =',Cquik,' eV'
-           print 'Pot. align correction is then (eV) : ' + str(float(self._q) * float(C)) #= q*Delta
+           print 'Pot. align correction (-q*delta V) is then (eV) : ' + str(-float(self._q) * float(C))
         if title:
             if title!='written':
                 import matplotlib.pyplot as plt
@@ -531,7 +546,6 @@ class FreysoldtCorrection(object):
                 plt.clf()
                 plt.plot(x, v_R, c="green", zorder=1, label="long range from model")
                 plt.plot(x, defavg - pureavg, c="red", label="DFT locpot diff")
-                #plt.plot(x, short, c="purple", label="short range not shifted by C")
                 plt.plot(x, finalshift, c="blue", label="short range (aligned)")
                 tmpx=[x[i] for i in range(mid - checkdis, mid + checkdis)]
                 plt.fill_between(tmpx, -100, 100, facecolor='red', alpha=0.15, label='sampling region')
@@ -539,14 +553,13 @@ class FreysoldtCorrection(object):
                 ymin=min(min(v_R),min(defavg - pureavg),min(finalshift))
                 ymax=max(max(v_R),max(defavg - pureavg),max(finalshift))
                 plt.ylim(np.floor(ymin),np.ceil(ymax))
-                plt.xlabel('planar average along axis ' + str(axis+1))
-                plt.ylabel('Potential')
+                plt.xlabel('planar average along axis ' + str(axis+1)+' (Angstrom)')
+                plt.ylabel('Potential (V)')
                 plt.legend(loc=9)
                 plt.axhline(y=0, linewidth=0.2, color='black')
-                #plt.axhline(y=C, linewidth=0.2, color='black')
-                plt.title(str(title) + ' defect potential')
+                plt.title(str(title) + ' planar averaged electrostatic potential')
                 plt.xlim(0,max(x))
-                plt.savefig(str(title)+'FreyplnravgPlot.png')
+                plt.savefig(str(title)+'FreyplnravgPlot.pdf')
             else:
                 #this is because current uploading format for written is bad for numpy arrays...
                 #Might want to update this in future so that dumping format is smarter than just dumping/loading a string
@@ -565,7 +578,7 @@ class FreysoldtCorrection(object):
                 with open(fname,'w') as f:
                     f.write(str(forplotting))
 
-        return float(self._q)*C  #pot align energy correction (eV), add to the energy output of PCfrey
+        return -float(self._q)*C  #pot align energy correction (eV), add to energy output of PCfrey
 
     def plot_from_datfile(self,name='FreyAxisData.dat',title='default'):
         """
@@ -588,7 +601,6 @@ class FreysoldtCorrection(object):
         plt.clf()
         plt.plot(plotvals['x'], plotvals['v_R'], c="green", zorder=1, label="long range from model")
         plt.plot(x, DFTdiff, c="red", label="DFT locpot diff")
-        #plt.plot(x, short, c="purple", label="short range not shifted by C")
         plt.plot(x, finalshift, c="blue", label="short range (aligned)")
         tmpx=[x[i] for i in range(check[0], check[1])]
         plt.fill_between(tmpx, -100, 100, facecolor='red', alpha=0.15, label='sampling region')
@@ -600,7 +612,6 @@ class FreysoldtCorrection(object):
         plt.ylabel('Potential')
         plt.legend(loc=9)
         plt.axhline(y=0, linewidth=0.2, color='black')
-        #plt.axhline(y=C, linewidth=0.2, color='black')
         plt.title(str(title) + ' defect potential')
         plt.xlim(0,max(x))
         plt.savefig(str(title)+'FreyplnravgPlot.png')

@@ -14,25 +14,22 @@ __email__ = 'mbkumar@gmail.com'
 __date__  = "Sep 14, 2014"
 
 import os
-import sys
 import glob
-from argparse import ArgumentParser
 
 from monty.serialization import loadfn, dumpfn
 from monty.json import MontyEncoder, MontyDecoder
 from pymatgen.matproj.rest import MPRester
 from pymatgen.io.vasp.outputs import Vasprun
-from pymatgen.io.vasp.inputs import Potcar, Poscar
-from pymatgen.electronic_structure.bandstructure import BandStructure
+from pymatgen.io.vasp.inputs import Potcar
 from pymatgen.entries.computed_entries import ComputedStructureEntry
 from pymatgen.phasediagram.pdmaker import PhaseDiagram
 from pymatgen.phasediagram.pdanalyzer import PDAnalyzer
 
-from pycdt.corrections.defects_analyzer import ParsedDefect 
+from pycdt.corrections.defects_analyzer import ComputedDefect 
 
 
 class PostProcess(object):
-    def __init__(self, root_fldr, mpid, mapi_key=None):
+    def __init__(self, root_fldr, mpid=None, mapi_key=None):
         """
         Post processing object for charged point-defect calculations.
 
@@ -51,7 +48,7 @@ class PostProcess(object):
 
     def parse_defect_calculations(self):
         """
-        Parses the defect calculations as ComputedStructureEntries/ParsedDefects.
+        Parses the defect calculations as ComputedStructureEntries/ComputedDefects.
         Charge correction is missing in the first run.
         """
         parsed_defects = []
@@ -134,7 +131,7 @@ class PostProcess(object):
                     if error_msg:
                         print(fldr_name, 'charge- ', chrg, error_msg)
                         print("But parsing of the rest of the calculations")
-                        continue  # The successful calculations maybe useful
+                        continue
                     if 'substitution_specie' in trans_dict:
                         self._substitution_species.add(
                                 trans_dict['substitution_specie'])
@@ -161,7 +158,7 @@ class PostProcess(object):
                     comp_def_entry = ComputedStructureEntry(
                             struct, energy, data=comp_data)
                     parsed_defects.append(
-                            ParsedDefect( 
+                            ComputedDefect( 
                                 comp_def_entry, site_in_bulk=site, 
                                 charge=chrg, name=fldr_name))
 
@@ -209,9 +206,10 @@ class PostProcess(object):
         """
         TODO 1: get rid of MPRester pulling of structure. When you run this your structure should already be known
             It is an unneccssary complication for people who have structures that are not in the MP data base...
-        TODO 2: smarter names for chemical potential limits (i.e. "C-rich" for when subs exist in a C calc)
-        TODO 3: allow for dependent elements to be used (i.e. PDA.get_chempot_range_stability_phase(target_comp, open_elt))
-            (2 and 3 are related - since we want to allow for an option where we have the dependent chem pot limits)
+        TODO 2: allow for dependent elements to be used (i.e. PDA.get_chempot_range_stability_phase(target_comp, open_elt))
+            (1 and 2 are related - since we want to allow for an option where we have the dependent chem pot limits)
+        TODO 3: (when no mp-id present but composition is found) do structure check to see if input structure is
+             identical to structure with identical composition in MP database
 
         Returns atomic chempots from mpid or structure input
 
@@ -230,12 +228,25 @@ class PostProcess(object):
             if  not structure:
                 raise ValueError("Could not fetch structure for atomic chempots!")
 
-        bulk_species = structure.types_of_specie #element object list
-        bulk_species_symbol = [s.symbol for s in bulk_species] #symbol list
-        bulk_composition = structure.composition #composition object
+        bulk_species = structure.types_of_specie
+        bulk_species_symbol = [s.symbol for s in bulk_species]
+        bulk_composition = structure.composition
 
-        def get_chempots_from_entries(list_species, list_spec_symbol, comp, exceptions=[]):
-            #function for retrieving chemical potentials based on all species of interest
+        def get_chempots_from_entries(structure, list_spec_symbol, comp, exceptions=[]):
+            """
+            outline for how to retrieve atomic chempots from Materials Project (MP) entries in a phase diagram (PD) object:
+              1) check stability of computed entry w.r.t phase diagram generated from MP
+              2) If stable then: a) if mp-id given and is in the stable entry list, proceed normally
+                                 b) if mp-id not given, print 'congrats' and tell user about manual submission page on MP
+                                    website, then manually insert the new object into the PD and generate chempots
+                                        (note at this point there is no gurantee that the structure is actually unique,
+                                          could be computational error making energy slightly lower than MP values)
+              3) If not-stable then: a) check to see if composition exists among the structures in stable list of PD
+                                     b) if a stable and identical composition exists in PD then
+                                            print warning but continue as if it was stable (chem pots will depend on the stable phase)
+                                     c) if no stable and identical composition exists in PD, then
+                                            print warning and find facets that the composition is included in
+            """
             if not self._mapi_key:
                 with MPRester() as mp:
                     entries = mp.get_entries_in_chemsys(list_spec_symbol)
@@ -244,131 +255,137 @@ class PostProcess(object):
                     entries = mp.get_entries_in_chemsys(list_spec_symbol)
             if  not entries:
                 raise ValueError("Could not fetch entries for atomic chempots!")
-            # (for when it doesn't exist in MP database)
-            pd = PhaseDiagram(entries)
-            chem_lims = {}
-            #fullinfo_chem_lims = []
-            PDA=PDAnalyzer(pd)
-            #if no mp-id present, then physically insert the computed entry into phase diagram.
-            #        if it does (and the entry is stable) then don't force entry in
-            if not self._mpid:
-                #(to do)HERE check to see if structure already exists in phase diagram
-                #check to see if structure is unstable
-                blkentry=bulkvr.get_computed_entry()
-                eaboveh=PDA.get_decomp_and_e_above_hull(blkentry,allow_negative=True)[1]
-                if eaboveh<=0:
-                    print 'unknown structure is stable with respect to GGA phase diagram! E_above_hull='+str(eaboveh)
-                    entries.append(blkentry)
-                    pd=PhaseDiagram(entries)
-                    PDA=PDAnalyzer(pd)
-                else:
-                    #this is part where I would instead return the chemical potentails with respect to the atomic chemical pot. elts.
-                    raise ValueError("Structure is unstable with respect to phase diagram! E_above_hull="+str(eaboveh)) #this doesnt kill calc. just raises error and continues
 
-            fincomp=comp.reduced_composition
-            for i in range(len(pd.facets)):
-                facet=pd.facets[i]
-                eltsinfac=[pd.qhull_entries[j].composition.reduced_composition for j in facet]
-                if fincomp in eltsinfac:
+            chem_lims = {}
+            pd = PhaseDiagram(entries)
+            PDA = PDAnalyzer(pd)
+            full_idlist = [i.entry_id for i in pd.qhull_entries]
+            stable_idlist = [i.entry_id for i in pd.stable_entries]
+
+            if self._mpid:
+                if (self._mpid in full_idlist) and (self._mpid in stable_idlist):
+                   print("Verified that mp-id is stable within Materials Project",
+                            '-'.join(list_spec_symbol),"phase diagram")
+                   common_approach = True
+                elif (self._mpid in full_idlist) and not (self._mpid in stable_idlist):
+                    redcomp = comp.reduced_composition
+                    common_approach = False
+                    for i in pd.stable_entries:
+                        if i.composition.reduced_composition==redcomp:
+                            print("WARNING: Input mp-id (",self._mpid,") is unstable. Stable composition mp-id found to be",i.entry_id)
+                            print("Proceeding with atomic chemical potentials with respect to stable phase.")
+                            common_approach = True
+                    if not common_approach:
+                        print("WARNING: Input mp-id (",self._mpid,") is unstable. No stable structure with same composition exists")
+                        print("Proceeding with atomic chemical potentials according to composition position within phase diagram.")
+                else:
+                    print("WARNING: specified mp-id was",self._mpid,"but could not find it in MP phase diagram. "
+                            "Reverting to assumption that mp-id is not known.")
+                    self._mpid = None
+                    bulkvr = Vasprun(os.path.join(self._root_fldr,"bulk","vasprun.xml"))
+
+            if not self._mpid:
+                try:
+                    ce = bulkvr.get_computed_entry()
+                except:
+                    bulkvr = Vasprun(os.path.join(self._root_fldr,"bulk","vasprun.xml"))
+                    ce = bulkvr.get_computed_entry()
+                decomp_en = round(PDA.get_decomp_and_e_above_hull(ce, allow_negative=True)[1],4)
+                redcomp = comp.reduced_composition
+                stable_composition_exists = False
+                for i in pd.stable_entries:
+                    if i.composition.reduced_composition==redcomp:
+                        stable_composition_exists = True
+
+                if (decomp_en <= 0.) and stable_composition_exists: #then stable and can proceed as normal
+                    print("Bulk Computed Entry found to be stable with respect to MP Phase Diagram. "
+                          "No mp-id specified, but found stable MP composition to exist.")
+                    common_approach = True
+                elif (decomp_en <= 0.) and not stable_composition_exists:
+                    print("Bulk Computed Entry found to be stable with respect to MP Phase Diagram. "
+                          "However, no stable entry with this composition exists in the MP database! "
+                          "Please consider submitting the POSCAR to the MP xtaltoolkit so future users will know about this structure:"
+                          " https://materialsproject.org/#apps/xtaltoolkit"
+                          "\nManually inserting structure into phase diagram and proceeding as normal.")
+                    entries.append(ce)
+                    pd = PhaseDiagram(entries)
+                    PDA = PDAnalyzer(pd)
+                    common_approach = True
+                elif stable_composition_exists:
+                    print("WARNING: Bulk Computed Entry not stable with respect to MP Phase Diagram (e_above_hull=",decomp_en,"eV/atom)"
+                          " ,but found stable MP composition to exist. Producing chemical potentials with respect to stable phase.")
+                    common_approach = True
+                else:
+                    print("WARNING: Bulk Computed Entry not stable with respect to MP Phase Diagram (e_above_hull=",decomp_en,"eV/atom)"
+                          " and no stable structure with this composition exists in the MP database."
+                          "\nProceeding with atomic chemical potentials according to composition position within phase diagram.")
+                    common_approach = False
+
+            if common_approach:
+                for facet in pd.facets:
+                    fincomp = comp.reduced_composition
+                    eltsinfac=[pd.qhull_entries[j].composition.reduced_composition for j in facet]
+                    if fincomp in eltsinfac:
+                        chempots = PDA.get_facet_chempots(facet)
+                        if len(eltsinfac)!=1:
+                            eltsinfac.remove(fincomp)
+                        limnom=''
+                        for sys in eltsinfac:
+                            limnom+=str(sys.reduced_formula)+'-'
+                        limnom=limnom[:-1]
+                        if len(eltsinfac)==1:
+                            limnom+='_rich'
+                        print(limnom,chempots)
+                        chemdict = {el.symbol:chempots[el] for el in pd.elements}
+                        chem_lims[limnom]=chemdict
+            else:
+                #this uses basic form of creation of facets from initialization of phase diagram object
+                from scipy.spatial import ConvexHull
+                tmpnew_qdata = list(pd.qhull_data)
+                del tmpnew_qdata[-1]
+                new_qdata = [[val[i] for i in range(len(val)-1)] for val in tmpnew_qdata]
+
+                tmp_elts = [e for e in pd.elements]
+                del tmp_elts[0]
+                unstable_qdata_elt = [comp.get_atomic_fraction(el) for el in tmp_elts]
+                new_qdata.append(unstable_qdata_elt)
+
+                #take facets of composition space and see if the new composition changes volume of facet
+                facets = []
+                for facet in pd.facets:
+                    tmp_facet = [new_qdata[e] for e in facet]
+                    prev_vol = ConvexHull(tmp_facet, qhull_options="QJ i").volume
+                    tmp_facet.append(new_qdata[-1])
+                    new_vol = ConvexHull(tmp_facet, qhull_options="QJ i").volume
+                    if abs(prev_vol-new_vol) < 0.0001:
+                        facets.append(facet)
+
+                #now get chemical potentials
+                for facet in facets:
                     chempots = PDA.get_facet_chempots(facet)
-                    #fullinfo_chem_lims.append([i,eltsinfac,chempots])
-                    eltsinfac.remove(fincomp)
+                    eltsinfac=[pd.qhull_entries[j].composition.reduced_composition for j in facet]
                     limnom=''
                     for sys in eltsinfac:
                         limnom+=str(sys.reduced_formula)+'-'
                     limnom=limnom[:-1]
                     if len(eltsinfac)==1:
                         limnom+='_rich'
+                    print(limnom,chempots)
                     chemdict = {el.symbol:chempots[el] for el in pd.elements}
                     chem_lims[limnom]=chemdict
+
             return chem_lims
 
-        # bulkchemlimlist = get_chempots_from_entries(bulk_species, bulk_species_symbol, bulk_composition) #for just this system
-        # first_specie = sorted(bulkchemlimlist.keys())[0] #this is so I have a first specie to compare with...
-        # chem_lims = bulkchemlimlist.copy()
-
-        #Danny approach to subs...want to be consistent in approach to getting chem pots...
-        # ....so limiting regions when including substitutional species also important for native defects...
+        #want to include all sub species within the chemical potential description
         for sub_el in self._substitution_species:
-            if sub_el in bulk_species_symbol: #skip anti-sites which are sometimes considered as subs
+            if sub_el in bulk_species_symbol:
                 continue
             else:
                 from pymatgen.core import Element
                 bulk_species.append(Element(sub_el))
                 bulk_species_symbol.append(sub_el)
 
-        chem_lims = get_chempots_from_entries(bulk_species, bulk_species_symbol, bulk_composition)
-
-        # #now create list of additional species that may influence chemical potential limits
-        # for sub_el in self._substitution_species: #these are symbols to be added
-        #     if sub_el in bulk_species_symbol: #skip anti-sites which are considered as subs
-        #         continue
-        #     else:
-        #         from pymatgen.core import Element, Composition
-        #         def_species = bulk_species[:]
-        #         def_species_symbol = bulk_species_symbol[:]
-        #
-        #         def_species.append(Element(sub_el))
-        #         def_species_symbol.append(sub_el)
-        #
-        #         def_chemlimlist = get_chempots_from_entries(def_species, def_species_symbol, bulk_composition, exceptions=[Element(sub_el)])
-        #         for richlims in bulkchemlimlist[first_specie].keys():
-        #             for elts in bulkchemlimlist[first_specie][richlims].keys():
-        #                 #bulk elt chempots should be identical. If not then an error has occured?
-        #                 if def_chemlimlist[first_specie][richlims][elts]!=bulkchemlimlist[first_specie][richlims][elts]:
-        #                     raise ValueError("Chemical Potential fetching caused error when considering element "
-        #                                      +str(sub_el)+" in system with "+str(bulk_species_symbol)+" elements")
-        #             chem_lims[first_specie][richlims][sub_el] = def_chemlimlist[first_specie][richlims][sub_el] #add new elt to system
-        #
-
-        ##Below was older method before I created the above method; dont delete yet because I may want to revert some changes
-
-        #species = structure.types_of_specie
-        #species_symbol = [s.symbol for s in species]
-        #print 'look for atomic chempots relative to:',species
-        #
-        # if not self._mapi_key:
-        #     with MPRester() as mp:
-        #         entries = mp.get_entries_in_chemsys(species_symbol)
-        # else:
-        #     with MPRester(self._mapi_key) as mp:
-        #         entries = mp.get_entries_in_chemsys(species_symbol)
-        # if  not entries:
-        #     raise ValueError("Could not fetch entries for atomic chempots!")
-        #
-        # if len(species) == 1:
-        #     print('this is elemental system! Using bulk value.')
-        #     vals = [entry.energy_per_atom for entry in entries]
-        #     chempot = {species[0]: min(vals)}
-        #     return chempot
-        #
-        # pd = PhaseDiagram(entries)
-        #
-        # chem_lims = {}
-        # for specie in species:
-        #     mu_lims = PDAnalyzer(pd).get_chempot_range_stability_phase(
-        #             structure.composition, specie)
-        #     sp_symb = specie.symbol
-        #     chem_lims[sp_symb] = {'rich': {},'poor': {}}
-        #     for el in mu_lims.keys():
-        #         chem_lims[sp_symb]['rich'][el.symbol] = mu_lims[el][1]
-        #         chem_lims[sp_symb]['poor'][el.symbol] = mu_lims[el][0]
-
-        # # For substitution species the values are equal to single element vals
-        # for sub_el in self._substitution_species:
-        #     if not self._mapi_key:
-        #         with MPRester() as mp:
-        #             entries = mp.get_entries_in_chemsys([sub_el])
-        #     else:
-        #         with MPRester(self._mapi_key) as mp:
-        #             entries = mp.get_entries_in_chemsys([sub_el])
-        #     if  not entries:
-        #         raise ValueError("Could not fetch entries for atomic chempots!")
-        #
-        #     vals = [entry.energy_per_atom for entry in entries]
-        #     for sp_symb in chem_lims:
-        #         chem_lims[sp_symb]['rich'][sub_el] = min(vals)
-        #         chem_lims[sp_symb]['poor'][sub_el] = min(vals)
+        chem_lims = get_chempots_from_entries(structure, bulk_species_symbol, bulk_composition)
 
         return chem_lims
 
