@@ -320,6 +320,26 @@ class DefectsAnalyzer(object):
     def _get_form_energy(self, ef, i):
         return self._formation_energies[i] + self._defects[i]._charge*ef
 
+    def get_formation_energies(self, ef=0.0):
+        """
+        Get the defect formation energies for a given Fermi level
+        Args:
+            ef:
+                the fermi level in eV (with respect to the VBM)
+        Returns:
+            a list of dict of {'name': defect name, 'charge': defect charge 
+                               'energy': defect formation energy in eV}
+        """
+        energies = []
+        i = 0
+        for i, d in enumerate(self._defects):
+            energies.append({
+                'name': d._name, 
+                'charge': d._charge, 
+                'energy': self._get_form_energy(ef, i)
+                })
+        return energies
+
     def get_defects_concentration(self, temp=300, ef=0.0):
         """
         get the defect concentration for a temperature and Fermi level
