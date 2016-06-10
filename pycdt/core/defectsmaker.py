@@ -339,7 +339,7 @@ class ChargedDefectsStructures(object):
 
         struct_species = self.struct.types_of_specie
         if self.struct_type == 'semiconductor':
-            self.defect_charger = DefectChargerSemicondctor(self.struct)
+            self.defect_charger = DefectChargerSemiconductor(self.struct)
         elif self.struct_type == 'insulator':
             self.defect_charger = DefectChargerInsulator(self.struct)
         else:
