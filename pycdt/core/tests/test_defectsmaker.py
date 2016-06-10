@@ -8,7 +8,7 @@ __version__ = "1.0"
 __maintainer__ = "Bharat Medasani"
 __email__ = "mbkumar@gmail.com"
 __status__ = "Development"
-__date__ = "May 6, 2015"
+__date__ = "June 6, 2016"
 
 import unittest
 import os
