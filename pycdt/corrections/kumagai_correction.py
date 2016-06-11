@@ -540,9 +540,7 @@ def read_ES_avg(location_outcar):
         pot = []
         for line_num in range(start_line+3, end_line):
             line = out_dat[line_num].split()
-            #site_num = map(lambda x: int(x)-1,line[::2])
             avg_es = map(float,line[1::2])
-            #ES_data.update(dict(zip(site_num,avg_es)))
             pot += avg_es
         ES_data.update({'potential': pot})
 
