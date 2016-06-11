@@ -238,6 +238,10 @@ class DefectChargerInsulator(DefectCharger):
             elif vac_oxi_state > 0:
                 max_oxi = min(vac_oxi_state, self.min_max_oxi[vac_symbol][1])
                 min_oxi = 0
+            else: # most probably single element
+                oxi_states = get_el_sp(site_specie).common_oxidation_states
+                min_oxi = min(oxi_states)
+                max_oxi = max(oxi_states)
             return [-c for c in range(min_oxi, max_oxi+1)]
         #print 'charge states for ',vac_symbol,' vacancy =', charges_vac
 
@@ -470,8 +474,8 @@ class ChargedDefectsStructures(object):
                         'supercell': {'size': sc_scale,'structure': as_sc},
                         'charges': charges_as})
 
-        # Substitutional defects generation
-        if vac_symbol in self.substitutions:
+            # Substitutional defects generation
+            if vac_symbol in self.substitutions:
                 for subspecie_symbol in self.substitutions[vac_symbol]:
                     sub_sc = vac_sc.copy()
                     sub_sc.append(subspecie_symbol, vac_sc_site.frac_coords)
@@ -484,8 +488,7 @@ class ChargedDefectsStructures(object):
                     # new species (i.e., of the species that substitutes
                     # a lattice atom).
                     charges_sub = self.defect_charger.get_charges(
-                            'substution', vac_symbol, subspecie_symbol)
-                    
+                            'substitution', vac_symbol, subspecie_symbol)
                     sub_defs.append({
                         'name': "sub_{}_{}_on_{}".format(
                             i+1, subspecie_symbol, vac_symbol),
