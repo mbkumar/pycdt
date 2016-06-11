@@ -26,6 +26,7 @@ __email__ = 'dbroberg@gmail.com, mbkumar@gmail.com'
 import os
 import numpy as np
 from pymatgen.io.vasp.outputs import Locpot
+from kumagai_correction import KumagaiBulkInit, KumagaiCorrection
 
 
 class ChargeCorrection(object):
@@ -146,8 +147,6 @@ class ChargeCorrection(object):
             bulk_outcar_path: path to Bulk OUTCAR (quicker method for performing kumagai code)
             def_outcar_path: path to defect OUTCAR
         """
-
-        from kumagai_correction import KumagaiBulkInit, KumagaiCorrection
 
         if self._KumagaiBulk is None:
             if type(self._purelocpot) is not Locpot:

@@ -5,8 +5,8 @@ includes
    a) PC energy
    b) potential alignment by planar averaging.
 If you use the corrections implemented in this module, cite
-   Freysoldt, Neugebauer, and Van de Walle,
-   Phys. Status Solidi B. 248, 1067-1076 (2011) for isotropic correction
+   Freysoldt, Neugebauer, and Van de Walle, Phys. Rev. Lett. 102, 016402 (2009)
+   [Optionally Phys. Status Solidi B. 248, 1067-1076 (2011) ]
    in addition to the pycdt paper
 """
 __author__ = 'Danny Broberg, Bharat Medasani'
@@ -174,6 +174,7 @@ def find_defect_pos(struct_blk, struct_def):
 
     return None,None #if you get here there is an error
 
+
 class QModel():
     """
     Model for the defect charge distribution.
@@ -220,7 +221,6 @@ class QModel():
         rho_rec(g->0) -> 1 + rho_rec_limit0 * g^2
         """
         return -2*self.gamma2*self.x - 0.25*self.beta2*(1-self.x)
-
 
 
 class FreysoldtCorrection(object):
