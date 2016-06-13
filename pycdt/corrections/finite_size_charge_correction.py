@@ -179,8 +179,8 @@ class ChargeCorrection(object):
             self._purelocpot=s.locpot_blk
         if (type(s.locpot_def) is Locpot) and (type(self._deflocpot) is not Locpot):
             self._deflocpot=s.locpot_def
-        if not self._pos: #want them in fractional coords
-            self._pos = self._purelocpot.structure.lattice.get_fractional_coords(s._pos)
+        # if not self._pos: #want them in fractional coords
+        #     self._pos = self._purelocpot.structure.lattice.get_fractional_coords(s._pos) #kumagai code doesnt currently input positions?
 
         print '\n Final Kumagai',nomtype,'value is ',kumval
 
