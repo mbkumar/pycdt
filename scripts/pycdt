@@ -186,13 +186,15 @@ def compute_corrections(args):
     bulk = defect_data['bulk_entry']
     defects = defect_data['defects']
     corrections = defaultdict(list)
-    blklpt = Locpot.from_file(bulk.data['locpot_path']) #loading locpot object now is useful for both corrections
-    if correction_method=='freysoldt':
+
+    #loading locpot object now is useful for both corrections
+    blklpt = Locpot.from_file(bulk.data['locpot_path']) 
+    if correction_method == 'freysoldt':
         for defect in defects:
             print ('defect_name: ', defect._full_name)
             print ('-----------------------------------------\n\n')
             correction,blklpt = get_correction_freysoldt(
-                    defect, blklpt, epsilon,title=defect._full_name)
+                    defect, blklpt, epsilon, title=defect._full_name)
             defect.charge_correction = correction
             corrections[defect._name].append({
                 'charge_correction': correction, 'charge':defect._charge})

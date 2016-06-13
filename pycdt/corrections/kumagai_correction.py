@@ -1,20 +1,16 @@
 """
 This module computes finite size supercell charge corrections for
-defects. The methods implemtend are
-1) Freysoldt correction for isotropic systems.
-   Freysoldt method includes
-   a) PC energy
-   b) potential alignment by planar averaging.
-2) Extended Freysoldt or Kumagai correction for anistropic systems.
-   Kumagai method includes
+defects in anistropic systems using extended Freysoldt (or Kumagai) method 
+developed by Kumagai and Oba.
+Kumagai method includes
    a) anisotropic PC energy
    b) potential alignment by atomic site averaging at Wigner Seitz cell
       edge
 If you use the corrections implemented in this module, cite
-   Freysoldt, Neugebauer, and Van de Walle,
-    Phys. Status Solidi B. 248, 1067-1076 (2011) for isotropic correction
-   Kumagai and Oba, Phys. Rev. B. 89, 195205 (2014) for anisotropic correction
-   in addition to the pycdt paper
+ a) Kumagai and Oba, Phys. Rev. B. 89, 195205 (2014) and
+ b) Freysoldt, Neugebauer, and Van de Walle,
+    Phys. Status Solidi B. 248, 1067-1076 (2011)  and
+in addition to the pycdt paper
 """
 __author__ = 'Danny Broberg, Bharat Medasani'
 __email__ = 'dbroberg@gmail.com, mbkumar@gmail.com'
@@ -181,6 +177,12 @@ def find_defect_pos(sb,sd):
 def kumagai_init(structure, dieltens, sil=True):
     angset = structure.lattice.get_cartesian_coords(1)
 
+    dieltens = np.array(dieltens)
+    if not len(dieltens.shape):
+        dieltens = dieltens*np.identity(3)
+    elif len(dieltens.shape) == 1:
+        dieltens = np.diagflat(dieltens)
+
     if not sil:
         print 'defect lattice constants are (in angstroms)' + str(cleanlat(angset))
     [a1, a2, a3] = ang_to_bohr * angset  # convert to bohr
@@ -303,6 +305,7 @@ def anisotropic_madelung_potential(structure, dim, g_sum, r, dieltens, q,  gamma
     pot = hart_to_ev * (directpart + recippartreal - selfint)  #reverted dividing by q to match kumagai data...
 
     return pot
+
 
 def anisotropic_pc_energy(structure, g_sum, dieltens, q, gamma, tolerance,
                           silence=True):
@@ -540,9 +543,7 @@ def read_ES_avg(location_outcar):
         pot = []
         for line_num in range(start_line+3, end_line):
             line = out_dat[line_num].split()
-            #site_num = map(lambda x: int(x)-1,line[::2])
             avg_es = map(float,line[1::2])
-            #ES_data.update(dict(zip(site_num,avg_es)))
             pot += avg_es
         ES_data.update({'potential': pot})
 
@@ -554,24 +555,35 @@ def read_ES_avg(location_outcar):
 class KumagaiBulkInit(object):
     """
     Compute the anisotropic madelung potential array from the bulk 
-    locpot. This helps in evaluating the bulk supercell related
-    part once to speed up the calculations.
+    locpot. This helps in evaluating the bulk supercell related part 
+    once to speed up the calculations.
     """
     def __init__(self, structure, dim, epsilon, encut=520, tolerance=0.0001,
                  silence=True, optgamma=False):
         """
         Args
-            structure: Pymatgen structure object of bulk cell
-            dim: fine FFT grid dimensions as a list (for vasp this is NGXF grid dimensions)
-            epsilon: Dielectric tensor
-            encut (float): Energy cutoff for optimal gamma
-            tolerance (float): Accuracy parameter
-            silence (bool): If True, intermediate steps are not printed
-            optgamma: if you know optimized gamma already set this to it, otherwise it will be optimized
+            structure: 
+                Pymatgen structure object of bulk cell
+            dim: 
+                Fine FFT grid dimensions as a list 
+                For vasp this is NGXF grid dimensions
+            epsilon: 
+                Dielectric tensor
+            encut (float): 
+                Energy cutoff for optimal gamma
+            tolerance (float): 
+                Accuracy parameter
+            silence (bool): 
+                If True, intermediate steps are not printed
+            optgamma: 
+                if you know optimized gamma, give its value. 
+                Otherwise it will be computed.
         """
         self.structure = structure
         self.dim = dim
+        print ('dim', self.dim)
         self.epsilon = epsilon
+        print ('epsilon', self.epsilon)
         self.encut = encut
         self.tolerance = tolerance
         self.silence = silence
@@ -683,6 +695,7 @@ class KumagaiBulkInit(object):
         b3 = np.array(b3)*over_atob
 
         nx, ny, nz = self.dim
+        print ('nx', 'ny', 'nz', nx, ny, nz)
         ind1 = np.arange(nx)
         for i in range(nx/2, nx):
             ind1[i] = i - nx
@@ -716,6 +729,7 @@ class KumagaiBulkInit(object):
             print 'Max imaginary part found to be ', max_imag
 
         return r_arr_real
+
 
 class KumagaiCorrection(object):
     """
@@ -1121,7 +1135,6 @@ class KumagaiCorrection(object):
         plt.title(str(title) + ' atomic site potential plot')
         #plt.show()
         plt.savefig(str(title) + 'kumagaisiteavgPlot.png')
-
 
 
 if __name__ == '__main__':
