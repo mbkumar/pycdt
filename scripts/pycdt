@@ -188,6 +188,7 @@ def compute_corrections(args):
     corrections = defaultdict(list)
 
     #loading locpot object now is useful for both corrections
+    print ('loading bulk locpot for corrections')
     blklpt = Locpot.from_file(bulk.data['locpot_path']) 
     if correction_method == 'freysoldt':
         for defect in defects:
@@ -201,7 +202,7 @@ def compute_corrections(args):
     else:    
         locpot_path_blk = bulk.data['locpot_path']
         encut = bulk.data['encut']
-        kumagai_init = KumagaiBulkInit(blklpt.structure, epsilon,
+        kumagai_init = KumagaiBulkInit(blklpt.structure, blklpt.dim, epsilon,
                                        encut, tolerance=0.0001, silence=False)
         for defect in defects:
             print ('defect_name: ', defect._full_name)

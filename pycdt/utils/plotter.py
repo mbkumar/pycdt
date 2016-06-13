@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-__author__ = "Geoffroy Hautier, Bharat Medasani"
+__author__ = "Geoffroy Hautier, Bharat Medasani, Danny Broberg"
 __copyright__ = "Copyright 2014, The Materials Project"
 __version__ = "1.0"
 __maintainer__ = "Geoffroy Hautier"
@@ -62,7 +62,6 @@ class DefectPlotter(object):
             y[t] = y_tmp
 
         width,height = 12,8
-        #plt = get_publication_quality_plot(width, height) #I think this is broken with new pymatgen?
         import matplotlib.pyplot as plt
         plt.clf()
         import matplotlib.cm as cm

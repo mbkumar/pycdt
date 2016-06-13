@@ -878,6 +878,8 @@ class KumagaiCorrection(object):
                 print 'Load bulk Locpot'
             self.locpot_blk=Locpot.from_file(self.locpot_blk)
             self.structure = self.locpot_blk.structure
+        elif not self.structure:
+            self.structure = self.locpot_blk.structure
 
         energy_pc = anisotropic_pc_energy(
                 self.structure, self.g_sum, self.dieltens, self.q,
@@ -903,12 +905,16 @@ class KumagaiCorrection(object):
                 print 'Load bulk Locpot'
             self.locpot_blk=Locpot.from_file(self.locpot_blk)
             self.structure = self.locpot_blk.structure
+        elif not self.structure:
+            self.structure = self.locpot_blk.structure
 
         if (not type(self.locpot_def) is Locpot) and not self.defstructure:
             if not self.silence:
                 print 'Load defect Locpot'
             self.locpot_def=Locpot.from_file(self.locpot_def)
-            self.defstructure = self.locpot_def
+            self.defstructure = self.locpot_def.structure
+        elif not self.defstructure:
+            self.defstructure = self.locpot_def.structure
 
         angset, [a1, a2, a3], vol, determ, invdiel = kumagai_init(
                 self.structure, self.dieltens, sil=self.silence)

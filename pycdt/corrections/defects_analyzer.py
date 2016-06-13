@@ -140,7 +140,7 @@ def get_correction_kumagai(defect, locpot_path_blk, bulk_init, title = None):
 
     bpat,tloc = os.path.split(locpot_path_blk)
     b_outcar = os.path.join(bpat,'OUTCAR')
-    dpat = os.path.split(locpot_path_def)
+    dpat,dloc = os.path.split(locpot_path_def)
     d_outcar = os.path.join(dpat,'OUTCAR')
     if os.path.exists(b_outcar) and os.path.exists(d_outcar):
          corr_val = corr_meth.kumagai(title=title, partflag='All',

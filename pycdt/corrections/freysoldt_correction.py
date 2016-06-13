@@ -529,6 +529,7 @@ class FreysoldtCorrection(object):
 
         tmppot = [short[i] for i in range(mid - checkdis, mid + checkdis)]
         if not self._silence:
+            print('shifted defect position on axis (',axbulkval,') to origin')
             print('means sampling region is (', x[mid-checkdis], ',', x[mid+checkdis], ')')
 
         C = -np.mean(tmppot)

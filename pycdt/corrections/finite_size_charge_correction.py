@@ -109,15 +109,13 @@ class ChargeCorrection(object):
             self._deflocpot, self._q, energy_cutoff=self._encut, madetol=self._madetol,
             silence=self._silence)
 
+        freyval=s.correction(title=title,partflag=partflag)
         if partflag in ['All','AllSplit']:
             nomtype='full correction'
-            freyval=s.correction(title=title,partflag=partflag)
         elif partflag=='pc':
             nomtype='point charge correction'
-            freyval=s.correction(title=title,partflag=partflag)
         elif partflag=='potalign':
             nomtype='potential alignment correction'
-            freyval=s.correction(title=title,partflag=partflag)
         else:
             print partflag,' is incorrect potalign type. Must be "All","AllSplit", "pc", or "potalign".'
             return
@@ -181,8 +179,8 @@ class ChargeCorrection(object):
             self._purelocpot=s.locpot_blk
         if (type(s.locpot_def) is Locpot) and (type(self._deflocpot) is not Locpot):
             self._deflocpot=s.locpot_def
-        if not self._pos: #want them in fractional coords
-            self._pos = self._purelocpot.structure.lattice.get_fractional_coords(s._pos)
+        # if not self._pos: #want them in fractional coords
+        #     self._pos = self._purelocpot.structure.lattice.get_fractional_coords(s._pos) #kumagai code doesnt currently input positions?
 
         print '\n Final Kumagai',nomtype,'value is ',kumval
 
