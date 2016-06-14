@@ -1411,20 +1411,13 @@ class KumagaiCorrection(object):
 
         return -self.q * np.mean(forcorrection)
 
-    def plot_from_datfile(self, name='KumagaiData.json', title='default'):
+    def plot(self, forplot, title):
         """
-        Takes data file called 'name' and does plotting.
-        Good for later plotting of locpot data after running run_correction()
-
+        Plotting of locpot data
+        TODO: Rename forplot to a more descriptive name
         """
-        if type(self.locpot_blk) is not Locpot and not self.lengths:
-            self.locpot_blk = Locpot.from_file(self.locpot_blk)
-
-        from monty.serialization import loadfn
-        from monty.json import MontyDecoder
-        forplot = loadfn(name, cls=MontyDecoder)
-
         import matplotlib.pyplot as plt
+
         plt.figure()
         plt.clf()
         collis = ['b', 'g', 'c', 'm', 'y', 'w', 'k']
@@ -1466,7 +1459,7 @@ class KumagaiCorrection(object):
         plt.xlabel('Distance from defect (A)')
         plt.ylabel('Potential (V)')
         try:
-            x = np.arange(wsrad, max(self.locpot_blk.structure.lattice.abc), 
+            x = np.arange(wsrad, max(self.structure.lattice.abc), 
                           0.01)
         except:
             x = np.arange(wsrad, max(self.lengths), 0.01)
@@ -1480,6 +1473,18 @@ class KumagaiCorrection(object):
 
         plt.title('%s atomic site potential plot' % title)
         plt.savefig('%s_kumagaisiteavgPlot.png' % title)
+
+    def plot_from_datfile(self, name='KumagaiData.json', title='default'):
+        """
+        Takes data file called 'name' and does plotting.
+        Good for later plotting of locpot data after running run_correction()
+
+        """
+        from monty.serialization import loadfn
+        from monty.json import MontyDecoder
+
+        forplot = loadfn(name, cls=MontyDecoder)
+        self.plot(forplot, title=title)
 
 
 if __name__ == '__main__':
