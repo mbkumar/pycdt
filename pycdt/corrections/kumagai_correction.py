@@ -515,7 +515,7 @@ def wigner_seitz_radius(structure):
     for facet in wz:
         midpt = np.mean(np.array(facet), axis=0)
         dist.append(norm(midpt))
-        wsrad = min(dist)
+    wsrad = min(dist)
 
     return wsrad
 
@@ -595,8 +595,6 @@ class KumagaiBulkInit(object):
         else:
             self.gamma = optgamma
         self.g_sum = self.reciprocal_sum()
-        logging.debug('dim: ', np.array_repr(self.dim).replace('\n', ''))
-        logging.debug('epsilon: ', np.array_repr(self.epsilon).replace('\n', ''))
         logging.info('optimized gaama: %f', self.gamma)
         logging.info('g_sum: %f', self.g_sum)
 
