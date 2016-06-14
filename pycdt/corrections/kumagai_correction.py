@@ -742,9 +742,9 @@ class KumagaiCorrection(object):
     by Kumagai.
     """
     def __init__(self, dielectric_tensor, bulk_file_path,
-            defect_file_path, q, gamma, g_sum,
+            defect_file_path, q, gamma, g_sum, bulk_structure,
             energy_cutoff=520, madetol=0.0001, silence=False,
-            lengths=None, structure=None, defstructure=None):
+            lengths=None,  defstructure=None):
         """
         Args:
             dielectric_tensor: Macroscopic dielectric tensor
@@ -807,7 +807,7 @@ class KumagaiCorrection(object):
         self.q = q
         self.encut = energy_cutoff
         self.silence = silence
-        self.structure = structure
+        self.structure = bulk_structure
         self.defstructure = defstructure
         self.gamma = gamma
         self.g_sum = g_sum
@@ -860,19 +860,9 @@ class KumagaiCorrection(object):
         else:
             return [round(energy_pc,5),round(potalign,5),round(energy_pc+potalign,5)]
 
-
     def pc(self):
-        #this only needs structure object. This could be sped up a lot
         if not self.silence:
             print '\nrun Kumagai PC calculation'
-
-        if (not type(self.locpot_blk) is Locpot) and not self.structure:
-            if not self.silence:
-                print 'Load bulk Locpot'
-            self.locpot_blk=Locpot.from_file(self.locpot_blk)
-            self.structure = self.locpot_blk.structure
-        elif not self.structure:
-            self.structure = self.locpot_blk.structure
 
         energy_pc = anisotropic_pc_energy(
                 self.structure, self.g_sum, self.dieltens, self.q,

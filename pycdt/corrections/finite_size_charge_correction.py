@@ -153,17 +153,20 @@ class ChargeCorrection(object):
                 tolerance=self._madetol, silence=self._silence, optgamma=self._optgamma)
 
         if bulk_outcar_path is None:
-            s=KumagaiCorrection(self._dieltens, self._purelocpot, self._deflocpot, self._q, gamma=self._KumagaiBulk.gamma,
-                    g_sum=self._KumagaiBulk.g_sum, energy_cutoff=self._encut, madetol=self._madetol, silence=self._silence)
+            s=KumagaiCorrection(self._dieltens, self._purelocpot, self._deflocpot, 
+                    self._q, self._KumagaiBulk.gamma, self._KumagaiBulk.g_sum, 
+                    self._purelocpot.structure, energy_cutoff=self._encut, 
+                    madetol=self._madetol, silence=self._silence)
         else:
             if type(self._purelocpot) is not Locpot:
                 self._purelocpot = Locpot.from_file(self._purelocpot)
             if type(self._deflocpot) is not Locpot:
                 self._deflocpot = Locpot.from_file(self._deflocpot)
 
-            s=KumagaiCorrection(self._dieltens, bulk_outcar_path, def_outcar_path, self._q, gamma=self._KumagaiBulk.gamma,
-                    g_sum=self._KumagaiBulk.g_sum, energy_cutoff=self._encut, madetol=self._madetol, silence=self._silence,
-                    structure=self._purelocpot.structure, defstructure=self._deflocpot.structure)
+            s=KumagaiCorrection(self._dieltens, bulk_outcar_path, def_outcar_path, 
+                    self._q, self._KumagaiBulk.gamma, self._KumagaiBulk.g_sum, 
+                    self._purelocpot.structure, energy_cutoff=self._encut, 
+                    madetol=self._madetol, silence=self._silence, defstructure=self._deflocpot.structure)
 
         if partflag in ['All','AllSplit']:
             nomtype='full correction'
