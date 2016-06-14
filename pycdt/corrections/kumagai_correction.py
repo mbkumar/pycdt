@@ -16,6 +16,7 @@ __author__ = 'Danny Broberg, Bharat Medasani'
 __email__ = 'dbroberg@gmail.com, mbkumar@gmail.com'
 
 import math
+import logging
 
 import numpy as np
 
@@ -27,6 +28,10 @@ norm = np.linalg.norm
 # Define conversion_constants
 hart_to_ev = 27.2114
 ang_to_bohr = 1.8897
+
+# Define the logging stuff here
+logging.basicConfig(filename='kumagai_debug.log',level=logging.DEBUG)
+
 
 def k_to_eV(g):
     """
@@ -581,9 +586,7 @@ class KumagaiBulkInit(object):
         """
         self.structure = structure
         self.dim = dim
-        print ('dim', self.dim)
         self.epsilon = epsilon
-        print ('epsilon', self.epsilon)
         self.encut = encut
         self.tolerance = tolerance
         self.silence = silence
@@ -592,6 +595,10 @@ class KumagaiBulkInit(object):
         else:
             self.gamma = optgamma
         self.g_sum = self.reciprocal_sum()
+        logging.debug('dim: ', np.array_repr(self.dim).replace('\n', ''))
+        logging.debug('epsilon: ', np.array_repr(self.epsilon).replace('\n', ''))
+        logging.info('optimized gaama: %f', self.gamma)
+        logging.info('g_sum: %f', self.g_sum)
 
     def find_optimal_gamma(self):
         """
@@ -634,19 +641,19 @@ class KumagaiBulkInit(object):
                                 self.encut))
 
             if abs(recippartimag) * hart_to_ev > self.tolerance:
-                if not self.silence:
-                    print("Problem with convergence of imaginary part of recip sum."),
-                    print("imag sum value is {} (eV)".format( recippartimag * hart_to_ev))
+                #if not self.silence:
+                logging.error("Problem with convergence of imaginary part of recip sum."),
+                logging.error("imag sum value is {} (eV)".format( recippartimag * hart_to_ev))
                 return None, None
-            if not self.silence:
-                print('recip sum converged to {} (eV) at encut= {}'.format(
-                            recippartreal * hart_to_ev, encut))
-                print('Number of reciprocal vectors is {}'.format(len_recip))
+            #if not self.silence:
+            logging.info('recip sum converged to {} (eV) at encut= {}'.format(
+                        recippartreal * hart_to_ev, encut))
+            logging.info('Number of reciprocal vectors is {}'.format(len_recip))
             if (abs(converge[1]) * hart_to_ev < 1 and not optgam):
-                if not self.silence:
-                    print('Reciprocal summation value is less than 1 eV.')
-                    print('This might lead to errors in the reciprocal summation.')
-                    print('Changing gamma now.')
+                #if not self.silence:
+                logging.info('Reciprocal summation value is less than 1 eV.')
+                logging.info('This might lead to errors in the reciprocal summation.')
+                logging.info('Changing gamma now.')
                 return None, 'Try Again'
 
             return recippartreal, gamma
@@ -663,11 +670,11 @@ class KumagaiBulkInit(object):
             elif 'Try Again' in optgamma:
                 gamma *= 1.5
             else:
-                print('Had problem in gamma optimization process.')
+                logging.error('Had problem in gamma optimization process.')
                 return None
 
             if gamma > 50:
-                print('WARNING. could not optimize gamma before gamma =', 50)
+                logging.error('Could not optimize gamma before gamma = %d', 50)
                 return None
 
         return optgamma 
@@ -695,7 +702,7 @@ class KumagaiBulkInit(object):
         b3 = np.array(b3)*over_atob
 
         nx, ny, nz = self.dim
-        print ('nx', 'ny', 'nz', nx, ny, nz)
+        logging.debug('nx: %d, ny: %d, nz: %d', nx, ny, nz)
         ind1 = np.arange(nx)
         for i in range(nx/2, nx):
             ind1[i] = i - nx
@@ -724,9 +731,9 @@ class KumagaiBulkInit(object):
         r_arr_real = np.real(r_array)
         r_arr_imag = np.imag(r_array)
 
-        if not self.silence:
-            max_imag = r_arr_imag.max()
-            print 'Max imaginary part found to be ', max_imag
+        #if not self.silence:
+        max_imag = r_arr_imag.max()
+        logging.debug('Max imaginary part found to be %f', max_imag)
 
         return r_arr_real
 
@@ -737,7 +744,7 @@ class KumagaiCorrection(object):
     by Kumagai.
     """
     def __init__(self, dielectric_tensor, bulk_file_path,
-            defect_file_path, q, gamma=None, g_sum=None,
+            defect_file_path, q, gamma, g_sum,
             energy_cutoff=520, madetol=0.0001, silence=False,
             lengths=None, structure=None, defstructure=None):
         """
@@ -804,20 +811,8 @@ class KumagaiCorrection(object):
         self.silence = silence
         self.structure = structure
         self.defstructure = defstructure
-
-        if not gamma:
-            bi=KumagaiBulkInit(self.structure, self.dim, self.dieltens, encut=energy_cutoff, tolerance=madetol,
-                 silence=silence)
-            self.gamma=bi.gamma
-            self.g_sum=bi.g_sum
-        else:
-            self.gamma = gamma
-            if g_sum is None:
-                bi=KumagaiBulkInit(self.structure, self.dim, self.dieltens, encut=energy_cutoff, tolerance=madetol,
-                        silence=silence,optgamma=gamma)
-                self.g_sum = bi.g_sum
-            else:
-                self.g_sum = g_sum
+        self.gamma = gamma
+        self.g_sum = g_sum
 
         self.lengths=lengths
 
