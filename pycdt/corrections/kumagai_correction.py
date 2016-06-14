@@ -741,19 +741,14 @@ class KumagaiCorrection(object):
     Class that implements the extended freysoldt correction developed 
     by Kumagai.
     """
-    def __init__(self, dielectric_tensor, bulk_file_path,
-            defect_file_path, q, gamma, g_sum, bulk_structure,
+    def __init__(self, dielectric_tensor, q, gamma, g_sum, bulk_structure,
             energy_cutoff=520, madetol=0.0001, silence=False,
-            lengths=None,  defstructure=None):
+            lengths=None,  defstructure=None, **kw):
         """
         Args:
             dielectric_tensor: Macroscopic dielectric tensor
                  Include ionic also if defect is relaxed, othewise ion clamped.
                  Can be a matrix array or scalar.
-            bulk_file_path: (Bulk Locpot file path OR Bulk Locpot Pymatgen Object)
-                    OR  (Bulk Outcar file path OR Bulk Outcar Pymatgen Object) <- faster method
-            defect_file_path: (Defect Locpot file path OR Defect Locpot Pymatgen Object)
-                    OR  (Defect Outcar file path OR Bulk Defect Pymatgen Object) <- faster method
             q: Charge associated with the defect (not of the homogen. background). Typically integer
             gamma:  Convergence parameter. Obtained from KumagaiBulkPart
             g_sum: value that is dependent on the Bulk only. Obtained from KumagaiBulkPart
@@ -766,41 +761,44 @@ class KumagaiCorrection(object):
                 (If you specify outcar files for bulk_file_path but dont specify structure then code will break)
                 (TO DO: resolve this dumb dependency by being smarter about where structure comes from?)
             defstructure: defect Pymatgen structure object. only needed if using Outcar method...
+            keywords:
+                1) bulk_locpot: Bulk Locpot file path OR Bulk Locpot Object
+                   defect_locpot: Defect Locpot file path or defect Locpot Object
+                2) (Or) bulk_outcar:   Bulk Outcar file path OR Bulk Outcar Object
+                   defect_outcar: Defect outcar file path or defect outcar Object
         """
         if not silence:
             print '\nThis is Anisotropic Freysoldt (Kumagai) Correction'
         if isinstance(dielectric_tensor, int) or \
                 isinstance(dielectric_tensor, float):
-            self.dieltens = np.diag(
-                np.ones(3) * dielectric_tensor)
+            self.dieltens = np.identity(3) * dielectric_tensor
         else:
             self.dieltens = np.array(dielectric_tensor)
 
-        if type(bulk_file_path) is Locpot:
-            self.locpot_blk = bulk_file_path
-            self.locpot_def = defect_file_path
-            self.outcar_blk = None
-            self.outcar_def = None
-            self.dim = bulk_file_path.dim
-            self.do_outcar_method = False
-        elif "LOCPOT" in bulk_file_path:
-            if not silence:
-                print 'Loading bulk Locpot'
-            self.locpot_blk = Locpot.from_file(bulk_file_path)
-            self.locpot_def = defect_file_path
-            self.outcar_blk = None
-            self.outcar_def = None
+        if 'bulk_locpot' in kw:
+            if isinstance(kw['bulk_locpot'], Locpot):
+                self.locpot_blk = bulk_file_path
+            else:
+                self.locpot_blk = Locpot.from_file(kw['bulk_locpot'])
+            if isinstance(kw['defect_locpot'], Locpot):
+                self.locpot_def = kw['defect_locpot']
+            else:
+                self.locpot_def = Locpot.from_file(kw['defect_locpot'])
             self.dim = self.locpot_blk.dim
+
+            self.outcar_blk = None
+            self.outcar_def = None
             self.do_outcar_method = False
-        elif ("OUTCAR" in bulk_file_path) or (type(bulk_file_path) is Outcar):
+
+        if 'bulk_outcar' in kw:
+            self.outcar_blk = kw['bulk_outcar']
+            self.outcar_def = kw['defect_outcar']
             self.do_outcar_method = True
             self.locpot_blk = None
             self.locpot_def = None
-            self.outcar_blk = bulk_file_path
-            self.outcar_def = defect_file_path
             #this would be part where I read dims in from Outcar pymatgen attribute
             #for now use hack function
-            tmpdict = read_ES_avg(bulk_file_path)
+            tmpdict = read_ES_avg(self.outcar_blk)
             self.dim = tmpdict['ngxf_dims']
 
         self.madetol = madetol

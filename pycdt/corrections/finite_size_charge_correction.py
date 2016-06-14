@@ -145,28 +145,27 @@ class ChargeCorrection(object):
             bulk_outcar_path: path to Bulk OUTCAR (quicker method for performing kumagai code)
             def_outcar_path: path to defect OUTCAR
         """
-
-        if self._KumagaiBulk is None:
+        
+        if bulk_outcar_path is None:
             if type(self._purelocpot) is not Locpot:
                 self._purelocpot = Locpot.from_file(self._purelocpot)
-            self._KumagaiBulk=KumagaiBulkInit(self._purelocpot.structure, self._purelocpot.dim, self._dieltens, encut=self._encut,
-                tolerance=self._madetol, silence=self._silence, optgamma=self._optgamma)
-
-        if bulk_outcar_path is None:
-            s=KumagaiCorrection(self._dieltens, self._purelocpot, self._deflocpot, 
+            s=KumagaiCorrection(self._dieltens, 
                     self._q, self._KumagaiBulk.gamma, self._KumagaiBulk.g_sum, 
                     self._purelocpot.structure, energy_cutoff=self._encut, 
-                    madetol=self._madetol, silence=self._silence)
+                    madetol=self._madetol, silence=self._silence,
+                    bulk_locpot=self._purelocpot, defect_locpot=self._deflocpot)
         else:
             if type(self._purelocpot) is not Locpot:
                 self._purelocpot = Locpot.from_file(self._purelocpot)
             if type(self._deflocpot) is not Locpot:
                 self._deflocpot = Locpot.from_file(self._deflocpot)
 
-            s=KumagaiCorrection(self._dieltens, bulk_outcar_path, def_outcar_path, 
+            s=KumagaiCorrection(self._dieltens, 
                     self._q, self._KumagaiBulk.gamma, self._KumagaiBulk.g_sum, 
                     self._purelocpot.structure, energy_cutoff=self._encut, 
-                    madetol=self._madetol, silence=self._silence, defstructure=self._deflocpot.structure)
+                    madetol=self._madetol, silence=self._silence, 
+                    defstructure=self._deflocpot.structure,
+                    bulk_outcar=bulk_outcar_path, defect_outcar=def_outcar_path)
 
         if partflag in ['All','AllSplit']:
             nomtype='full correction'
@@ -177,13 +176,6 @@ class ChargeCorrection(object):
         elif partflag=='potalign':
             nomtype='potential alignment correction'
             kumval=s.correction(title=title,partflag=partflag)
-
-        if (type(s.locpot_blk) is Locpot) and (type(self._purelocpot) is not Locpot):
-            self._purelocpot=s.locpot_blk
-        if (type(s.locpot_def) is Locpot) and (type(self._deflocpot) is not Locpot):
-            self._deflocpot=s.locpot_def
-        # if not self._pos: #want them in fractional coords
-        #     self._pos = self._purelocpot.structure.lattice.get_fractional_coords(s._pos) #kumagai code doesnt currently input positions?
 
         print '\n Final Kumagai',nomtype,'value is ',kumval
 
