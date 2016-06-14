@@ -878,6 +878,17 @@ class KumagaiCorrection(object):
         Args:
             title: Title for the plot. None will not generate the plot
         """
+        if self.do_outcar_method:
+            return self.potalign_outcar(title=title)
+        else:
+            return self.potalign_locpot(title=title)
+
+    def potalign_orig(self, title=None):
+        """
+        Potential alignment for Kumagai method
+        Args:
+            title: Title for the plot. None will not generate the plot
+        """
         if not self.silence:
             print ('\nrun Kumagai potential calculation (atomic site averaging)')
 
@@ -960,6 +971,319 @@ class KumagaiCorrection(object):
                 defindex = potinddict[i]['def_site_index'] #assuming this is zero defined...
                 bulkindex = potinddict[i]['bulk_site_index']
                 v_qb = defdat['potential'][defindex] - puredat['potential'][bulkindex]
+
+
+            cart_reldef = potinddict[i]['cart_reldef']
+            v_pc = anisotropic_madelung_potential(self.structure, self.dim, self.g_sum,
+                    cart_reldef, self.dieltens, self.q, self.gamma,
+                    self.madetol, silence=True)
+            v_qb*=-1 #change charge sign convention
+
+            potinddict[i]['Vpc'] = v_pc
+            potinddict[i]['Vqb'] = v_qb
+            if not self.silence:
+                print 'Has anisotropic madelung potential =', v_pc
+                print 'DFT bulk/defect difference = ', v_qb
+                print 'atoms left to calculate = ' + str(len(potinddict.keys()) - jup)
+        if not self.silence:
+            print '--------------------------------------'
+
+        if title:
+            fullspecset = self.structure.species
+            specset = list(set(fullspecset))
+            shade, forplot = {}, {}
+            for i in specset:
+                shade[i.symbol] = {'r': [], 'Vpc': [], 'Vqb': []}
+                forplot[i.symbol] = {'r': [], 'Vpc': [], 'Vqb': [],'sites':[]}
+
+        forcorrection = []
+        for i in potinddict.keys():
+            if (not title and not potinddict[i]['OutsideWS']):
+                continue
+            if potinddict[i]['OutsideWS']:
+                forcorrection.append(potinddict[i]['Vqb'] - potinddict[i]['Vpc'])
+                if title:
+                    elt = fullspecset[i].symbol
+                    shade[elt]['r'].append(potinddict[i]['dist'])
+                    shade[elt]['Vpc'].append(potinddict[i]['Vpc'])
+                    shade[elt]['Vqb'].append(potinddict[i]['Vqb'])
+            if title:
+                elt = fullspecset[i].symbol
+                forplot[elt]['r'].append(potinddict[i]['dist'])
+                forplot[elt]['Vpc'].append(potinddict[i]['Vpc'])
+                forplot[elt]['Vqb'].append(potinddict[i]['Vqb'])
+                forplot[elt]['sites'].append(potinddict[i]['siteobj'])
+
+        potalign = np.mean(forcorrection)
+
+        if title:
+            if title!='written':
+                import matplotlib.pyplot as plt
+                plt.figure(2)
+                plt.clf()
+                collis = ['b', 'g', 'c', 'm', 'y', 'w', 'k']
+                ylis = []
+                rlis = []
+                for i in range(len(forplot.keys())):
+                    inkey = forplot.keys()[i]
+                    for k in forplot[inkey]['r']:
+                        rlis.append(k)
+                    for k in ['Vqb', 'Vpc']:
+                        for u in forplot[inkey][k]:
+                            ylis.append(u)
+                    plt.plot(forplot[inkey]['r'], forplot[inkey]['Vqb'], color=collis[i], marker='^', linestyle='None',
+                             label=str(inkey) + ': $V_{q/b}$')
+                    plt.plot(forplot[inkey]['r'], forplot[inkey]['Vpc'], color=collis[i], marker='o', linestyle='None',
+                             label=str(inkey) + ': $V_{pc}$')
+                full = []
+                for i in forplot.keys():
+                    for k in range(len(forplot[i]['Vpc'])):
+                        full.append([forplot[i]['r'][k], forplot[i]['Vqb'][k] - forplot[i]['Vpc'][k]])
+                realfull = sorted(full, key=lambda x: x[0])
+                r, y = [], []
+                for i in realfull:
+                    r.append(i[0])
+                    y.append(i[1])
+                plt.plot(r, y, color=collis[-1], marker='x', linestyle='None', label='$V_{q/b} - V_{pc}$')
+                plt.xlabel('Distance from defect (A)')
+                plt.ylabel('Potential (V)')
+                x = np.arange(wsrad, max(self.structure.lattice.abc), 0.01)
+                plt.fill_between(x, min(ylis) - 1, max(ylis) + 1, facecolor='red', alpha=0.15, label='sampling region')
+                plt.axhline(y=potalign, linewidth=0.5, color='red', label='pot. alignment')
+                plt.legend()
+                plt.axhline(y=0, linewidth=0.2, color='black')
+                plt.ylim([min(ylis) - .5, max(ylis) + .5])
+                plt.xlim([0, max(rlis) + 3])
+
+                plt.title(str(title) + ' atomic site averaging potential plot')
+                plt.savefig(str(title) + 'kumagaisiteavgPlot.pdf')
+            else:
+                from monty.serialization import dumpfn
+                from monty.json import MontyEncoder
+                forplot['EXTRA']={'wsrad':wsrad,'potalign':potalign}
+                fname='KumagaiData.json'
+                dumpfn(forplot, fname, cls=MontyEncoder)
+
+        if self.silence == False:
+            print 'Atomic site method potential alignment term is ' + str(np.mean(forcorrection))
+            print 'this yields total (-q*align) Kumagai potential correction energy of ' \
+                  + str(- self.q * np.mean(forcorrection)) + ' (eV) '
+
+        return -self.q * np.mean(forcorrection)
+
+    def potalign_locpot(self, title=None):
+        """
+        Potential alignment for Kumagai method using locpot file
+        Args:
+            title: Title for the plot. None will not generate the plot
+        """
+        if not self.silence:
+            print ('\nrun Kumagai potential calculation (atomic site averaging)')
+
+        angset, [a1, a2, a3], vol, determ, invdiel = kumagai_init(
+                self.structure, self.dieltens, sil=self.silence)
+
+        potinddict = disttrans(self.structure, self.defstructure, self.dim, silence=self.silence)
+
+        minlat=min(norm(a1),norm(a2),norm(a3))
+        lat_perc_diffs=[100*abs(norm(a1)-norm(lat))/minlat for lat in [a2,a3]]
+        lat_perc_diffs.append(100*abs(norm(a2)-norm(a3))/minlat)
+        if not all(i < 45 for i in lat_perc_diffs):
+            print 'NOTICE! detected that cell was not very cubic. ' \
+                  'Might want to be smarter in way you sample atoms outside wigner-seitz cell with Kumagai scheme'
+        wsrad = wigner_seitz_radius(self.structure)
+        if not self.silence:
+            print ('wsrad', wsrad)
+
+        for i in potinddict.keys():
+            if potinddict[i]['dist'] > wsrad:
+                potinddict[i]['OutsideWS'] = True
+            else:
+                potinddict[i]['OutsideWS'] = False
+
+        puredat = self.locpot_blk.data["total"]
+        defdat = self.locpot_def.data["total"]
+
+        jup = 0
+        for i in potinddict.keys():
+            jup += 1
+            if (not title and not potinddict[i]['OutsideWS']):
+                #dont need to calculate inside WS if not printing plot
+                continue
+            if not self.silence:
+                print '-------------------------------------'
+                print "calculate alignment potential data for atom " + str(i) \
+                      + " (dist=" + str(potinddict[i]['dist']) + ")"
+
+            #NOTE this method needs to be improved a bit by specifying radius type based on ENAUG or something?
+
+            ##single point routine
+            #dx, dy, dz = potinddict[i]['defgrid']
+            #dx, dy, dz = potinddict[i]['bulkgrid']
+            #bx, by, bz = potinddict[i]['bulkgrid']
+            #v_qb = defdat[dx][dy][dz] - puredat[bx][by][bz]
+
+            #averaging point routine
+            bulkvals=[]
+            defvals=[]
+            for u,v,w in potinddict[i]['bulkgrid']:
+                bulkvals.append(puredat[u][v][w])
+            for u,v,w in potinddict[i]['defgrid']:
+                defvals.append(defdat[u][v][w])
+            print 'defdat val = ',np.mean(defvals)
+            print 'puredat val = ',np.mean(bulkvals)
+            v_qb = np.mean(defvals) - np.mean(bulkvals)
+
+
+            cart_reldef = potinddict[i]['cart_reldef']
+            v_pc = anisotropic_madelung_potential(self.structure, self.dim, self.g_sum,
+                    cart_reldef, self.dieltens, self.q, self.gamma,
+                    self.madetol, silence=True)
+            v_qb*=-1 #change charge sign convention
+
+            potinddict[i]['Vpc'] = v_pc
+            potinddict[i]['Vqb'] = v_qb
+            if not self.silence:
+                print 'Has anisotropic madelung potential =', v_pc
+                print 'DFT bulk/defect difference = ', v_qb
+                print 'atoms left to calculate = ' + str(len(potinddict.keys()) - jup)
+        if not self.silence:
+            print '--------------------------------------'
+
+        if title:
+            fullspecset = self.structure.species
+            specset = list(set(fullspecset))
+            shade, forplot = {}, {}
+            for i in specset:
+                shade[i.symbol] = {'r': [], 'Vpc': [], 'Vqb': []}
+                forplot[i.symbol] = {'r': [], 'Vpc': [], 'Vqb': [],'sites':[]}
+
+        forcorrection = []
+        for i in potinddict.keys():
+            if (not title and not potinddict[i]['OutsideWS']):
+                continue
+            if potinddict[i]['OutsideWS']:
+                forcorrection.append(potinddict[i]['Vqb'] - potinddict[i]['Vpc'])
+                if title:
+                    elt = fullspecset[i].symbol
+                    shade[elt]['r'].append(potinddict[i]['dist'])
+                    shade[elt]['Vpc'].append(potinddict[i]['Vpc'])
+                    shade[elt]['Vqb'].append(potinddict[i]['Vqb'])
+            if title:
+                elt = fullspecset[i].symbol
+                forplot[elt]['r'].append(potinddict[i]['dist'])
+                forplot[elt]['Vpc'].append(potinddict[i]['Vpc'])
+                forplot[elt]['Vqb'].append(potinddict[i]['Vqb'])
+                forplot[elt]['sites'].append(potinddict[i]['siteobj'])
+
+        potalign = np.mean(forcorrection)
+
+        if title:
+            if title!='written':
+                import matplotlib.pyplot as plt
+                plt.figure(2)
+                plt.clf()
+                collis = ['b', 'g', 'c', 'm', 'y', 'w', 'k']
+                ylis = []
+                rlis = []
+                for i in range(len(forplot.keys())):
+                    inkey = forplot.keys()[i]
+                    for k in forplot[inkey]['r']:
+                        rlis.append(k)
+                    for k in ['Vqb', 'Vpc']:
+                        for u in forplot[inkey][k]:
+                            ylis.append(u)
+                    plt.plot(forplot[inkey]['r'], forplot[inkey]['Vqb'], color=collis[i], marker='^', linestyle='None',
+                             label=str(inkey) + ': $V_{q/b}$')
+                    plt.plot(forplot[inkey]['r'], forplot[inkey]['Vpc'], color=collis[i], marker='o', linestyle='None',
+                             label=str(inkey) + ': $V_{pc}$')
+                full = []
+                for i in forplot.keys():
+                    for k in range(len(forplot[i]['Vpc'])):
+                        full.append([forplot[i]['r'][k], forplot[i]['Vqb'][k] - forplot[i]['Vpc'][k]])
+                realfull = sorted(full, key=lambda x: x[0])
+                r, y = [], []
+                for i in realfull:
+                    r.append(i[0])
+                    y.append(i[1])
+                plt.plot(r, y, color=collis[-1], marker='x', linestyle='None', label='$V_{q/b} - V_{pc}$')
+                plt.xlabel('Distance from defect (A)')
+                plt.ylabel('Potential (V)')
+                x = np.arange(wsrad, max(self.structure.lattice.abc), 0.01)
+                plt.fill_between(x, min(ylis) - 1, max(ylis) + 1, facecolor='red', alpha=0.15, label='sampling region')
+                plt.axhline(y=potalign, linewidth=0.5, color='red', label='pot. alignment')
+                plt.legend()
+                plt.axhline(y=0, linewidth=0.2, color='black')
+                plt.ylim([min(ylis) - .5, max(ylis) + .5])
+                plt.xlim([0, max(rlis) + 3])
+
+                plt.title(str(title) + ' atomic site averaging potential plot')
+                plt.savefig(str(title) + 'kumagaisiteavgPlot.pdf')
+            else:
+                from monty.serialization import dumpfn
+                from monty.json import MontyEncoder
+                forplot['EXTRA']={'wsrad':wsrad,'potalign':potalign}
+                fname='KumagaiData.json'
+                dumpfn(forplot, fname, cls=MontyEncoder)
+
+        if self.silence == False:
+            print 'Atomic site method potential alignment term is ' + str(np.mean(forcorrection))
+            print 'this yields total (-q*align) Kumagai potential correction energy of ' \
+                  + str(- self.q * np.mean(forcorrection)) + ' (eV) '
+
+        return -self.q * np.mean(forcorrection)
+
+    def potalign_outcar(self, title=None):
+        """
+        Potential alignment for Kumagai method using data from outcar
+        Args:
+            title: Title for the plot. None will not generate the plot
+        """
+        if not self.silence:
+            print ('\nrun Kumagai potential calculation (atomic site averaging)')
+
+        
+        angset, [a1, a2, a3], vol, determ, invdiel = kumagai_init(
+                self.structure, self.dieltens, sil=self.silence)
+
+        potinddict = disttrans(self.structure, self.defstructure, self.dim, 
+                silence=self.silence)
+
+        minlat=min(norm(a1),norm(a2),norm(a3))
+        lat_perc_diffs=[100*abs(norm(a1)-norm(lat))/minlat for lat in [a2,a3]]
+        lat_perc_diffs.append(100*abs(norm(a2)-norm(a3))/minlat)
+        if not all(i < 45 for i in lat_perc_diffs):
+            print 'NOTICE! detected that cell was not very cubic. ' \
+                  'Might want to be smarter in way you sample atoms outside wigner-seitz cell with Kumagai scheme'
+        wsrad = wigner_seitz_radius(self.structure)
+        if not self.silence:
+            print ('wsrad', wsrad)
+
+        for i in potinddict.keys():
+            if potinddict[i]['dist'] > wsrad:
+                potinddict[i]['OutsideWS'] = True
+            else:
+                potinddict[i]['OutsideWS'] = False
+
+        # Note this is hack until we get OUTCAR object attribute working for 
+        # ES potential
+        puredat = read_ES_avg(self.outcar_blk)
+        defdat = read_ES_avg(self.outcar_def)
+
+        jup = 0
+        for i in potinddict.keys():
+            jup += 1
+            if (not title and not potinddict[i]['OutsideWS']):
+                #dont need to calculate inside WS if not printing plot
+                continue
+            if not self.silence:
+                print '-------------------------------------'
+                print "calculate alignment potential data for atom " + str(i) \
+                      + " (dist=" + str(potinddict[i]['dist']) + ")"
+
+            defindex = potinddict[i]['def_site_index'] #assuming this is zero defined...
+            bulkindex = potinddict[i]['bulk_site_index']
+            v_qb = defdat['potential'][defindex] - puredat['potential'][bulkindex]
 
 
             cart_reldef = potinddict[i]['cart_reldef']
