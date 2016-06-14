@@ -621,16 +621,21 @@ class KumagaiBulkInit(object):
             return recippart, 0.0, len(recip)
 
         def do_summation(gamma):
-            #do recip sum until it is bigger than 1eV
-            #First do Recip space sum convergence with respect to encut for this gamma
+            # Do recip sum until it is bigger than 1eV
+            # First do Recip space sum convergence with respect to encut for 
+            # this gamma
             encut = 20  #start with small encut for expediency
-            recippartreal1, recippartimag1, len_recip = get_recippart(encut, gamma)
+            recippartreal1, recippartimag1, len_recip = get_recippart(
+                    encut, gamma)
             encut += 10
-            recippartreal, recippartimag, len_recip = get_recippart(encut, gamma)
+            recippartreal, recippartimag, len_recip = get_recippart(
+                    encut, gamma)
             converge = [recippartreal1, recippartreal]
-            while abs(abs(converge[0]) - abs(converge[1])) * hart_to_ev > self.tolerance:
+            while abs(abs(converge[0]) - abs(converge[1])) * hart_to_ev > \
+                    self.tolerance:
                 encut += 10
-                recippartreal, recippartimag, len_recip = get_recippart(encut, gamma)
+                recippartreal, recippartimag, len_recip = get_recippart(
+                        encut, gamma)
                 converge.reverse()
                 converge[1] = recippartreal
                 if encut > self.encut:
@@ -640,24 +645,27 @@ class KumagaiBulkInit(object):
 
             if abs(recippartimag) * hart_to_ev > self.tolerance:
                 #if not self.silence:
-                logging.error("Problem with convergence of imaginary part of recip sum."),
-                logging.error("imag sum value is {} (eV)".format( recippartimag * hart_to_ev))
+                logging.error("Imaginary part of reciprocal sum not converged.")
+                logging.error("Imaginary sum value is {} (eV)".format(
+                    recippartimag * hart_to_ev))
                 return None, None
             #if not self.silence:
-            logging.info('recip sum converged to {} (eV) at encut= {}'.format(
-                        recippartreal * hart_to_ev, encut))
-            logging.info('Number of reciprocal vectors is {}'.format(len_recip))
+            logging.info('Reciprocal sum converged to %f eV',
+                         recippartreal * hart_to_ev)
+            logging.info('Convergin encut = %d eV', encut)
+            logging.info('Number of reciprocal vectors is %d', len_recip)
+
             if (abs(converge[1]) * hart_to_ev < 1 and not optgam):
                 #if not self.silence:
-                logging.info('Reciprocal summation value is less than 1 eV.')
-                logging.info('This might lead to errors in the reciprocal summation.')
-                logging.info('Changing gamma now.')
+                logging.warning('Reciprocal summation value is less than 1 eV.')
+                logging.warning('Might lead to errors')
+                logging.warning('Change gamma.')
                 return None, 'Try Again'
 
             return recippartreal, gamma
 
         #start with gamma s.t. gamma*L=5 (some paper said this is optimal)
-        #optimizing gamma for the recip sum to improve convergence of calculation
+        #optimizing gamma for the reciprocal sum to improve convergence 
         gamma = 5./(vol ** (1/3.))
         optimal_gamma_found = False
         while not optimal_gamma_found:
@@ -738,8 +746,7 @@ class KumagaiBulkInit(object):
 
 class KumagaiCorrection(object):
     """
-    Class that implements the extended freysoldt correction developed 
-    by Kumagai.
+    Extended freysoldt correction developed by Kumagai and Oba.
     """
     def __init__(self, dielectric_tensor, q, gamma, g_sum, bulk_structure,
             energy_cutoff=520, madetol=0.0001, silence=False,
@@ -1099,22 +1106,23 @@ class KumagaiCorrection(object):
             title: Title for the plot. None will not generate the plot
         """
         if not self.silence:
-            print ('\nrun Kumagai potential calculation (atomic site averaging)')
+            print ('run Kumagai potential calculation (atomic site averaging)')
 
         angset, [a1, a2, a3], vol, determ, invdiel = kumagai_init(
                 self.structure, self.dieltens, sil=self.silence)
 
-        potinddict = disttrans(self.structure, self.defstructure, self.dim, silence=self.silence)
+        potinddict = disttrans(self.structure, self.defstructure, self.dim, 
+                               silence=self.silence)
 
-        minlat=min(norm(a1),norm(a2),norm(a3))
-        lat_perc_diffs=[100*abs(norm(a1)-norm(lat))/minlat for lat in [a2,a3]]
-        lat_perc_diffs.append(100*abs(norm(a2)-norm(a3))/minlat)
+        minlat = min(norm(a1), norm(a2), norm(a3))
+        lat_perc_diffs  =[100*abs(norm(a1)-norm(lat))/minlat for lat in [a2,a3]]
+        lat_perc_diffs.append(100 * abs(norm(a2) - norm(a3)) / minlat)
         if not all(i < 45 for i in lat_perc_diffs):
-            print 'NOTICE! detected that cell was not very cubic. ' \
-                  'Might want to be smarter in way you sample atoms outside wigner-seitz cell with Kumagai scheme'
+            logging.warning('Detected that cell was not very cubic.')
+            logging.warning('Sampling atoms outside wigner-seitz cell may '\
+                            'not be optimal')
         wsrad = wigner_seitz_radius(self.structure)
-        if not self.silence:
-            print ('wsrad', wsrad)
+        logging.debug('wsrad %f', wsrad)
 
         for i in potinddict.keys():
             if potinddict[i]['dist'] > wsrad:
@@ -1135,14 +1143,6 @@ class KumagaiCorrection(object):
                 print '-------------------------------------'
                 print "calculate alignment potential data for atom " + str(i) \
                       + " (dist=" + str(potinddict[i]['dist']) + ")"
-
-            #NOTE this method needs to be improved a bit by specifying radius type based on ENAUG or something?
-
-            ##single point routine
-            #dx, dy, dz = potinddict[i]['defgrid']
-            #dx, dy, dz = potinddict[i]['bulkgrid']
-            #bx, by, bz = potinddict[i]['bulkgrid']
-            #v_qb = defdat[dx][dy][dz] - puredat[bx][by][bz]
 
             #averaging point routine
             bulkvals=[]
@@ -1274,13 +1274,15 @@ class KumagaiCorrection(object):
         lat_perc_diffs=[100*abs(norm(a1)-norm(lat))/minlat for lat in [a2,a3]]
         lat_perc_diffs.append(100*abs(norm(a2)-norm(a3))/minlat)
         if not all(i < 45 for i in lat_perc_diffs):
-            print 'NOTICE! detected that cell was not very cubic. ' \
-                  'Might want to be smarter in way you sample atoms outside wigner-seitz cell with Kumagai scheme'
+            logging.warning('Detected that cell was not very cubic.')
+            logging.warning('Sampling atoms outside wigner-seitz cell may '\
+                            'not be optimal')
         wsrad = wigner_seitz_radius(self.structure)
         if not self.silence:
-            print ('wsrad', wsrad)
+            logging.debug('wsrad %f', wsrad)
 
         for i in potinddict.keys():
+            logging.debug("Atom %d, distance: %f", i, potinddict[i]['dist'])
             if potinddict[i]['dist'] > wsrad:
                 potinddict[i]['OutsideWS'] = True
             else:
@@ -1297,30 +1299,26 @@ class KumagaiCorrection(object):
             if (not title and not potinddict[i]['OutsideWS']):
                 #dont need to calculate inside WS if not printing plot
                 continue
-            if not self.silence:
-                print '-------------------------------------'
-                print "calculate alignment potential data for atom " + str(i) \
-                      + " (dist=" + str(potinddict[i]['dist']) + ")"
 
-            defindex = potinddict[i]['def_site_index'] #assuming this is zero defined...
-            bulkindex = potinddict[i]['bulk_site_index']
-            v_qb = defdat['potential'][defindex] - puredat['potential'][bulkindex]
+            j = potinddict[i]['def_site_index'] #assuming zero defined
+            k = potinddict[i]['bulk_site_index']
+            v_qb = defdat['potential'][j] - puredat['potential'][k]
 
 
             cart_reldef = potinddict[i]['cart_reldef']
-            v_pc = anisotropic_madelung_potential(self.structure, self.dim, self.g_sum,
-                    cart_reldef, self.dieltens, self.q, self.gamma,
-                    self.madetol, silence=True)
+            v_pc = anisotropic_madelung_potential(
+                    self.structure, self.dim, self.g_sum, cart_reldef, 
+                    self.dieltens, self.q, self.gamma, self.madetol, 
+                    silence=True)
             v_qb*=-1 #change charge sign convention
 
             potinddict[i]['Vpc'] = v_pc
             potinddict[i]['Vqb'] = v_qb
-            if not self.silence:
-                print 'Has anisotropic madelung potential =', v_pc
-                print 'DFT bulk/defect difference = ', v_qb
-                print 'atoms left to calculate = ' + str(len(potinddict.keys()) - jup)
-        if not self.silence:
-            print '--------------------------------------'
+            
+            logging.debug('Atom: %d, anisotropic madelung potential: %f', 
+                          i, v_pc)
+            logging.debug('Atom: %d, bulk/defect difference = %f', i, v_qb)
+
 
         if title:
             fullspecset = self.structure.species
@@ -1335,7 +1333,7 @@ class KumagaiCorrection(object):
             if (not title and not potinddict[i]['OutsideWS']):
                 continue
             if potinddict[i]['OutsideWS']:
-                forcorrection.append(potinddict[i]['Vqb'] - potinddict[i]['Vpc'])
+                forcorrection.append(potinddict[i]['Vqb']-potinddict[i]['Vpc'])
                 if title:
                     elt = fullspecset[i].symbol
                     shade[elt]['r'].append(potinddict[i]['dist'])
@@ -1365,32 +1363,40 @@ class KumagaiCorrection(object):
                     for k in ['Vqb', 'Vpc']:
                         for u in forplot[inkey][k]:
                             ylis.append(u)
-                    plt.plot(forplot[inkey]['r'], forplot[inkey]['Vqb'], color=collis[i], marker='^', linestyle='None',
+                    plt.plot(forplot[inkey]['r'], forplot[inkey]['Vqb'], 
+                             color=collis[i], marker='^', linestyle='None',
                              label=str(inkey) + ': $V_{q/b}$')
-                    plt.plot(forplot[inkey]['r'], forplot[inkey]['Vpc'], color=collis[i], marker='o', linestyle='None',
+                    plt.plot(forplot[inkey]['r'], forplot[inkey]['Vpc'], 
+                             color=collis[i], marker='o', linestyle='None',
                              label=str(inkey) + ': $V_{pc}$')
                 full = []
                 for i in forplot.keys():
                     for k in range(len(forplot[i]['Vpc'])):
-                        full.append([forplot[i]['r'][k], forplot[i]['Vqb'][k] - forplot[i]['Vpc'][k]])
+                        full.append([
+                            forplot[i]['r'][k], 
+                            forplot[i]['Vqb'][k] - forplot[i]['Vpc'][k]
+                            ])
                 realfull = sorted(full, key=lambda x: x[0])
                 r, y = [], []
                 for i in realfull:
                     r.append(i[0])
                     y.append(i[1])
-                plt.plot(r, y, color=collis[-1], marker='x', linestyle='None', label='$V_{q/b} - V_{pc}$')
+                plt.plot(r, y, color=collis[-1], marker='x', linestyle='None', 
+                         label='$V_{q/b} - V_{pc}$')
                 plt.xlabel('Distance from defect (A)')
                 plt.ylabel('Potential (V)')
                 x = np.arange(wsrad, max(self.structure.lattice.abc), 0.01)
-                plt.fill_between(x, min(ylis) - 1, max(ylis) + 1, facecolor='red', alpha=0.15, label='sampling region')
-                plt.axhline(y=potalign, linewidth=0.5, color='red', label='pot. alignment')
+                plt.fill_between(x, min(ylis)-1, max(ylis)+1, facecolor='red',
+                                 alpha=0.15, label='sampling region')
+                plt.axhline(y=potalign, linewidth=0.5, color='red', 
+                            label='pot. alignment')
                 plt.legend()
                 plt.axhline(y=0, linewidth=0.2, color='black')
-                plt.ylim([min(ylis) - .5, max(ylis) + .5])
+                plt.ylim([min(ylis)-0.5, max(ylis)+0.5])
                 plt.xlim([0, max(rlis) + 3])
 
-                plt.title(str(title) + ' atomic site averaging potential plot')
-                plt.savefig(str(title) + 'kumagaisiteavgPlot.pdf')
+                plt.title('%s atomic site averaging potential plot' % title)
+                plt.savefig('%s_kumagaisiteavgPlot.pdf' % title)
             else:
                 from monty.serialization import dumpfn
                 from monty.json import MontyEncoder
@@ -1398,25 +1404,25 @@ class KumagaiCorrection(object):
                 fname='KumagaiData.json'
                 dumpfn(forplot, fname, cls=MontyEncoder)
 
-        if self.silence == False:
-            print 'Atomic site method potential alignment term is ' + str(np.mean(forcorrection))
-            print 'this yields total (-q*align) Kumagai potential correction energy of ' \
-                  + str(- self.q * np.mean(forcorrection)) + ' (eV) '
+        logging.info('potential alignment (site averaging): %f', 
+                     np.mean(forcorrection))
+        logging.info('Potential correction energy: %f eV', 
+                     -self.q * np.mean(forcorrection))
 
         return -self.q * np.mean(forcorrection)
 
-    def plot_from_datfile(self,name='KumagaiData.json',title='default'):
+    def plot_from_datfile(self, name='KumagaiData.json', title='default'):
         """
         Takes data file called 'name' and does plotting.
         Good for later plotting of locpot data after running run_correction()
 
         """
         if type(self.locpot_blk) is not Locpot and not self.lengths:
-            self.locpot_blk=Locpot.from_file(self.locpot_blk)
+            self.locpot_blk = Locpot.from_file(self.locpot_blk)
 
         from monty.serialization import loadfn
         from monty.json import MontyDecoder
-        forplot=loadfn(name, cls=MontyDecoder)
+        forplot = loadfn(name, cls=MontyDecoder)
 
         import matplotlib.pyplot as plt
         plt.figure()
@@ -1426,23 +1432,28 @@ class KumagaiCorrection(object):
         rlis = []
         for i in range(len(forplot.keys())):
             inkey = forplot.keys()[i]
-            if inkey=='EXTRA':
+            if inkey == 'EXTRA':
                 continue
             for k in forplot[inkey]['r']:
                 rlis.append(k)
             for k in ['Vqb', 'Vpc']:
                 for u in forplot[inkey][k]:
                     ylis.append(u)
-            plt.plot(forplot[inkey]['r'], forplot[inkey]['Vqb'], color=collis[i], marker='^', linestyle='None',
+            plt.plot(forplot[inkey]['r'], forplot[inkey]['Vqb'], 
+                     color=collis[i], marker='^', linestyle='None',
                      label=str(inkey) + ': V_{q/b}')
-            plt.plot(forplot[inkey]['r'], forplot[inkey]['Vpc'], color=collis[i], marker='o', linestyle='None',
+            plt.plot(forplot[inkey]['r'], forplot[inkey]['Vpc'], 
+                     color=collis[i], marker='o', linestyle='None',
                      label=str(inkey) + ': Vpc')
         full = []
         for i in forplot.keys():
-            if i=='EXTRA':
+            if i == 'EXTRA':
                 continue
             for k in range(len(forplot[i]['Vpc'])):
-                full.append([forplot[i]['r'][k], forplot[i]['Vqb'][k] - forplot[i]['Vpc'][k]])
+                full.append([
+                    forplot[i]['r'][k], 
+                    forplot[i]['Vqb'][k] - forplot[i]['Vpc'][k]
+                    ])
         realfull = sorted(full, key=lambda x: x[0])
         r, y = [], []
         for i in realfull:
@@ -1450,23 +1461,25 @@ class KumagaiCorrection(object):
             y.append(i[1])
         wsrad=forplot['EXTRA']['wsrad']
         potalign=forplot['EXTRA']['potalign']
-        plt.plot(r, y, color=collis[-1], marker='x', linestyle='None', label='V_{q/b} - Vpc')
+        plt.plot(r, y, color=collis[-1], marker='x', linestyle='None', 
+                 label='V_{q/b} - Vpc')
         plt.xlabel('Distance from defect (A)')
         plt.ylabel('Potential (V)')
         try:
-            x = np.arange(wsrad, max(self.locpot_blk.structure.lattice.abc), 0.01)
+            x = np.arange(wsrad, max(self.locpot_blk.structure.lattice.abc), 
+                          0.01)
         except:
             x = np.arange(wsrad, max(self.lengths), 0.01)
-        plt.fill_between(x, min(ylis) - 1, max(ylis) + 1, facecolor='red', alpha=0.15, label='sampling region')
+        plt.fill_between(x, min(ylis) - 1, max(ylis) + 1, facecolor='red', 
+                         alpha=0.15, label='sampling region')
         plt.axhline(y=potalign, linewidth=0.5, color='red', label='pot. align.')
         plt.legend(loc=8)
         plt.axhline(y=0, linewidth=0.2, color='black')
         plt.ylim([min(ylis) - .5, max(ylis) + .5])
         plt.xlim([0, max(rlis) + 3])
 
-        plt.title(str(title) + ' atomic site potential plot')
-        #plt.show()
-        plt.savefig(str(title) + 'kumagaisiteavgPlot.png')
+        plt.title('%s atomic site potential plot' % title)
+        plt.savefig('%s_kumagaisiteavgPlot.png' % title)
 
 
 if __name__ == '__main__':
