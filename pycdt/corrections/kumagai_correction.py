@@ -911,7 +911,7 @@ class KumagaiCorrection(object):
         else:
             return self.potalign_locpot(title=title)
 
-    def potalign_orig(self, title=None):
+    def potalign_original(self, title=None):
         """
         Potential alignment for Kumagai method
         Args:
