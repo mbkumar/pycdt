@@ -746,26 +746,40 @@ class KumagaiCorrection(object):
             lengths=None,  defstructure=None, **kw):
         """
         Args:
-            dielectric_tensor: Macroscopic dielectric tensor
-                 Include ionic also if defect is relaxed, othewise ion clamped.
-                 Can be a matrix array or scalar.
-            q: Charge associated with the defect (not of the homogen. background). Typically integer
-            gamma:  Convergence parameter. Obtained from KumagaiBulkPart
-            g_sum: value that is dependent on the Bulk only. Obtained from KumagaiBulkPart
-            energy_cutoff: Energy for plane wave cutoff (in eV).
-                 If not given, Materials Project default 520 eV is used.
-            madetol: Tolerance for convergence of energy terms in eV (double or float)
-            silence: Flag for disabling/enabling  messages (Bool)
-            lengths: Lengths of axes, for speeding up plotting slightly
-            structure: bulk Pymatgen structure object. Need to specify this if using Outcar method for atomic site avg.
-                (If you specify outcar files for bulk_file_path but dont specify structure then code will break)
-                (TO DO: resolve this dumb dependency by being smarter about where structure comes from?)
-            defstructure: defect Pymatgen structure object. only needed if using Outcar method...
+            dielectric_tensor: 
+                Macroscopic dielectric tensor
+                Include ionic also if defect is relaxed, othewise ion clamped.
+                Can be a matrix array or scalar.
+            q: 
+                Charge associated with the defect. Typically integer
+            gamma:  
+                Convergence parameter. Obtained from KumagaiBulkPart
+            g_sum: 
+                value that is dependent on the Bulk only. 
+                Obtained from KumagaiBulkPart
+            energy_cutoff: 
+                Energy for plane wave cutoff (in eV).
+                If not given, Materials Project default 520 eV is used.
+            madetol: 
+                Tolerance for convergence of energy terms in eV 
+            silence
+                : Flag for disabling/enabling  messages (Bool)
+            lengths: 
+                Lengths of axes, for speeding up plotting slightly
+            structure: 
+                bulk Pymatgen structure object. Need to specify this if 
+                using Outcar method for atomic site avg.
+                (If you specify outcar files for bulk_file_path but dont 
+                specify structure then code will break)
+                (TO DO: resolve this dumb dependency by being smarter 
+                about where structure comes from?)
+            defstructure: 
+                defect structure. Needed if using Outcar method
             keywords:
-                1) bulk_locpot: Bulk Locpot file path OR Bulk Locpot Object
-                   defect_locpot: Defect Locpot file path or defect Locpot Object
-                2) (Or) bulk_outcar:   Bulk Outcar file path OR Bulk Outcar Object
-                   defect_outcar: Defect outcar file path or defect outcar Object
+                1) bulk_locpot: Bulk Locpot file path OR Bulk Locpot 
+                   defect_locpot: Defect Locpot file path or defect Locpot 
+                2) (Or) bulk_outcar:   Bulk Outcar file path 
+                   defect_outcar: Defect outcar file path 
         """
         if not silence:
             print '\nThis is Anisotropic Freysoldt (Kumagai) Correction'
@@ -796,8 +810,8 @@ class KumagaiCorrection(object):
             self.do_outcar_method = True
             self.locpot_blk = None
             self.locpot_def = None
-            #this would be part where I read dims in from Outcar pymatgen attribute
-            #for now use hack function
+            # this would be part where I read dims in from Outcar pymatgen 
+            # attribute, for now use hack function
             tmpdict = read_ES_avg(self.outcar_blk)
             self.dim = tmpdict['ngxf_dims']
 
@@ -816,47 +830,54 @@ class KumagaiCorrection(object):
         """
         Computes the extended Freysoldt correction for anistropic systems 
         developed by Y. Kumagai and F. Oba (Ref: PRB 89, 195205 (2014)
-
-        If you want a plot of potential averaging process set title to name of defect
-        vb and vd are preloaded locpot objects for speeding this up.
-
-        part flag can be 'pc' for just point charge correction,
-               'potalign' for just potalign correction, 'All' for one combined correction,
-              or 'AllSplit' for correction in form [PC,potterm,full]
+        Args:
+            title:
+                If plot of potential averaging process is wanted set title 
+            partflag:
+                Specifies the part of correction computed
+                'pc': periodic interaction of defect charges (point charge) only
+                'potalign': potential alignmnet correction only, 
+                'All' (default): pc and potalign combined into one value, 
+                'AllSplit' for correction in form [PC, potterm, full]
         """
         if not self.silence:
             print 'This is Kumagai Correction.'
+
         if not self.q:
-            if partflag=='AllSplit':
-                return [0.,0.,0.]
+            if partflag == 'AllSplit':
+                return [0., 0., 0.]
             else:
                 return 0.0
 
-        if partflag!='potalign':
+        if partflag != 'potalign':
             energy_pc = self.pc()
 
-        if partflag!='pc':
+        if partflag != 'pc':
             if not self.silence:
                 print 'Now run potential alignment script'
             potalign = self.potalign(title=title)
 
         if not self.silence:
             print '\n\nKumagai Correction details:'
-            if partflag!='potalign':
+            if partflag != 'potalign':
                 print 'PCenergy (E_lat) = ', round(energy_pc, 5)
-            if partflag!='pc':
+            if partflag != 'pc':
                 print 'potential alignment (-q*delta V) = ', round(potalign, 5)
             if partflag in ['All','AllSplit']:
-                print 'TOTAL Kumagai correction = ', round(energy_pc + potalign, 5)
+                print 'Kumagai correction = ', round(energy_pc+potalign, 5)
 
-        if partflag=='pc':
+        if partflag == 'pc':
             return round(energy_pc,5)
-        elif partflag=='potalign':
+        elif partflag == 'potalign':
             return round(potalign,5)
-        elif partflag=='All':
+        elif partflag == 'All':
             return round(energy_pc+potalign,5)
         else:
-            return [round(energy_pc,5),round(potalign,5),round(energy_pc+potalign,5)]
+            return [
+                    round(energy_pc, 5), 
+                    round(potalign, 5), 
+                    round(energy_pc+potalign, 5)
+                    ]
 
     def pc(self):
         if not self.silence:
