@@ -595,7 +595,7 @@ class KumagaiBulkInit(object):
         else:
             self.gamma = optgamma
         self.g_sum = self.reciprocal_sum()
-        logging.info('optimized gaama: %f', self.gamma)
+        logging.info('optimized gamma: %f', self.gamma)
         logging.info('g_sum: %f', self.g_sum)
 
     def find_optimal_gamma(self):
@@ -798,7 +798,7 @@ class KumagaiCorrection(object):
 
         if 'bulk_locpot' in kw:
             if isinstance(kw['bulk_locpot'], Locpot):
-                self.locpot_blk = bulk_file_path
+                self.locpot_blk = kw['bulk_locpot']
             else:
                 self.locpot_blk = Locpot.from_file(kw['bulk_locpot'])
             if isinstance(kw['defect_locpot'], Locpot):
