@@ -595,8 +595,8 @@ class KumagaiBulkInit(object):
         else:
             self.gamma = optgamma
         self.g_sum = self.reciprocal_sum()
-        logging.info('optimized gaama: %f', self.gamma)
-        logging.info('g_sum: %f', self.g_sum)
+        logging.info('optimized gamma: %f', self.gamma)
+        #logging.info('g_sum: %f', self.g_sum)  #@Bharat, I dont think this is not what you want to print...it is a huge amount of vectors
 
     def find_optimal_gamma(self):
         """
