@@ -521,7 +521,10 @@ def wigner_seitz_radius(structure):
 
 
 def read_ES_avg(location_outcar):
-    #reads NGXF information and Electrostatic potential at each atomic site from VASP OUTCAR file
+    """
+    Reads NGXF information and Electrostatic potential at each atomic 
+    site from VASP OUTCAR file.
+    """
     with open(location_outcar,'r') as file:
         tmp_out_dat = file.read()
 
@@ -534,7 +537,7 @@ def read_ES_avg(location_outcar):
                 ngxf_line = line_num
             elif "average (electrostatic) potential at core" in line:
                 start_line = line_num
-                end_line = 0 #make sure to zero end_line if there are multiple electrostatic read outs
+                end_line = 0 # For multiple electrostatic read outs
             elif start_line and not end_line and not len(line.split()):
                 end_line = line_num
 
@@ -596,7 +599,6 @@ class KumagaiBulkInit(object):
             self.gamma = optgamma
         self.g_sum = self.reciprocal_sum()
         logging.info('optimized gamma: %f', self.gamma)
-        #logging.info('g_sum: %f', self.g_sum)  #@Bharat, I dont think this is not what you want to print...it is a huge amount of vectors
 
     def find_optimal_gamma(self):
         """
@@ -874,29 +876,23 @@ class KumagaiCorrection(object):
                 print 'Kumagai correction = ', round(energy_pc+potalign, 5)
 
         if partflag == 'pc':
-            return round(energy_pc,5)
+            return round(energy_pc, 5)
         elif partflag == 'potalign':
-            return round(potalign,5)
+            return round(potalign, 5)
         elif partflag == 'All':
-            return round(energy_pc+potalign,5)
+            return round(energy_pc+potalign, 5)
         else:
-            return [
-                    round(energy_pc, 5), 
-                    round(potalign, 5), 
-                    round(energy_pc+potalign, 5)
-                    ]
+            return map(lambda x: round(x, 5), 
+                       energy_pc, potalign, energy_pc+potalign])
 
     def pc(self):
-        if not self.silence:
-            print '\nrun Kumagai PC calculation'
 
         energy_pc = anisotropic_pc_energy(
                 self.structure, self.g_sum, self.dieltens, self.q,
                 self.gamma, self.madetol, silence=self.silence)
 
-        if not self.silence:
-            print 'PC energy determined to be ', energy_pc, ' eV (', \
-                    energy_pc/hart_to_ev, ' Hartree)'
+        logging.info('PC energy determined to be %f eV (%f Hartree)', 
+                     energy_pc, energy_pc/hart_to_ev)
 
         return energy_pc
 
@@ -1381,8 +1377,7 @@ class KumagaiCorrection(object):
         plt.xlabel('Distance from defect (A)')
         plt.ylabel('Potential (V)')
         try:
-            x = np.arange(wsrad, max(self.structure.lattice.abc), 
-                          0.01)
+            x = np.arange(wsrad, max(self.structure.lattice.abc), 0.01)
         except:
             x = np.arange(wsrad, max(self.lengths), 0.01)
         plt.fill_between(x, min(ylis) - 1, max(ylis) + 1, facecolor='red', 
