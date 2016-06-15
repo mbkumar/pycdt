@@ -798,7 +798,7 @@ class KumagaiCorrection(object):
 
         if 'bulk_locpot' in kw:
             if isinstance(kw['bulk_locpot'], Locpot):
-                self.locpot_blk = bulk_file_path
+                self.locpot_blk = kw['bulk_locpot']
             else:
                 self.locpot_blk = Locpot.from_file(kw['bulk_locpot'])
             if isinstance(kw['defect_locpot'], Locpot):
@@ -1111,6 +1111,8 @@ class KumagaiCorrection(object):
         angset, [a1, a2, a3], vol, determ, invdiel = kumagai_init(
                 self.structure, self.dieltens, sil=self.silence)
 
+        if not self.defstructure:
+            self.defstructure = self.locpot_def.structure
         potinddict = disttrans(self.structure, self.defstructure, self.dim, 
                                silence=self.silence)
 
