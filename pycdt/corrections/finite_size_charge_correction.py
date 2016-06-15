@@ -66,13 +66,14 @@ def get_correction_freysoldt(defect, bulk_entry, epsilon, title = None):
     return (corr_val,corr_meth._purelocpot)
 
 
-def get_correction_kumagai(defect, path_blk, bulk_init, title=None):
+def get_correction_kumagai(defect, path_blk, bulk_init, bulk_locpot=None, title=None):
     """
     Function to compute the correction for each defect.
     Args:
         defect: ComputedDefect object
         path_blk: location to Bulk folder
         bulk_init: KumagainBulkInit class object
+        bulk_locpot: BulkLocpot object (if already loaded, otherwise will load from path_blk)
         type: 
             "freysoldt": Freysoldt correction for isotropic crystals
             "kumagai": modified Freysoldt or Kumagai for anisotropic crystals
@@ -99,8 +100,16 @@ def get_correction_kumagai(defect, path_blk, bulk_init, title=None):
         kumval = s.correction(title=title, partflag='All')
         print '\n Kumagai Correction value is ', kumval
         return kumval
-    else: 
-        raise IOError('Outcars not found')
+    else:
+        if not bulk_locpot:
+            bulk_locpot = Locpot.from_file(path_blk)
+        s = KumagaiCorrection(epsilon, charge, bulk_init.gamma,
+                bulk_init.g_sum, bulk_init.structure, defect.entry.structure,
+                energy_cutoff=encut, madetol=0.0001, silence=False,
+                bulk_locpot=bulk_locpot, defect_locpot=locpot_path_def)
+        kumval = s.correction(title=title, partflag='All')
+        print '\n Kumagai Correction value is ', kumval
+        return kumval
 
 
 

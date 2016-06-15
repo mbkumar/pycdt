@@ -217,7 +217,8 @@ def compute_corrections(args):
             print ('defect_name: ', defect._full_name)
             print ('-----------------------------------------\n\n')
             correction = get_correction_kumagai(defect, path_blk,
-                                        kumagai_init, title=defect._full_name)
+                                        kumagai_init, bulk_locpot=blklpt,
+                                        title=defect._full_name)
             defect.charge_correction = correction
             corrections[defect._name].append({
                 'charge_correction': correction, 'charge':defect._charge})
