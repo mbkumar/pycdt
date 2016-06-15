@@ -327,7 +327,10 @@ def main():
     no_antisites_string = "Optional flag to indicate that anti-site defects" \
         " should not be generated."
     include_interstitials_string = "Optional flag to indicate that" \
-        " interstitial defects should be generated."
+        " interstitial defects should be generated. If you do not provide" \
+        " positional\narguments, intrinsic interstitials are set-up as" \
+        " per\ndefault.  Providing positional arguments (elemental\n" \
+        "symbols) enables the set-up of specific interstitials."
     interstitial_elements_string = "Explicit list of elements" \
         " that are to be considered for interstitial generation. " \
         " If no elements are given, intrinsic interstitials" \
