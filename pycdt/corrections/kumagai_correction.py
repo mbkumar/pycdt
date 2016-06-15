@@ -30,7 +30,6 @@ hart_to_ev = 27.2114
 ang_to_bohr = 1.8897
 
 # Define the logging stuff here
-logging.basicConfig(filename='kumagai_debug.log',level=logging.DEBUG)
 
 
 def k_to_eV(g):

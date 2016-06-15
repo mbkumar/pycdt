@@ -17,6 +17,7 @@ __date__ = "May 1, 2015"
 
 import argparse
 import os
+import logging
 
 from collections import defaultdict
 
@@ -171,6 +172,10 @@ def compute_corrections(args):
             this command.
     """
 
+    # Initialize logging
+    # TODO: Get the log file and loglevel from command line
+    logging.basicConfig(filename='correction.log', level=logging.INFO)
+
     # initialize variables
     defect_data_file_name = args.defect_data_file_name
     corrections_file_name = args.corrections_file_name
@@ -229,6 +234,9 @@ def compute_formation_energies(args):
         args (Namespace): contains the parsed command-line arguments for
             this command.
     """
+    # Initialize logging
+    # TODO: Get the log file and loglevel from command line
+    logging.basicConfig(filename='formation_energy.log', level=logging.DEBUG)
 
     # initialize variables
     defect_data_file_name = args.defect_data_file_name
