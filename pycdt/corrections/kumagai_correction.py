@@ -1202,57 +1202,23 @@ class KumagaiCorrection(object):
         potalign = np.mean(forcorrection)
 
         if title:
-            if title!='written':
-                import matplotlib.pyplot as plt
-                plt.figure(2)
-                plt.clf()
-                collis = ['b', 'g', 'c', 'm', 'y', 'w', 'k']
-                ylis = []
-                rlis = []
-                for i in range(len(forplot.keys())):
-                    inkey = forplot.keys()[i]
-                    for k in forplot[inkey]['r']:
-                        rlis.append(k)
-                    for k in ['Vqb', 'Vpc']:
-                        for u in forplot[inkey][k]:
-                            ylis.append(u)
-                    plt.plot(forplot[inkey]['r'], forplot[inkey]['Vqb'], color=collis[i], marker='^', linestyle='None',
-                             label=str(inkey) + ': $V_{q/b}$')
-                    plt.plot(forplot[inkey]['r'], forplot[inkey]['Vpc'], color=collis[i], marker='o', linestyle='None',
-                             label=str(inkey) + ': $V_{pc}$')
-                full = []
-                for i in forplot.keys():
-                    for k in range(len(forplot[i]['Vpc'])):
-                        full.append([forplot[i]['r'][k], forplot[i]['Vqb'][k] - forplot[i]['Vpc'][k]])
-                realfull = sorted(full, key=lambda x: x[0])
-                r, y = [], []
-                for i in realfull:
-                    r.append(i[0])
-                    y.append(i[1])
-                plt.plot(r, y, color=collis[-1], marker='x', linestyle='None', label='$V_{q/b} - V_{pc}$')
-                plt.xlabel('Distance from defect (A)')
-                plt.ylabel('Potential (V)')
-                x = np.arange(wsrad, max(self.structure.lattice.abc), 0.01)
-                plt.fill_between(x, min(ylis) - 1, max(ylis) + 1, facecolor='red', alpha=0.15, label='sampling region')
-                plt.axhline(y=potalign, linewidth=0.5, color='red', label='pot. alignment')
-                plt.legend()
-                plt.axhline(y=0, linewidth=0.2, color='black')
-                plt.ylim([min(ylis) - .5, max(ylis) + .5])
-                plt.xlim([0, max(rlis) + 3])
-
-                plt.title(str(title) + ' atomic site averaging potential plot')
-                plt.savefig(str(title) + 'kumagaisiteavgPlot.pdf')
+            forplot['EXTRA'] = {'wsrad': wsrad, 'potalign': potalign}
+            if title != 'written':
+                self.plot(forplot, title=title)
             else:
                 from monty.serialization import dumpfn
                 from monty.json import MontyEncoder
-                forplot['EXTRA']={'wsrad':wsrad,'potalign':potalign}
-                fname='KumagaiData.json'
+                fname = 'KumagaiData.json'
                 dumpfn(forplot, fname, cls=MontyEncoder)
 
-        if self.silence == False:
-            print 'Atomic site method potential alignment term is ' + str(np.mean(forcorrection))
-            print 'this yields total (-q*align) Kumagai potential correction energy of ' \
-                  + str(- self.q * np.mean(forcorrection)) + ' (eV) '
+        #if self.silence == False:
+        logging.info('potential alignment (site averaging): %f', 
+                     np.mean(forcorrection))
+        logging.info('Potential correction energy: %f eV', 
+                     -self.q * np.mean(forcorrection))
+        #    print 'Atomic site method potential alignment term is ' + str(np.mean(forcorrection))
+        #    print 'this yields total (-q*align) Kumagai potential correction energy of ' \
+        #          + str(- self.q * np.mean(forcorrection)) + ' (eV) '
 
         return -self.q * np.mean(forcorrection)
 
@@ -1351,59 +1317,13 @@ class KumagaiCorrection(object):
         potalign = np.mean(forcorrection)
 
         if title:
-            if title!='written':
-                import matplotlib.pyplot as plt
-                plt.figure(2)
-                plt.clf()
-                collis = ['b', 'g', 'c', 'm', 'y', 'w', 'k']
-                ylis = []
-                rlis = []
-                for i in range(len(forplot.keys())):
-                    inkey = forplot.keys()[i]
-                    for k in forplot[inkey]['r']:
-                        rlis.append(k)
-                    for k in ['Vqb', 'Vpc']:
-                        for u in forplot[inkey][k]:
-                            ylis.append(u)
-                    plt.plot(forplot[inkey]['r'], forplot[inkey]['Vqb'], 
-                             color=collis[i], marker='^', linestyle='None',
-                             label=str(inkey) + ': $V_{q/b}$')
-                    plt.plot(forplot[inkey]['r'], forplot[inkey]['Vpc'], 
-                             color=collis[i], marker='o', linestyle='None',
-                             label=str(inkey) + ': $V_{pc}$')
-                full = []
-                for i in forplot.keys():
-                    for k in range(len(forplot[i]['Vpc'])):
-                        full.append([
-                            forplot[i]['r'][k], 
-                            forplot[i]['Vqb'][k] - forplot[i]['Vpc'][k]
-                            ])
-                realfull = sorted(full, key=lambda x: x[0])
-                r, y = [], []
-                for i in realfull:
-                    r.append(i[0])
-                    y.append(i[1])
-                plt.plot(r, y, color=collis[-1], marker='x', linestyle='None', 
-                         label='$V_{q/b} - V_{pc}$')
-                plt.xlabel('Distance from defect (A)')
-                plt.ylabel('Potential (V)')
-                x = np.arange(wsrad, max(self.structure.lattice.abc), 0.01)
-                plt.fill_between(x, min(ylis)-1, max(ylis)+1, facecolor='red',
-                                 alpha=0.15, label='sampling region')
-                plt.axhline(y=potalign, linewidth=0.5, color='red', 
-                            label='pot. alignment')
-                plt.legend()
-                plt.axhline(y=0, linewidth=0.2, color='black')
-                plt.ylim([min(ylis)-0.5, max(ylis)+0.5])
-                plt.xlim([0, max(rlis) + 3])
-
-                plt.title('%s atomic site averaging potential plot' % title)
-                plt.savefig('%s_kumagaisiteavgPlot.pdf' % title)
+            forplot['EXTRA'] = {'wsrad': wsrad, 'potalign': potalign}
+            if title != 'written':
+                self.plot(forplot, title=title)
             else:
                 from monty.serialization import dumpfn
                 from monty.json import MontyEncoder
-                forplot['EXTRA']={'wsrad':wsrad,'potalign':potalign}
-                fname='KumagaiData.json'
+                fname = 'KumagaiData.json'
                 dumpfn(forplot, fname, cls=MontyEncoder)
 
         logging.info('potential alignment (site averaging): %f', 
@@ -1474,7 +1394,7 @@ class KumagaiCorrection(object):
         plt.xlim([0, max(rlis) + 3])
 
         plt.title('%s atomic site potential plot' % title)
-        plt.savefig('%s_kumagaisiteavgPlot.png' % title)
+        plt.savefig('%s_kumagaisiteavgPlot.pdf' % title)
 
     def plot_from_datfile(self, name='KumagaiData.json', title='default'):
         """
