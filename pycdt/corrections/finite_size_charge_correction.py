@@ -238,7 +238,7 @@ class ChargeCorrection(object):
             s=KumagaiCorrection(self._dieltens, 
                     self._q, self._KumagaiBulk.gamma, self._KumagaiBulk.g_sum, 
                     self._purelocpot.structure, energy_cutoff=self._encut, 
-                    madetol=self._madetol, silence=self._silence,
+                    madetol=self._madetol, 
                     bulk_locpot=self._purelocpot, defect_locpot=self._deflocpot)
         else:
             if type(self._purelocpot) is not Locpot:
@@ -249,7 +249,7 @@ class ChargeCorrection(object):
             s=KumagaiCorrection(self._dieltens, 
                     self._q, self._KumagaiBulk.gamma, self._KumagaiBulk.g_sum, 
                     self._purelocpot.structure, energy_cutoff=self._encut, 
-                    madetol=self._madetol, silence=self._silence, 
+                    madetol=self._madetol,
                     defstructure=self._deflocpot.structure,
                     bulk_outcar=bulk_outcar_path, defect_outcar=def_outcar_path)
 

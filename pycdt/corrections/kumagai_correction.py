@@ -178,7 +178,7 @@ def find_defect_pos(sb,sd):
     return None,None #if you get here there is an error
 
 
-def kumagai_init(structure, dieltens, sil=True):
+def kumagai_init(structure, dieltens):
     angset = structure.lattice.get_cartesian_coords(1)
 
     dieltens = np.array(dieltens)
@@ -187,23 +187,25 @@ def kumagai_init(structure, dieltens, sil=True):
     elif len(dieltens.shape) == 1:
         dieltens = np.diagflat(dieltens)
 
-    if not sil:
-        print 'defect lattice constants are (in angstroms)' + str(cleanlat(angset))
+    #if not sil:
+    logging.debug('defect lattice constants are (in angstroms)' + 
+                  str(cleanlat(angset)))
     [a1, a2, a3] = ang_to_bohr * angset  # convert to bohr
     bohrset = [a1, a2, a3]
     vol = np.dot(a1, np.cross(a2, a3))
 
-    if not sil:
-        print 'converted to bohr for atomic units, lat consts are:' + str(cleanlat([a1, a2, a3]))
+    #if not sil:
+    logging.debug('Lattice constants (in Bohr) are:' + 
+                  str(cleanlat([a1, a2, a3])))
     determ = np.linalg.det(dieltens)
     invdiel = np.linalg.inv(dieltens)
-    if not sil:
-        print 'inv dielectric tensor is ' + str(invdiel)
+    #if not sil:
+    logging.debug('inv dielectric tensor is ' + str(invdiel))
 
     return angset, bohrset, vol, determ, invdiel
 
 
-def real_sum(a1, a2, a3, r, q, dieltens, gamma, tolerance, silence=True):
+def real_sum(a1, a2, a3, r, q, dieltens, gamma, tolerance):
     invdiel = np.linalg.inv(dieltens)
     determ = np.linalg.det(dieltens)
     realpre = q / np.sqrt(determ)
@@ -240,18 +242,18 @@ def real_sum(a1, a2, a3, r, q, dieltens, gamma, tolerance, silence=True):
         r_sums.append([N, realpre * r_sum])
 
         if N == Nmaxlength-1:
-            print('Direct part could not converge with real space ' +
+            logging.warning('Direct part could not converge with real space ' +
                    'translation tolerance of {} for gamma {}'.format(
                        Nmaxlength-1, gamma))
             return
         elif len(r_sums) > 3:
             if abs(abs(r_sums[-1][1])-abs(r_sums[-2][1])) < tolerance:
                 r_sum = r_sums[-1][1]
-                if not silence:
-                    print("gamma is {}".format(gamma))
-                    print("convergence for real summatin term occurs at " + 
-                           "step {}  where real sum is {}".format(
-                               N,  r_sum * hart_to_ev))
+                #if not silence:
+                logging.debug("gamma is {}".format(gamma))
+                logging.debug("convergence for real summatin term occurs at " + 
+                       "step {}  where real sum is {}".format(
+                           N,  r_sum * hart_to_ev))
                 break
 
         N += 1
@@ -275,8 +277,8 @@ def get_g_sum_at_r(g_sum, structure, dim, r):
     return g_sum[i, j, k]
 
 
-def anisotropic_madelung_potential(structure, dim, g_sum, r, dieltens, q,  gamma, tolerance,
-                                  silence=True):
+def anisotropic_madelung_potential(structure, dim, g_sum, r, dieltens, q,  
+                                   gamma, tolerance):
     """
     Compute the anisotropic Madelung potential at r not equal to 0.
     For r=(0,0,0) use anisotropic_pc_energy function
@@ -293,17 +295,16 @@ def anisotropic_madelung_potential(structure, dim, g_sum, r, dieltens, q,  gamma
         silence (bool): Verbosity flag. If False, messages are printed.
     """
     angset, [a1, a2, a3], vol, determ, invdiel = kumagai_init(
-            structure, dieltens, sil=silence)
+            structure, dieltens)
 
     recippartreal = q * get_g_sum_at_r(g_sum, structure, dim, r)
-    directpart = real_sum(a1, a2, a3, r, q, dieltens, gamma, tolerance,
-                          silence)
+    directpart = real_sum(a1, a2, a3, r, q, dieltens, gamma, tolerance)
 
     #now add up total madelung potential part with two extra parts:
     #self interaction term
     selfint = q * np.pi / (vol * (gamma ** 2))
-    if not silence:
-        print ('self interaction piece is {}'.format(selfint * hart_to_ev))
+    #if not silence:
+    logging.debug('self interaction piece is {}'.format(selfint * hart_to_ev))
 
     #pot = (hart_to_ev/-q) * (directpart + recippartreal - selfint)
     pot = hart_to_ev * (directpart + recippartreal - selfint)  #reverted dividing by q to match kumagai data...
@@ -311,8 +312,7 @@ def anisotropic_madelung_potential(structure, dim, g_sum, r, dieltens, q,  gamma
     return pot
 
 
-def anisotropic_pc_energy(structure, g_sum, dieltens, q, gamma, tolerance,
-                          silence=True):
+def anisotropic_pc_energy(structure, g_sum, dieltens, q, gamma, tolerance):
     """
     Compute the anistropic periodic point charge interaction energy.
     Args:
@@ -324,26 +324,26 @@ def anisotropic_pc_energy(structure, g_sum, dieltens, q, gamma, tolerance,
         silence (bool): Verbosity flag. If False, messages are printed.
     """
     angset, [a1, a2, a3], vol, determ, invdiel = kumagai_init(
-            structure, dieltens, sil=silence)
+            structure, dieltens)
 
     g_part = q*g_sum[0,0,0]
-    r_part = real_sum(a1, a2, a3, [0,0,0], q, dieltens, gamma, tolerance, True)
+    r_part = real_sum(a1, a2, a3, [0,0,0], q, dieltens, gamma, tolerance)
 
     #self interaction term
     selfint = q*np.pi / (vol * (gamma**2))
-    if not silence:
-        print ('reciprocal piece is {}').format(g_part * hart_to_ev)
-        print ('real piece is {}').format(r_part * hart_to_ev)
-        print ('self interaction piece is {}'.format(selfint * hart_to_ev))
+    #if not silence:
+    logging.debug('reciprocal piece is {}'.format(g_part * hart_to_ev))
+    logging.debug('real piece is {}'.format(r_part * hart_to_ev))
+    logging.debug('self interaction piece is {}'.format(selfint * hart_to_ev))
 
     #surface term (only for r not at origin)
     surfterm = 2*gamma*q / np.sqrt(np.pi*determ)
-    if not silence:
-        print ('surface term is {}'.format(surfterm * hart_to_ev))
+    #if not silence:
+    logging.debug('surface term is {}'.format(surfterm * hart_to_ev))
 
     pc_energy = -q*0.5*hart_to_ev*(r_part + g_part - selfint - surfterm)
-    if not silence:
-        print ('Final PC Energy term is then ', pc_energy, ' (eV)')
+    #if not silence:
+    logging.debug('Final PC Energy term is %f eV', pc_energy)
 
     return pc_energy
 
@@ -381,8 +381,9 @@ def getgridind(structure, dim, r, gridavg=0.0):
         x_rprojection_delta_abs = np.absolute(x - r[i])
         ind = np.argmin(x_rprojection_delta_abs)
         if x_rprojection_delta_abs[ind] > dx*1.1: #to avoid numerical errors
-            print i,ind,r
-            print x_rprojection_delta_abs
+            logging.error("Input position not within the locpot grid")
+            logging.error("%d, %d, %f", i, ind, r)
+            logging.error("%f", x_rprojection_delta_abs)
             raise ValueError("Input position is not within the locpot grid")
         grdind.append(ind)
         if gridavg:
@@ -405,7 +406,7 @@ def getgridind(structure, dim, r, gridavg=0.0):
     return grdind
 
 
-def disttrans(struct, defstruct, dim, silence=False):
+def disttrans(struct, defstruct, dim):
     """
     for calculating distance from defect to each atom and finding NGX grid pts at each atom
     Args:
@@ -416,15 +417,18 @@ def disttrans(struct, defstruct, dim, silence=False):
     #Find defect location in bulk and defect cells
     blksite,defsite = find_defect_pos(struct,defstruct)
     if blksite is None and defsite is None:
-        print 'Error. Not able to determine defect site...'
+        logging.error('Not able to determine defect site')
         return
-    if not silence:
-        if blksite is None:
-            print 'Found defect to be Interstitial type at ',defsite
-        elif defsite is None:
-            print 'Found defect to be Vacancy type at ',blksite
-        else:
-            print 'Found defect to be antisite/subsitution type at ',blksite,' in bulk, and ',defsite,' in defect cell'
+    #if not silence:
+    if blksite is None:
+        logging.debug('Found defect to be Interstitial type at %s', 
+                      repr(defsite))
+    elif defsite is None:
+        logging.debug('Found defect to be Vacancy type at %s', repr(blksite))
+    else:
+        logging.debug('Found defect to be antisite/subsitution type at %s ' \
+                      ' in bulk, and %s in defect cell', 
+                      repr(blksite), repr(defsite))
 
     if blksite is None:
         blksite=defsite
@@ -457,7 +461,7 @@ def disttrans(struct, defstruct, dim, silence=False):
     grid_sites = {}  # dictionary with indices keys in order of structure list
     for i in sitelist:
         if np.array_equal(i.coords,def_ccoord):
-            print 'This is defect! Skipping ',i
+            logging.debug('Site # %d  is defect! Skipping ', i)
             continue
 
         blksite,defsite=closestsites(struct,defstruct,i.coords)
@@ -471,13 +475,17 @@ def disttrans(struct, defstruct, dim, silence=False):
         defdist=closeimage[0]
 
         if abs(norm(cart_reldef) - defdist) > 0.1:
-            print('image locater issue encountered for site=', blkindex,
-                  '(in def cell) distance should be ', defdist, ' but calculated to be ',
-                  norm(cart_reldef))
-            #return #dont want to break the code here, but want flag to exist...what to do?
+            logging.warning('Image locater issue encountered for site = %d', 
+                            blkindex)
+            logging.warning('In defect supercell') 
+            logging.warning('Distance should be %f', defdist)
+            logging.warning('But, calculated distance is %f', norm(cart_reldef))
+            #dont want to break the code here, but want flag to exist...what to do?
+            #return 
 
         if blkindex in grid_sites:
-            print '(WARNING) index ',blkindex,' already exists in potinddict! overwriting information. '
+            logging.warning('Index %d already exists in potinddict!', blkindex)
+            logging.warning('Overwriting information.')
 
         grid_sites[blkindex] = {'dist': defdist,'cart': dcart_coord,
                 'cart_reldef': cart_reldef,
@@ -579,7 +587,7 @@ class KumagaiBulkInit(object):
     once to speed up the calculations.
     """
     def __init__(self, structure, dim, epsilon, encut=520, tolerance=0.0001,
-                 silence=True, optgamma=False):
+                 optgamma=False):
         """
         Args
             structure: 
@@ -593,8 +601,6 @@ class KumagaiBulkInit(object):
                 Energy cutoff for optimal gamma
             tolerance (float): 
                 Accuracy parameter
-            silence (bool): 
-                If True, intermediate steps are not printed
             optgamma: 
                 if you know optimized gamma, give its value. 
                 Otherwise it will be computed.
@@ -604,7 +610,7 @@ class KumagaiBulkInit(object):
         self.epsilon = epsilon
         self.encut = encut
         self.tolerance = tolerance
-        self.silence = silence
+        #self.silence = silence
         if not optgamma:
             self.gamma = self.find_optimal_gamma()
         else:
@@ -620,7 +626,7 @@ class KumagaiBulkInit(object):
         Note this only requires the STRUCTURE not the LOCPOT object.
         """
         angset, [a1, a2, a3], vol, determ, invdiel = kumagai_init(
-                self.structure, self.epsilon, sil=self.silence)
+                self.structure, self.epsilon)
         optgam = None
 
         #do brute force recip summation
@@ -685,7 +691,7 @@ class KumagaiBulkInit(object):
         while not optimal_gamma_found:
             recippartreal, optgamma = do_summation(gamma)
             if optgamma == gamma:
-                print('optimized gamma found to be ', optgamma)
+                logging.info('optimized gamma found to be %f', optgamma)
                 optimal_gamma_found = True
             elif 'Try Again' in optgamma:
                 gamma *= 1.5
@@ -706,9 +712,7 @@ class KumagaiBulkInit(object):
 
         TODO: Get the input to fft cut by half by using rfft instead of fft
         """
-
-        if not self.silence:
-            print 'calculating the reciprocal summation in Madeling potential'
+        logging.debug('Reciprocal summation in Madeling potential')
         over_atob = 1.0/ang_to_bohr
         atob3=ang_to_bohr**3
 
@@ -764,7 +768,7 @@ class KumagaiCorrection(object):
     """
     def __init__(self, dielectric_tensor, q, gamma, g_sum, bulk_structure,
                  defect_structure, energy_cutoff=520, madetol=0.0001, 
-                 silence=False, lengths=None, **kw):
+                 lengths=None, **kw):
         """
         Args:
             dielectric_tensor: 
@@ -802,8 +806,8 @@ class KumagaiCorrection(object):
                 2) (Or) bulk_outcar:   Bulk Outcar file path 
                    defect_outcar: Defect outcar file path 
         """
-        if not silence:
-            print '\nThis is Anisotropic Freysoldt (Kumagai) Correction'
+        #if not silence:
+        logging.info('This is Anisotropic Freysoldt (Kumagai) Correction')
         if isinstance(dielectric_tensor, int) or \
                 isinstance(dielectric_tensor, float):
             self.dieltens = np.identity(3) * dielectric_tensor
@@ -839,7 +843,7 @@ class KumagaiCorrection(object):
         self.madetol = madetol
         self.q = q
         self.encut = energy_cutoff
-        self.silence = silence
+        #self.silence = silence
         self.structure = bulk_structure
         self.defstructure = defect_structure
         self.gamma = gamma
@@ -861,8 +865,8 @@ class KumagaiCorrection(object):
                 'All' (default): pc and potalign combined into one value, 
                 'AllSplit' for correction in form [PC, potterm, full]
         """
-        if not self.silence:
-            print 'This is Kumagai Correction.'
+        #if not self.silence:
+        logging.info('This is Kumagai Correction.')
 
         if not self.q:
             if partflag == 'AllSplit':
@@ -874,18 +878,18 @@ class KumagaiCorrection(object):
             energy_pc = self.pc()
 
         if partflag != 'pc':
-            if not self.silence:
-                print 'Now run potential alignment script'
             potalign = self.potalign(title=title)
 
-        if not self.silence:
-            print '\n\nKumagai Correction details:'
-            if partflag != 'potalign':
-                print 'PCenergy (E_lat) = ', round(energy_pc, 5)
-            if partflag != 'pc':
-                print 'potential alignment (-q*delta V) = ', round(potalign, 5)
-            if partflag in ['All','AllSplit']:
-                print 'Kumagai correction = ', round(energy_pc+potalign, 5)
+        #if not self.silence:
+        logging.info('Kumagai Correction details:')
+        if partflag != 'potalign':
+            logging.info('PCenergy (E_lat) = %f', round(energy_pc, 5))
+        if partflag != 'pc':
+            logging.info('potential alignment (-q*delta V) = %f', 
+                         round(potalign, 5))
+        if partflag in ['All','AllSplit']:
+            logging.info('Kumagai correction = %f', 
+                         round(energy_pc+potalign, 5))
 
         if partflag == 'pc':
             return round(energy_pc, 5)
@@ -901,7 +905,7 @@ class KumagaiCorrection(object):
 
         energy_pc = anisotropic_pc_energy(
                 self.structure, self.g_sum, self.dieltens, self.q,
-                self.gamma, self.madetol, silence=self.silence)
+                self.gamma, self.madetol)
 
         logging.info('PC energy determined to be %f eV (%f Hartree)', 
                      energy_pc, energy_pc/hart_to_ev)
@@ -914,15 +918,14 @@ class KumagaiCorrection(object):
         Args:
             title: Title for the plot. None will not generate the plot
         """
-        if not self.silence:
-            print ('\nrun Kumagai potential calculation (atomic site averaging)')
+        #if not self.silence:
+        logging.info('\nrun potential alignment (atomic site averaging)')
 
         
         angset, [a1, a2, a3], vol, determ, invdiel = kumagai_init(
-                self.structure, self.dieltens, sil=self.silence)
+                self.structure, self.dieltens)
 
-        potinddict = disttrans(self.structure, self.defstructure, self.dim, 
-                silence=self.silence)
+        potinddict = disttrans(self.structure, self.defstructure, self.dim) 
 
         minlat=min(norm(a1),norm(a2),norm(a3))
         lat_perc_diffs=[100*abs(norm(a1)-norm(lat))/minlat for lat in [a2,a3]]
@@ -932,8 +935,8 @@ class KumagaiCorrection(object):
             logging.warning('Sampling atoms outside wigner-seitz cell may '\
                             'not be optimal')
         wsrad = wigner_seitz_radius(self.structure)
-        if not self.silence:
-            logging.debug('wsrad %f', wsrad)
+        #if not self.silence:
+        logging.debug('wsrad %f', wsrad)
 
         for i in potinddict.keys():
             logging.debug("Atom %d, distance: %f", i, potinddict[i]['dist'])
@@ -965,8 +968,7 @@ class KumagaiCorrection(object):
             cart_reldef = potinddict[i]['cart_reldef']
             v_pc = anisotropic_madelung_potential(
                     self.structure, self.dim, self.g_sum, cart_reldef, 
-                    self.dieltens, self.q, self.gamma, self.madetol, 
-                    silence=True)
+                    self.dieltens, self.q, self.gamma, self.madetol)
             v_qb*=-1 #change charge sign convention
 
             potinddict[i]['Vpc'] = v_pc
