@@ -432,9 +432,7 @@ def disttrans(struct, defstruct, dim, silence=False):
     elif defsite is None:
         defsite=blksite
 
-    #def_fcoord = struct.lattice.get_fractional_coords(blksite)
     def_ccoord = blksite[:]
-    #defcell_def_fcoord = defstruct.lattice.get_fractional_coords(defsite)
     defcell_def_ccoord = defsite[:]
 
     if len(struct.sites)>=len(defstruct.sites):
@@ -463,17 +461,12 @@ def disttrans(struct, defstruct, dim, silence=False):
             print 'This is defect! Skipping ',i
             continue
 
-        #radius=1
         blksite,defsite=closestsites(struct,defstruct,i.coords)
 
         blkindex=struct.index(blksite[0])
         defindex=defstruct.index(defsite[0])
 
-        #cart_coord = blksite[0].coords
-        #frac_coord = blksite[0].frac_coords
         dcart_coord = defsite[0].coords
-        #dfrac_coord = defsite[0].frac_coords
-
         closeimage=returnclosestr(dcart_coord)
         cart_reldef=closeimage[1]
         defdist=closeimage[0]
@@ -484,14 +477,11 @@ def disttrans(struct, defstruct, dim, silence=False):
                   norm(cart_reldef))
             #return #dont want to break the code here, but want flag to exist...what to do?
 
-        #rad = 1.0
         if blkindex in grid_sites:
             print '(WARNING) index ',blkindex,' already exists in potinddict! overwriting information. '
 
         grid_sites[blkindex] = {'dist': defdist,'cart': dcart_coord,
                 'cart_reldef': cart_reldef,
-                # 'defgrid':getgridind(struct, dim,  dfrac_coord, gridavg=rad),
-                # 'bulkgrid': getgridind(defstruct, dim,  frac_coord, gridavg=rad),
                 'siteobj':[i.coords,i.frac_coords,i.species_string],
                 'bulk_site_index':blkindex, 'def_site_index':defindex}
 
@@ -571,7 +561,8 @@ def read_ES_avg_fromlocpot(locpot):
     ES_data = {'sampling_radii': radii, 'ngxf_dims': locpot.dim}
     pot = []
     for site in structure.sites:
-        indexlist = getgridind(structure, locpot.dim,  site.frac_coord, gridavg=radii[site.specie])
+        indexlist = getgridind(structure, locpot.dim,  site.frac_coords,
+                               gridavg=radii[site.specie])
         samplevals = []
         for u,v,w in indexlist:
             samplevals.append(locpot.data["total"][u][v][w])
