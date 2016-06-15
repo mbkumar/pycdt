@@ -432,9 +432,9 @@ def disttrans(struct, defstruct, dim, silence=False):
     elif defsite is None:
         defsite=blksite
 
-    def_fcoord = struct.lattice.get_fractional_coords(blksite)
+    #def_fcoord = struct.lattice.get_fractional_coords(blksite)
     def_ccoord = blksite[:]
-    defcell_def_fcoord = defstruct.lattice.get_fractional_coords(defsite)
+    #defcell_def_fcoord = defstruct.lattice.get_fractional_coords(defsite)
     defcell_def_ccoord = defsite[:]
 
     if len(struct.sites)>=len(defstruct.sites):
@@ -442,7 +442,7 @@ def disttrans(struct, defstruct, dim, silence=False):
     else: #for interstitial list
         sitelist=defstruct.sites[:]
 
-    #better image getter since pymatgen wasnt working
+    #better image getter since pymatgen wasnt working well for this 
     def returnclosestr(vec):
         from operator import itemgetter
         listvals=[]
@@ -463,16 +463,16 @@ def disttrans(struct, defstruct, dim, silence=False):
             print 'This is defect! Skipping ',i
             continue
 
-        radius=1
+        #radius=1
         blksite,defsite=closestsites(struct,defstruct,i.coords)
 
         blkindex=struct.index(blksite[0])
         defindex=defstruct.index(defsite[0])
 
-        cart_coord = blksite[0].coords
-        frac_coord = blksite[0].frac_coords
+        #cart_coord = blksite[0].coords
+        #frac_coord = blksite[0].frac_coords
         dcart_coord = defsite[0].coords
-        dfrac_coord = defsite[0].frac_coords
+        #dfrac_coord = defsite[0].frac_coords
 
         closeimage=returnclosestr(dcart_coord)
         cart_reldef=closeimage[1]
@@ -484,14 +484,14 @@ def disttrans(struct, defstruct, dim, silence=False):
                   norm(cart_reldef))
             #return #dont want to break the code here, but want flag to exist...what to do?
 
-        rad = 1.0
+        #rad = 1.0
         if blkindex in grid_sites:
             print '(WARNING) index ',blkindex,' already exists in potinddict! overwriting information. '
 
         grid_sites[blkindex] = {'dist': defdist,'cart': dcart_coord,
                 'cart_reldef': cart_reldef,
-                'defgrid':getgridind(struct, dim,  dfrac_coord, gridavg=rad),
-                'bulkgrid': getgridind(defstruct, dim,  frac_coord, gridavg=rad),
+                # 'defgrid':getgridind(struct, dim,  dfrac_coord, gridavg=rad),
+                # 'bulkgrid': getgridind(defstruct, dim,  frac_coord, gridavg=rad),
                 'siteobj':[i.coords,i.frac_coords,i.species_string],
                 'bulk_site_index':blkindex, 'def_site_index':defindex}
 
@@ -545,7 +545,7 @@ def read_ES_avg(location_outcar):
         ngxf_dims = map(int, ngxlineout[3:8:2])
 
         rad_line = out_dat[start_line+1].split()
-        radii = [float(rad) for rad in rad_line[5:]]
+        radii = [float(rad) for rad in rad_line[5:]] #would be better to do this as dictionary but no structure available
 
         ES_data = {'sampling_radii': radii, 'ngxf_dims': ngxf_dims}
         pot = []
@@ -558,6 +558,28 @@ def read_ES_avg(location_outcar):
         return ES_data
 
     return None
+
+
+def read_ES_avg_fromlocpot(locpot):
+    """
+    Reads Electrostatic potential at each atomic
+    site from Locpot Pymatgen object
+    """
+    structure = locpot.structure
+    radii = {specie: 1.0 for specie in set(structure.species)} #this needs to be smarter (related to ENAUG?)
+
+    ES_data = {'sampling_radii': radii, 'ngxf_dims': locpot.dim}
+    pot = []
+    for site in structure.sites:
+        indexlist = getgridind(structure, locpot.dim,  site.frac_coord, gridavg=radii[site.specie])
+        samplevals = []
+        for u,v,w in indexlist:
+            samplevals.append(locpot.data["total"][u][v][w])
+        pot.append(np.mean(samplevals))
+
+    ES_data.update({'potential': pot})
+
+    return ES_data
 
 
 class KumagaiBulkInit(object):
@@ -896,7 +918,7 @@ class KumagaiCorrection(object):
 
         return energy_pc
 
-    def potalign(self, title=None):
+    def OLDpotalign(self, title=None):
         """
         Potential alignment for Kumagai method
         Args:
@@ -907,7 +929,7 @@ class KumagaiCorrection(object):
         else:
             return self.potalign_locpot(title=title)
 
-    def potalign_original(self, title=None):
+    def OLDpotalign_original(self, title=None):
         """
         Potential alignment for Kumagai method
         Args:
@@ -1095,7 +1117,7 @@ class KumagaiCorrection(object):
 
         return -self.q * np.mean(forcorrection)
 
-    def potalign_locpot(self, title=None):
+    def OLDpotalign_locpot(self, title=None):
         """
         Potential alignment for Kumagai method using locpot file
         Args:
@@ -1218,9 +1240,9 @@ class KumagaiCorrection(object):
 
         return -self.q * np.mean(forcorrection)
 
-    def potalign_outcar(self, title=None):
+    def potalign(self, title=None):
         """
-        Potential alignment for Kumagai method using data from outcar
+        Potential alignment for Kumagai method
         Args:
             title: Title for the plot. None will not generate the plot
         """
@@ -1252,10 +1274,13 @@ class KumagaiCorrection(object):
             else:
                 potinddict[i]['OutsideWS'] = False
 
-        # Note this is hack until we get OUTCAR object attribute working for 
-        # ES potential
-        puredat = read_ES_avg(self.outcar_blk)
-        defdat = read_ES_avg(self.outcar_def)
+        # get ES potential from either Outcar (VASP) or Locpot pymatgen object
+        if self.do_outcar_method:
+            puredat = read_ES_avg(self.outcar_blk)
+            defdat = read_ES_avg(self.outcar_def)
+        else:
+            puredat = get_ES_avg_fromlocpot(self.locpot_blk)
+            defdat = get_ES_avg_fromlocpot(self.locpot_def)
 
         jup = 0
         for i in potinddict.keys():
@@ -1352,10 +1377,10 @@ class KumagaiCorrection(object):
                     ylis.append(u)
             plt.plot(forplot[inkey]['r'], forplot[inkey]['Vqb'], 
                      color=collis[i], marker='^', linestyle='None',
-                     label=str(inkey) + ': V_{q/b}')
+                     label=str(inkey) + ': $V_{q/b}$')
             plt.plot(forplot[inkey]['r'], forplot[inkey]['Vpc'], 
                      color=collis[i], marker='o', linestyle='None',
-                     label=str(inkey) + ': Vpc')
+                     label=str(inkey) + ': $V_{pc}$')
         full = []
         for i in forplot.keys():
             if i == 'EXTRA':
@@ -1373,7 +1398,7 @@ class KumagaiCorrection(object):
         wsrad=forplot['EXTRA']['wsrad']
         potalign=forplot['EXTRA']['potalign']
         plt.plot(r, y, color=collis[-1], marker='x', linestyle='None', 
-                 label='V_{q/b} - Vpc')
+                 label='$V_{q/b}$ - $V_{pc}$')
         plt.xlabel('Distance from defect (A)')
         plt.ylabel('Potential (V)')
         try:
@@ -1382,7 +1407,7 @@ class KumagaiCorrection(object):
             x = np.arange(wsrad, max(self.lengths), 0.01)
         plt.fill_between(x, min(ylis) - 1, max(ylis) + 1, facecolor='red', 
                          alpha=0.15, label='sampling region')
-        plt.axhline(y=potalign, linewidth=0.5, color='red', label='pot. align.')
+        plt.axhline(y=potalign, linewidth=0.5, color='red', label='pot. align. / q')
         plt.legend(loc=8)
         plt.axhline(y=0, linewidth=0.2, color='black')
         plt.ylim([min(ylis) - .5, max(ylis) + .5])
