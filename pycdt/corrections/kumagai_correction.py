@@ -774,7 +774,7 @@ class KumagaiCorrection(object):
     """
     def __init__(self, dielectric_tensor, q, gamma, g_sum, bulk_structure,
                  defect_structure, energy_cutoff=520, madetol=0.0001, 
-                 silence=False, use_outcar_potalign=True, lengths=None, **kw):
+                 silence=False, lengths=None, **kw):
         """
         Args:
             dielectric_tensor: 
