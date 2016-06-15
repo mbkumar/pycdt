@@ -883,7 +883,7 @@ class KumagaiCorrection(object):
             return round(energy_pc+potalign, 5)
         else:
             return map(lambda x: round(x, 5), 
-                       energy_pc, potalign, energy_pc+potalign])
+                       [energy_pc, potalign, energy_pc+potalign])
 
     def pc(self):
 
