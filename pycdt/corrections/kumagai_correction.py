@@ -749,8 +749,8 @@ class KumagaiCorrection(object):
     Extended freysoldt correction developed by Kumagai and Oba.
     """
     def __init__(self, dielectric_tensor, q, gamma, g_sum, bulk_structure,
-            energy_cutoff=520, madetol=0.0001, silence=False,
-            lengths=None,  defstructure=None, **kw):
+                 defect_structure, energy_cutoff=520, madetol=0.0001, 
+                 silence=False, use_outcar_potalign=True, lengths=None, **kw):
         """
         Args:
             dielectric_tensor: 
@@ -764,6 +764,15 @@ class KumagaiCorrection(object):
             g_sum: 
                 value that is dependent on the Bulk only. 
                 Obtained from KumagaiBulkPart
+            bulk_structure: 
+                bulk Pymatgen structure object. Need to specify this if 
+                using Outcar method for atomic site avg.
+                (If you specify outcar files for bulk_file_path but dont 
+                specify structure then code will break)
+                (TO DO: resolve this dumb dependency by being smarter 
+                about where structure comes from?)
+            defect_structure: 
+                defect structure. Needed if using Outcar method
             energy_cutoff: 
                 Energy for plane wave cutoff (in eV).
                 If not given, Materials Project default 520 eV is used.
@@ -773,15 +782,6 @@ class KumagaiCorrection(object):
                 : Flag for disabling/enabling  messages (Bool)
             lengths: 
                 Lengths of axes, for speeding up plotting slightly
-            structure: 
-                bulk Pymatgen structure object. Need to specify this if 
-                using Outcar method for atomic site avg.
-                (If you specify outcar files for bulk_file_path but dont 
-                specify structure then code will break)
-                (TO DO: resolve this dumb dependency by being smarter 
-                about where structure comes from?)
-            defstructure: 
-                defect structure. Needed if using Outcar method
             keywords:
                 1) bulk_locpot: Bulk Locpot file path OR Bulk Locpot 
                    defect_locpot: Defect Locpot file path or defect Locpot 
@@ -827,7 +827,7 @@ class KumagaiCorrection(object):
         self.encut = energy_cutoff
         self.silence = silence
         self.structure = bulk_structure
-        self.defstructure = defstructure
+        self.defstructure = defect_structure
         self.gamma = gamma
         self.g_sum = g_sum
 

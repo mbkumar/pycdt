@@ -1,6 +1,6 @@
 """
-This module combines all the finite size supercell charge corrections
-into one easy to use class with minimal inputs called ChargeCorrection
+This module contains wrappers to the finite size supercell charge corrections
+implemented 
 
 The methods implemented are
 1) Freysoldt correction for isotropic systems. Includes:
@@ -27,6 +27,81 @@ import os
 import numpy as np
 from pymatgen.io.vasp.outputs import Locpot
 from kumagai_correction import KumagaiBulkInit, KumagaiCorrection
+
+def get_correction_freysoldt(defect, bulk_entry, epsilon, title = None):
+    """
+    Function to compute the isotropic freysoldt correction for each defect.
+    Args:
+        defect: ComputedDefect object
+        bulk_entry: ComputedStructureEntry corresponding to bulk
+        epsilon: dielectric constant
+    """
+    if type(bulk_entry) is Locpot:
+        locpot_blk = bulk_entry
+        locpot_path_blk = ''
+    else:
+        locpot_blk = None
+        locpot_path_blk = bulk_entry.data['locpot_path']
+    locpot_path_def = defect.entry.data['locpot_path']
+    charge = defect._charge
+    #frac_coords = defect.site.frac_coords  #maybe should be using this
+    encut = defect.entry.data['encut']
+    if not charge:
+        print 'charge is zero so charge correction is zero'
+        return (0.,None)
+
+    #if either locpot is already loaded then load pure_locpot= or defect_locpot=
+    # if you want to load position then can load it with pos=
+    #if want to to change energy tolerance for correction convergence then change madetol= (default is 0.0001)
+    # (for kumagai) if known optgamma, set optgamma=, if KumagaiBulk already initialized then set KumagaiBulk=
+    corr_meth = ChargeCorrection(epsilon,
+            locpot_path_blk, locpot_path_def, charge,
+            pure_locpot = locpot_blk, #for quicker loading of bulk locpot objects...
+            energy_cutoff = encut,
+            silence=False)
+
+    #could do an averaging over three axes but one axis works fine isotropic systems
+    corr_val = corr_meth.freysoldt(title=title, axis=0, partflag='All')
+
+    return (corr_val,corr_meth._purelocpot)
+
+
+def get_correction_kumagai(defect, path_blk, bulk_init, title=None):
+    """
+    Function to compute the correction for each defect.
+    Args:
+        defect: ComputedDefect object
+        path_blk: location to Bulk folder
+        bulk_init: KumagainBulkInit class object
+        type: 
+            "freysoldt": Freysoldt correction for isotropic crystals
+            "kumagai": modified Freysoldt or Kumagai for anisotropic crystals
+
+    notes for ChargeCorrection class below:
+    if either locpot already loaded then load pure_locpot= or defect_locpot=
+    if you want to load position then can load it with pos=
+    if want to to change energy tolerance for correction convergence then change madetol= (default is 0.0001)
+    (if known optgamma, set optgamma=, if KumagaiBulk already initialized then set KumagaiBulk=
+    """
+    epsilon = bulk_init.epsilon
+    charge = defect._charge
+    encut = defect.entry.data['encut']
+
+    outcar_path_blk = os.path.join(path_blk,'OUTCAR')
+    locpot_path_def = defect.entry.data['locpot_path']
+    dpat,dloc = os.path.split(locpot_path_def)
+    outcar_path_def = os.path.join(dpat,'OUTCAR')
+    if os.path.exists(outcar_path_blk) and os.path.exists(outcar_path_def):
+        s = KumagaiCorrection(epsilon, charge, bulk_init.gamma, 
+                bulk_init.g_sum, bulk_init.structure, defect.entry.structure, 
+                energy_cutoff=encut, madetol=0.0001, silence=False, 
+                bulk_outcar=outcar_path_blk, defect_outcar=outcar_path_def)
+        kumval = s.correction(title=title, partflag='All')
+        print '\n Kumagai Correction value is ', kumval
+        return kumval
+    else: 
+        raise IOError('Outcars not found')
+
 
 
 class ChargeCorrection(object):

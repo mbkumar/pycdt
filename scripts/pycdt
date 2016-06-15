@@ -33,8 +33,9 @@ from pycdt.utils.vasp import make_vasp_defect_files, \
                               make_vasp_dielectric_files
 from pycdt.utils.parse_calculations import PostProcess
 from pycdt.utils.plotter import  DefectPlotter
-from pycdt.corrections.defects_analyzer import get_correction_freysoldt, \
-        get_correction_kumagai, DefectsAnalyzer
+from pycdt.corrections.defects_analyzer import DefectsAnalyzer
+from pycdt.corrections.finite_size_charge_correction import \
+        get_correction_freysoldt, get_correction_kumagai
 from pycdt.corrections.kumagai_correction import KumagaiBulkInit
 
 
@@ -184,6 +185,7 @@ def compute_corrections(args):
         epsilon = defect_data['epsilon']
 
     bulk = defect_data['bulk_entry']
+    bulk_structure = bulk.structure
     defects = defect_data['defects']
     corrections = defaultdict(list)
 
@@ -195,19 +197,21 @@ def compute_corrections(args):
             print ('defect_name: ', defect._full_name)
             print ('-----------------------------------------\n\n')
             correction,blklpt = get_correction_freysoldt(
-                    defect, blklpt, epsilon, title=defect._full_name)
+                    defect, blklpt, epsilon, 
+                    title=defect._full_name)
             defect.charge_correction = correction
             corrections[defect._name].append({
                 'charge_correction': correction, 'charge':defect._charge})
     else:    
         locpot_path_blk = bulk.data['locpot_path']
+        path_blk = os.path.split(locpot_path_blk)[0]
         encut = bulk.data['encut']
         kumagai_init = KumagaiBulkInit(blklpt.structure, blklpt.dim, epsilon,
                                        encut, tolerance=0.0001, silence=False)
         for defect in defects:
             print ('defect_name: ', defect._full_name)
             print ('-----------------------------------------\n\n')
-            correction = get_correction_kumagai( defect, locpot_path_blk,
+            correction = get_correction_kumagai(defect, path_blk,
                                         kumagai_init, title=defect._full_name)
             defect.charge_correction = correction
             corrections[defect._name].append({
