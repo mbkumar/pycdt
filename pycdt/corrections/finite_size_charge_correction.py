@@ -66,14 +66,16 @@ def get_correction_freysoldt(defect, bulk_entry, epsilon, title = None):
     return (corr_val,corr_meth._purelocpot)
 
 
-def get_correction_kumagai(defect, path_blk, bulk_init, bulk_locpot=None, title=None):
+def get_correction_kumagai(defect, path_blk, bulk_init, bulk_locpot=None, 
+                           title=None):
     """
     Function to compute the correction for each defect.
     Args:
         defect: ComputedDefect object
         path_blk: location to Bulk folder
         bulk_init: KumagainBulkInit class object
-        bulk_locpot: BulkLocpot object (if already loaded, otherwise will load from path_blk)
+        bulk_locpot: BulkLocpot object 
+                (if already loaded, otherwise will load from path_blk)
         type: 
             "freysoldt": Freysoldt correction for isotropic crystals
             "kumagai": modified Freysoldt or Kumagai for anisotropic crystals
@@ -81,8 +83,10 @@ def get_correction_kumagai(defect, path_blk, bulk_init, bulk_locpot=None, title=
     notes for ChargeCorrection class below:
     if either locpot already loaded then load pure_locpot= or defect_locpot=
     if you want to load position then can load it with pos=
-    if want to to change energy tolerance for correction convergence then change madetol= (default is 0.0001)
-    (if known optgamma, set optgamma=, if KumagaiBulk already initialized then set KumagaiBulk=
+    if want to to change energy tolerance for correction convergence then 
+        change madetol= (default is 0.0001)
+    (if known optgamma, set optgamma=, if KumagaiBulk already initialized 
+    then set KumagaiBulk=
     """
     epsilon = bulk_init.epsilon
     charge = defect._charge
@@ -92,25 +96,23 @@ def get_correction_kumagai(defect, path_blk, bulk_init, bulk_locpot=None, title=
     locpot_path_def = defect.entry.data['locpot_path']
     dpat,dloc = os.path.split(locpot_path_def)
     outcar_path_def = os.path.join(dpat,'OUTCAR')
+
     if os.path.exists(outcar_path_blk) and os.path.exists(outcar_path_def):
         s = KumagaiCorrection(epsilon, charge, bulk_init.gamma, 
                 bulk_init.g_sum, bulk_init.structure, defect.entry.structure, 
-                energy_cutoff=encut, madetol=0.0001, silence=False, 
+                energy_cutoff=encut, madetol=0.0001, 
                 bulk_outcar=outcar_path_blk, defect_outcar=outcar_path_def)
-        kumval = s.correction(title=title, partflag='All')
-        print '\n Kumagai Correction value is ', kumval
-        return kumval
     else:
         if not bulk_locpot:
             bulk_locpot = Locpot.from_file(path_blk)
         s = KumagaiCorrection(epsilon, charge, bulk_init.gamma,
                 bulk_init.g_sum, bulk_init.structure, defect.entry.structure,
-                energy_cutoff=encut, madetol=0.0001, silence=False,
+                energy_cutoff=encut, madetol=0.0001, 
                 bulk_locpot=bulk_locpot, defect_locpot=locpot_path_def)
-        kumval = s.correction(title=title, partflag='All')
-        print '\n Kumagai Correction value is ', kumval
-        return kumval
 
+    kumval = s.correction(title=title, partflag='All')
+    print '\n Kumagai Correction value is ', kumval
+    return kumval
 
 
 class ChargeCorrection(object):
@@ -190,8 +192,8 @@ class ChargeCorrection(object):
         from freysoldt_correction import FreysoldtCorrection
 
         s=FreysoldtCorrection(axis, self._dielectricconst, self._purelocpot,
-            self._deflocpot, self._q, energy_cutoff=self._encut, madetol=self._madetol,
-            silence=self._silence)
+            self._deflocpot, self._q, energy_cutoff=self._encut, 
+            madetol=self._madetol)
 
         freyval=s.correction(title=title,partflag=partflag)
         if partflag in ['All','AllSplit']:

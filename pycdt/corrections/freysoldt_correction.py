@@ -229,7 +229,7 @@ class QModel():
 class FreysoldtCorrection(object):
     def __init__(self, axis, dielectricconst, pure_locpot_path,
             defect_locpot_path, q, energy_cutoff=520,
-            madetol=0.0001, silence=False, q_model=None):
+            madetol=0.0001, q_model=None):
         """
         Args:
             axis: axis to do Freysoldt averaging over (zero-defined). Has no effect on
@@ -243,7 +243,6 @@ class FreysoldtCorrection(object):
             energy_cutoff: Energy for plane wave cutoff (in eV).
                  If not given, Materials Project default 520 eV is used.
             madetol: Tolerance for convergence of energy terms in eV (double or float)
-            silence: Flag for disabling/enabling  messages (Bool)
             q_model (QModel object): User defined charge for correction.
                  If not given, highly localized charge is assumed.
         """
@@ -260,7 +259,6 @@ class FreysoldtCorrection(object):
         self._encut = energy_cutoff
         self._pos = None #code will determine positions of defect in bulk cell
         self._defpos = None #code will determine defect position in defect cell (after relaxation)
-        self._silence = silence
         if not q_model:
             self._q_model = QModel()
 
