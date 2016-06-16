@@ -602,7 +602,7 @@ class FreysoldtCorrection(object):
 
         return -float(self._q)*C  #pot align energy correction (eV), add to energy output of PCfrey
 
-    def plot(self, x, v_r, dft_diff, final_shift, check, title='default'):
+    def plot(self, x, v_R, dft_diff, final_shift, check, title='default'):
         """
         """
 
@@ -610,7 +610,7 @@ class FreysoldtCorrection(object):
 
         plt.figure()
         plt.clf()
-        plt.plot(plotvals['x'], plotvals['v_R'], c="green", zorder=1, 
+        plt.plot(x, v_R, c="green", zorder=1, 
                  label="long range from model")
         plt.plot(x, dft_diff, c="red", label="DFT locpot diff")
         plt.plot(x, final_shift, c="blue", label="short range (aligned)")
