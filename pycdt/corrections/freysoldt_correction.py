@@ -426,9 +426,9 @@ class FreysoldtCorrection(object):
                 (good for quickly plotting multiple axes without having to reload Locpot)
         """
         if not axis:
-            axis=self._axis
+            axis = self._axis
         else:
-            axis=axis
+            axis = axis
 
         if not type(self._purelocpot) is Locpot:
             #if not self._silence:
@@ -440,7 +440,8 @@ class FreysoldtCorrection(object):
             self._deflocpot = Locpot.from_file(self._deflocpot)
 
         #determine location of defects
-        blksite,defsite=find_defect_pos(self._purelocpot.structure,self._deflocpot.structure)
+        blksite, defsite = find_defect_pos(self._purelocpot.structure, 
+                                           self._deflocpot.structure)
         if blksite is None and defsite is None:
             logging.error('Not able to determine defect site')
             return
@@ -497,8 +498,8 @@ class FreysoldtCorrection(object):
             for i in range(len(x)):
                 if axbulkval<x[i]:
                     break
-            rollind=len(x)-i
-            pureavg=np.roll(pureavg,rollind)
+            rollind = len(x)-i
+            pureavg = np.roll(pureavg,rollind)
             defavg = np.roll(defavg,rollind)
         # if axdefval:
         #     for i in range(len(x)):
@@ -513,7 +514,7 @@ class FreysoldtCorrection(object):
         latt = self._purelocpot.structure.lattice
         reci_latt = latt.reciprocal_lattice
         dg = reci_latt.abc[axis]
-        dg/=ang_to_bohr #convert to bohr to do calculation in atomic units
+        dg /= ang_to_bohr #convert to bohr to do calculation in atomic units
 
         v_G = np.empty(len(x), np.dtype('c16'))
         epsilon = self._dielectricconst
@@ -559,82 +560,96 @@ class FreysoldtCorrection(object):
         logging.info('C value is averaged to be %f eV ', C)
         logging.info('Potentital alignment (-q*delta V) is %f (eV)', -self._q*C)
         if title:
-            if title!='written':
-                import matplotlib.pyplot as plt
-                plt.figure(1)
-                plt.clf()
-                plt.plot(x, v_R, c="green", zorder=1, label="long range from model")
-                plt.plot(x, defavg - pureavg, c="red", label="DFT locpot diff")
-                plt.plot(x, finalshift, c="blue", label="short range (aligned)")
-                tmpx=[x[i] for i in range(mid - checkdis, mid + checkdis)]
-                plt.fill_between(tmpx, -100, 100, facecolor='red', alpha=0.15, label='sampling region')
-                plt.xlim(np.floor(x[0]),np.ceil(x[-1]))
-                ymin=min(min(v_R),min(defavg - pureavg),min(finalshift))
-                ymax=max(max(v_R),max(defavg - pureavg),max(finalshift))
-                plt.ylim(np.floor(ymin),np.ceil(ymax))
-                plt.xlabel('planar average along axis ' + str(axis+1)+' (Angstrom)')
-                plt.ylabel('Potential (V)')
-                plt.legend(loc=9)
-                plt.axhline(y=0, linewidth=0.2, color='black')
-                plt.title(str(title) + ' planar averaged electrostatic potential')
-                plt.xlim(0,max(x))
-                plt.savefig(str(title)+'FreyplnravgPlot.pdf')
+            if title != 'written':
+                self.plot(x, v_R, defavg-pureavg, finalshift, 
+                          [mid-checkdis, mid+checkdis], title=title)
+                #plt.plot(x, v_R, c="green", zorder=1, label="long range from model")
+                #plt.plot(x, defavg - pureavg, c="red", label="DFT locpot diff")
+                #plt.plot(x, finalshift, c="blue", label="short range (aligned)")
+                #tmpx=[x[i] for i in range(mid - checkdis, mid + checkdis)]
+                #plt.fill_between(tmpx, -100, 100, facecolor='red', alpha=0.15, label='sampling region')
+                #plt.xlim(np.floor(x[0]),np.ceil(x[-1]))
+                #ymin=min(min(v_R),min(defavg - pureavg),min(finalshift))
+                #ymax=max(max(v_R),max(defavg - pureavg),max(finalshift))
+                #plt.ylim(np.floor(ymin),np.ceil(ymax))
+                #plt.xlabel('planar average along axis ' + str(axis+1)+' (Angstrom)')
+                #plt.ylabel('Potential (V)')
+                #plt.legend(loc=9)
+                #plt.axhline(y=0, linewidth=0.2, color='black')
+                #plt.title(str(title) + ' planar averaged electrostatic potential')
+                #plt.xlim(0,max(x))
+                #plt.savefig(str(title)+'FreyplnravgPlot.pdf')
             else:
                 #this is because current uploading format for written is bad for numpy arrays...
                 #Might want to update this in future so that dumping format is smarter than just dumping/loading a string
-                xtmp=[]
-                v_Rtmp=[]
-                DFTdifftmp=[]
-                finalshifttmp=[]
-                for j in range(len(v_R)):
-                    xtmp.append(x[j])
-                    v_Rtmp.append(v_R[j])
-                    DFTdifftmp.append(defavg[j]-pureavg[j])
-                    finalshifttmp.append(finalshift[j])
+                #xtmp=[]
+                #v_Rtmp=[]
+                #DFTdifftmp=[]
+                #finalshifttmp=[]
+                #for j in range(len(v_R)):
+                #    xtmp.append(x[j])
+                #    v_Rtmp.append(v_R[j])
+                #    DFTdifftmp.append(defavg[j]-pureavg[j])
+                #    finalshifttmp.append(finalshift[j])
 
-                forplotting={'x':xtmp,'v_R':v_Rtmp,'DFTdiff':DFTdifftmp,'finalshift':finalshifttmp,'checkrange':[mid - checkdis,mid + checkdis]}
-                fname='FreyAxisData.dat'
-                with open(fname,'w') as f:
-                    f.write(str(forplotting))
+                #forplotting={'x':xtmp,'v_R':v_Rtmp,'DFTdiff':DFTdifftmp,'finalshift':finalshifttmp,'checkrange':[mid - checkdis,mid + checkdis]}
+                fname='FreyAxisData' # Extension is npz
+                #with open(fname,'w') as f:
+                #    f.write(str(forplotting))
+                np.savez(fname, x=x, v_R=v_R, dft_diff=defavg-pureavg, 
+                         final_shift=finalshift, 
+                         check_range=np.array([mid-checkdis, mid+checkdis]))
 
         return -float(self._q)*C  #pot align energy correction (eV), add to energy output of PCfrey
 
-    def plot_from_datfile(self,name='FreyAxisData.dat',title='default'):
+    def plot(self, x, v_r, dft_diff, final_shift, check, title='default'):
         """
-        Takes data file called 'name' and does plotting.
-        Good for later plotting of locpot data after running run_correction()
         """
-        import ast
-        with open(name,'r') as f:
-            plotvals=f.read()
-        plotvals=ast.literal_eval(plotvals) #converting string to dictionary
-
-        x=plotvals['x']
-        v_R=plotvals['v_R']
-        DFTdiff=plotvals['DFTdiff']
-        finalshift=plotvals['finalshift']
-        check=plotvals['checkrange']
 
         import matplotlib.pyplot as plt
+
         plt.figure()
         plt.clf()
-        plt.plot(plotvals['x'], plotvals['v_R'], c="green", zorder=1, label="long range from model")
-        plt.plot(x, DFTdiff, c="red", label="DFT locpot diff")
-        plt.plot(x, finalshift, c="blue", label="short range (aligned)")
-        tmpx=[x[i] for i in range(check[0], check[1])]
-        plt.fill_between(tmpx, -100, 100, facecolor='red', alpha=0.15, label='sampling region')
-        plt.xlim(round(x[0]),round(x[-1]))
-        ymin=min(min(v_R),min(DFTdiff),min(finalshift))
-        ymax=max(max(v_R),max(DFTdiff),max(finalshift))
-        plt.ylim(-0.2+ymin,0.2+ymax)
+        plt.plot(plotvals['x'], plotvals['v_R'], c="green", zorder=1, 
+                 label="long range from model")
+        plt.plot(x, dft_diff, c="red", label="DFT locpot diff")
+        plt.plot(x, final_shift, c="blue", label="short range (aligned)")
+        tmpx = [x[i] for i in range(check[0], check[1])]
+        plt.fill_between(tmpx, -100, 100, facecolor='red', alpha=0.15, 
+                         label='sampling region')
+
+        plt.xlim(round(x[0]), round(x[-1]))
+        ymin = min(min(v_R), min(dft_diff), min(final_shift))
+        ymax = max(max(v_R), max(dft_diff), max(final_shift))
+        plt.ylim(-0.2+ymin, 0.2+ymax)
         plt.xlabel('planar average along axis ' + str(1))
         plt.ylabel('Potential')
         plt.legend(loc=9)
         plt.axhline(y=0, linewidth=0.2, color='black')
         plt.title(str(title) + ' defect potential')
-        plt.xlim(0,max(x))
+        plt.xlim(0, max(x))
+
         plt.savefig(str(title)+'FreyplnravgPlot.png')
 
+    def plot_from_datfile(self, name='FreyAxisData.npz', title='default'):
+        """
+        Takes data file called 'name' and does plotting.
+        Good for later plotting of locpot data after running run_correction()
+        """
+        #import ast
+
+        with open(name,'r') as f:
+            #plotvals = f.read()
+            #plotvals = ast.literal_eval(plotvals) #string to dict
+            plotvals = np.load(f)
+
+            x = plotvals['x']
+            v_R = plotvals['v_R']
+            dft_diff = plotvals['dft_diff']
+            final_shift = plotvals['final_shift']
+            check = plotvals['check_range']
+
+            self.plot(x, v_R, dft_diff, final_shift, check, title=title)
 
 
 if __name__ == '__main__':
