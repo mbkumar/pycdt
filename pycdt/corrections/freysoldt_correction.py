@@ -177,14 +177,6 @@ def find_defect_pos(struct_blk, struct_def):
 
     return None,None #if you get here there is an error
 
-def quick_plot_freysoldt(name='FreyAxisData.npz', title='default'):
-    #for quick plotting from data file (without having to instantiate the class yourself
-    fc = FreysoldtCorrection(0,1.,'fake','fake',1) #these inputs don't matter, for now just plotting
-    fc.plot_from_datfile( name=name, title=title)
-    print ('Plotted file ',title)
-    return
-
-
 class QModel():
     """
     Model for the defect charge distribution.
@@ -566,6 +558,7 @@ class FreysoldtCorrection(object):
 
         return -float(self._q)*C  #pot align energy correction (eV), add to energy output of PCfrey
 
+    @classmethod
     def plot(self, x, v_R, dft_diff, final_shift, check, title='default'):
         """
         """
@@ -595,6 +588,7 @@ class FreysoldtCorrection(object):
 
         plt.savefig(str(title)+'FreyplnravgPlot.png')
 
+    @classmethod
     def plot_from_datfile(self, name='FreyAxisData.npz', title='default'):
         """
         Takes data file called 'name' and does plotting.
