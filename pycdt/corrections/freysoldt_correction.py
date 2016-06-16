@@ -177,6 +177,13 @@ def find_defect_pos(struct_blk, struct_def):
 
     return None,None #if you get here there is an error
 
+def quick_plot_freysoldt(name='FreyAxisData.npz', title='default'):
+    #for quick plotting from data file (without having to instantiate the class yourself
+    fc = FreysoldtCorrection(0,1.,'fake','fake',1) #these inputs don't matter, for now just plotting
+    fc.plot_from_datfile( name=name, title=title)
+    print ('Plotted file ',title)
+    return
+
 
 class QModel():
     """
@@ -445,7 +452,7 @@ class FreysoldtCorrection(object):
         if blksite is None and defsite is None:
             logging.error('Not able to determine defect site')
             return
-        #if not self._silence:
+
         if blksite is None:
             logging.debug('Found defect to be Interstitial type at %s',
                           repr(defsite))
@@ -461,10 +468,8 @@ class FreysoldtCorrection(object):
         #you can get rigid shifts due to atomic changes at far away from defect
         #note these are cartesian co-ordinate sites...
         if defsite is None: #vacancies
-            #self._defpos=blksite
             self._pos=blksite
         else: #all else, do w.r.t defect site
-            #self._defpos=defsite
             self._pos=defsite
 
         ind = []
@@ -484,11 +489,8 @@ class FreysoldtCorrection(object):
 
         #now shift these planar averages to have defect at origin
         blklat=self._purelocpot.structure.lattice
-        #deflat=self._deflocpot.structure.lattice
         axfracval=blklat.get_fractional_coords(self._pos)[axis]
-        #axdefval=deflat.get_fractional_coords(self._defpos)[axis]
         axbulkval=axfracval*blklat.abc[axis]
-        #axdefval*=deflat.abc[axis]
         if axbulkval<0:
             axbulkval += blklat.abc[axis]
         elif axbulkval > blklat.abc[axis]:
@@ -501,13 +503,6 @@ class FreysoldtCorrection(object):
             rollind = len(x)-i
             pureavg = np.roll(pureavg,rollind)
             defavg = np.roll(defavg,rollind)
-        # if axdefval:
-        #     for i in range(len(x)):
-        #         if axdefval<x[i]:
-        #             break
-        #     rollind=len(x)-i
-        #     defavg=np.roll(defavg,rollind)
-
 
         #if not self._silence:
         logging.debug('calculating lr part along planar avg axis')
@@ -545,7 +540,6 @@ class FreysoldtCorrection(object):
         mid = len(short) / 2
 
         tmppot = [short[i] for i in range(mid - checkdis, mid + checkdis)]
-        #if not self._silence:
         logging.debug('shifted defect position on axis (%s) to origin', 
                       repr(axbulkval))
         logging.debug('means sampling region is (%f,%f)', 
@@ -556,46 +550,16 @@ class FreysoldtCorrection(object):
         finalshift = [short[j] + C for j in range(len(v_R))]
         v_R = [v_R[j]-C for j in range(len(v_R))]
 
-        #if not self._silence:
         logging.info('C value is averaged to be %f eV ', C)
         logging.info('Potentital alignment (-q*delta V) is %f (eV)', -self._q*C)
+
         if title:
             if title != 'written':
                 self.plot(x, v_R, defavg-pureavg, finalshift, 
                           [mid-checkdis, mid+checkdis], title=title)
-                #plt.plot(x, v_R, c="green", zorder=1, label="long range from model")
-                #plt.plot(x, defavg - pureavg, c="red", label="DFT locpot diff")
-                #plt.plot(x, finalshift, c="blue", label="short range (aligned)")
-                #tmpx=[x[i] for i in range(mid - checkdis, mid + checkdis)]
-                #plt.fill_between(tmpx, -100, 100, facecolor='red', alpha=0.15, label='sampling region')
-                #plt.xlim(np.floor(x[0]),np.ceil(x[-1]))
-                #ymin=min(min(v_R),min(defavg - pureavg),min(finalshift))
-                #ymax=max(max(v_R),max(defavg - pureavg),max(finalshift))
-                #plt.ylim(np.floor(ymin),np.ceil(ymax))
-                #plt.xlabel('planar average along axis ' + str(axis+1)+' (Angstrom)')
-                #plt.ylabel('Potential (V)')
-                #plt.legend(loc=9)
-                #plt.axhline(y=0, linewidth=0.2, color='black')
-                #plt.title(str(title) + ' planar averaged electrostatic potential')
-                #plt.xlim(0,max(x))
-                #plt.savefig(str(title)+'FreyplnravgPlot.pdf')
             else:
-                #this is because current uploading format for written is bad for numpy arrays...
-                #Might want to update this in future so that dumping format is smarter than just dumping/loading a string
-                #xtmp=[]
-                #v_Rtmp=[]
-                #DFTdifftmp=[]
-                #finalshifttmp=[]
-                #for j in range(len(v_R)):
-                #    xtmp.append(x[j])
-                #    v_Rtmp.append(v_R[j])
-                #    DFTdifftmp.append(defavg[j]-pureavg[j])
-                #    finalshifttmp.append(finalshift[j])
-
-                #forplotting={'x':xtmp,'v_R':v_Rtmp,'DFTdiff':DFTdifftmp,'finalshift':finalshifttmp,'checkrange':[mid - checkdis,mid + checkdis]}
+                #TODO: make this default fname more defect specific so it doesnt over write previous defect data written
                 fname='FreyAxisData' # Extension is npz
-                #with open(fname,'w') as f:
-                #    f.write(str(forplotting))
                 np.savez(fname, x=x, v_R=v_R, dft_diff=defavg-pureavg, 
                          final_shift=finalshift, 
                          check_range=np.array([mid-checkdis, mid+checkdis]))
@@ -639,8 +603,6 @@ class FreysoldtCorrection(object):
         #import ast
 
         with open(name,'r') as f:
-            #plotvals = f.read()
-            #plotvals = ast.literal_eval(plotvals) #string to dict
             plotvals = np.load(f)
 
             x = plotvals['x']
