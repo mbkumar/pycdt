@@ -418,6 +418,7 @@ class ChargedDefectsStructures(object):
         vac = Vacancy(self.struct, {}, {})
         vac_scs = vac.make_supercells_with_defects(sc_scale)
 
+        print("Setting up vacancies and antisites...")
         for i in range(vac.defectsite_count()):
             vac_site = vac.get_defectsite(i)
             site_mult = vac.get_defectsite_multiplicity(i)
@@ -506,6 +507,7 @@ class ChargedDefectsStructures(object):
         self.defects['substitutions'] += as_defs
 
         if include_interstitials:
+            print("Searching for interstitial sites (this can take awhile)...")
             interstitials = []
             inter_types = []
             inter_cns = []
