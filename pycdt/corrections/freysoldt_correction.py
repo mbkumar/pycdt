@@ -177,6 +177,7 @@ def find_defect_pos(struct_blk, struct_def):
 
     return None,None #if you get here there is an error
 
+
 class QModel():
     """
     Model for the defect charge distribution.
@@ -223,6 +224,70 @@ class QModel():
         rho_rec(g->0) -> 1 + rho_rec_limit0 * g^2
         """
         return -2*self.gamma2*self.x - 0.25*self.beta2*(1-self.x)
+
+
+class FreysoldtCorrPlotter(object):
+    class __init__(self, x, v_R, dft_diff, final_shift, check):
+        self.x = x
+        self.v_R = v_R
+        self.dft_diff = dft_diff
+        self.final_shift = final_shift
+        self.check = check
+
+    def plot(title='default'):
+        """
+        """
+
+        import matplotlib.pyplot as plt
+
+        plt.figure()
+        plt.clf()
+        plt.plot(self.x, self.v_R, c="green", zorder=1, 
+                 label="long range from model")
+        plt.plot(self.x, self.dft_diff, c="red", label="DFT locpot diff")
+        plt.plot(self.x, self.final_shift, c="blue", 
+                 label="short range (aligned)")
+        tmpx = [self.x[i] for i in range(self.check[0], self.check[1])]
+        plt.fill_between(tmpx, -100, 100, facecolor='red', alpha=0.15, 
+                         label='sampling region')
+
+        plt.xlim(round(self.x[0]), round(self.x[-1]))
+        ymin = min(min(self.v_R), min(self.dft_diff), min(self.final_shift))
+        ymax = max(max(self.v_R), max(self.dft_diff), max(self.final_shift))
+        plt.ylim(-0.2+ymin, 0.2+ymax)
+        plt.xlabel('planar average along axis ' + str(1))
+        plt.ylabel('Potential')
+        plt.legend(loc=9)
+        plt.axhline(y=0, linewidth=0.2, color='black')
+        plt.title(str(title) + ' defect potential')
+        plt.xlim(0, max(self.x))
+
+        plt.savefig(str(title)+'FreyplnravgPlot.pdf')
+
+    def to_datafile(file_name='FreyAxisData'):
+
+        np.savez(file_name, x=self.x, v_R=self.v_R, 
+                 dft_diff=self.dft_diff#defavg-pureavg, 
+                 final_shift=self.final_shift#finalshift, 
+                 check_range=self.check_range)#np.array([mid-checkdis, mid+checkdis]))
+
+    @classmethod
+    def plot_from_datfile(cls, file_name='FreyAxisData.npz', title='default'):
+        """
+        Takes data file called 'name' and does plotting.
+        Good for later plotting of locpot data after running run_correction()
+        """
+        with open(file_name,'r') as f:
+            plotvals = np.load(f)
+
+            x = plotvals['x']
+            v_R = plotvals['v_R']
+            dft_diff = plotvals['dft_diff']
+            final_shift = plotvals['final_shift']
+            check = plotvals['check_range']
+
+            plotter = cls.__init__(x, v_R, dft_diff, final_shift, check)
+            plotter.plot(title)
 
 
 class FreysoldtCorrection(object):
@@ -545,67 +610,22 @@ class FreysoldtCorrection(object):
         logging.info('C value is averaged to be %f eV ', C)
         logging.info('Potentital alignment (-q*delta V) is %f (eV)', -self._q*C)
 
-        if title:
+        if title: #TODO: Make title  optional and use a flag for plotting
+            plotter = FreysoldtCorrPlotter(x, v_R, defavg-pureavg, finalshift,
+                      np.arry([mid-checkdis, mid+checkdis]))
+
             if title != 'written':
-                FreysoldtCorrection.plot(x, v_R, defavg-pureavg, finalshift,
-                          [mid-checkdis, mid+checkdis], title=title)
+                plotter.plot(title=title)
             else:
                 #TODO: make this default fname more defect specific so it doesnt over write previous defect data written
                 fname='FreyAxisData' # Extension is npz
-                np.savez(fname, x=x, v_R=v_R, dft_diff=defavg-pureavg, 
-                         final_shift=finalshift, 
-                         check_range=np.array([mid-checkdis, mid+checkdis]))
+                plotter.to_datafile(fname)
+                #np.savez(fname, x=x, v_R=v_R, dft_diff=defavg-pureavg, 
+                #         final_shift=finalshift, 
+                #         check_range=np.array([mid-checkdis, mid+checkdis]))
 
         return -float(self._q)*C  #pot align energy correction (eV), add to energy output of PCfrey
 
-    @classmethod
-    def plot(self, x, v_R, dft_diff, final_shift, check, title='default'):
-        """
-        """
-
-        import matplotlib.pyplot as plt
-
-        plt.figure()
-        plt.clf()
-        plt.plot(x, v_R, c="green", zorder=1, 
-                 label="long range from model")
-        plt.plot(x, dft_diff, c="red", label="DFT locpot diff")
-        plt.plot(x, final_shift, c="blue", label="short range (aligned)")
-        tmpx = [x[i] for i in range(check[0], check[1])]
-        plt.fill_between(tmpx, -100, 100, facecolor='red', alpha=0.15, 
-                         label='sampling region')
-
-        plt.xlim(round(x[0]), round(x[-1]))
-        ymin = min(min(v_R), min(dft_diff), min(final_shift))
-        ymax = max(max(v_R), max(dft_diff), max(final_shift))
-        plt.ylim(-0.2+ymin, 0.2+ymax)
-        plt.xlabel('planar average along axis ' + str(1))
-        plt.ylabel('Potential')
-        plt.legend(loc=9)
-        plt.axhline(y=0, linewidth=0.2, color='black')
-        plt.title(str(title) + ' defect potential')
-        plt.xlim(0, max(x))
-
-        plt.savefig(str(title)+'FreyplnravgPlot.pdf')
-
-    @classmethod
-    def plot_from_datfile(self, name='FreyAxisData.npz', title='default'):
-        """
-        Takes data file called 'name' and does plotting.
-        Good for later plotting of locpot data after running run_correction()
-        """
-        #import ast
-
-        with open(name,'r') as f:
-            plotvals = np.load(f)
-
-            x = plotvals['x']
-            v_R = plotvals['v_R']
-            dft_diff = plotvals['dft_diff']
-            final_shift = plotvals['final_shift']
-            check = plotvals['check_range']
-
-            FreysoldtCorrection.plot(x, v_R, dft_diff, final_shift, check, title=title)
 
 
 if __name__ == '__main__':

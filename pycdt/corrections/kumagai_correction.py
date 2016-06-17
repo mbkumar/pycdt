@@ -1031,7 +1031,7 @@ class KumagaiCorrection(object):
         return -self.q * np.mean(forcorrection)
 
     @classmethod
-    def plot(self, forplot, title):
+    def plot(cls, forplot, title):
         """
         Plotting of locpot data
         TODO: Rename forplot to a more descriptive name
@@ -1092,7 +1092,7 @@ class KumagaiCorrection(object):
         plt.savefig('%s_kumagaisiteavgPlot.pdf' % title)
 
     @classmethod
-    def plot_from_datfile(self, name='KumagaiData.json', title='default'):
+    def plot_from_datfile(cls, name='KumagaiData.json', title='default'):
         """
         Takes data file called 'name' and does plotting.
         Good for later plotting of locpot data after running run_correction()
@@ -1102,7 +1102,7 @@ class KumagaiCorrection(object):
         from monty.json import MontyDecoder
 
         forplot = loadfn(name, cls=MontyDecoder)
-        KumagaiCorrection.plot(forplot, title=title)
+        cls.plot(forplot, title=title)
 
 
 if __name__ == '__main__':
