@@ -1009,9 +1009,15 @@ class KumagaiCorrection(object):
 
         if title:
             forplot['EXTRA'] = {'wsrad': wsrad, 'potalign': potalign}
+            try:
+                forplot['EXTRA']['lengths']=self.structure.lattice.abc
+            except:
+                forplot['EXTRA']['lengths']=self.lengths
+
             if title != 'written':
-                self.plot(forplot, title=title)
+                KumagaiCorrection.plot(forplot, title=title)
             else:
+                #TODO: use a more descriptive fname that describes the defect
                 from monty.serialization import dumpfn
                 from monty.json import MontyEncoder
                 fname = 'KumagaiData.json'
@@ -1024,6 +1030,7 @@ class KumagaiCorrection(object):
 
         return -self.q * np.mean(forcorrection)
 
+    @classmethod
     def plot(self, forplot, title):
         """
         Plotting of locpot data
@@ -1071,10 +1078,8 @@ class KumagaiCorrection(object):
                  label='$V_{q/b}$ - $V_{pc}$')
         plt.xlabel('Distance from defect (A)')
         plt.ylabel('Potential (V)')
-        try:
-            x = np.arange(wsrad, max(self.structure.lattice.abc), 0.01)
-        except:
-            x = np.arange(wsrad, max(self.lengths), 0.01)
+
+        x = np.arange(wsrad, max(forplot['EXTRA']['lengths']), 0.01)
         plt.fill_between(x, min(ylis) - 1, max(ylis) + 1, facecolor='red', 
                          alpha=0.15, label='sampling region')
         plt.axhline(y=potalign, linewidth=0.5, color='red', label='pot. align. / q')
@@ -1086,6 +1091,7 @@ class KumagaiCorrection(object):
         plt.title('%s atomic site potential plot' % title)
         plt.savefig('%s_kumagaisiteavgPlot.pdf' % title)
 
+    @classmethod
     def plot_from_datfile(self, name='KumagaiData.json', title='default'):
         """
         Takes data file called 'name' and does plotting.
@@ -1096,7 +1102,7 @@ class KumagaiCorrection(object):
         from monty.json import MontyDecoder
 
         forplot = loadfn(name, cls=MontyDecoder)
-        self.plot(forplot, title=title)
+        KumagaiCorrection.plot(forplot, title=title)
 
 
 if __name__ == '__main__':
