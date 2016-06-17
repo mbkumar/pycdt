@@ -547,7 +547,7 @@ class FreysoldtCorrection(object):
 
         if title:
             if title != 'written':
-                self.plot(x, v_R, defavg-pureavg, finalshift, 
+                FreysoldtCorrection.plot(x, v_R, defavg-pureavg, finalshift,
                           [mid-checkdis, mid+checkdis], title=title)
             else:
                 #TODO: make this default fname more defect specific so it doesnt over write previous defect data written
@@ -586,7 +586,7 @@ class FreysoldtCorrection(object):
         plt.title(str(title) + ' defect potential')
         plt.xlim(0, max(x))
 
-        plt.savefig(str(title)+'FreyplnravgPlot.png')
+        plt.savefig(str(title)+'FreyplnravgPlot.pdf')
 
     @classmethod
     def plot_from_datfile(self, name='FreyAxisData.npz', title='default'):
@@ -605,7 +605,7 @@ class FreysoldtCorrection(object):
             final_shift = plotvals['final_shift']
             check = plotvals['check_range']
 
-            self.plot(x, v_R, dft_diff, final_shift, check, title=title)
+            FreysoldtCorrection.plot(x, v_R, dft_diff, final_shift, check, title=title)
 
 
 if __name__ == '__main__':
