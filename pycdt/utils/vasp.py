@@ -87,19 +87,26 @@ def make_vasp_defect_files(defects, path_base, user_settings={}, hse=False):
             comp = s['structure'].composition
             sum_elec = 0
             elts = set()
-            #for p in mp_relax_set.potcar:
-            for p in dict_params['POTCAR']:
-                if p.element not in elts:
-                    sum_elec += comp.as_dict()[p.element]*p.nelectrons
-                    elts.add(p.element)
+            try:
+                for p in mp_relax_set.potcar:
+                    if p.element not in elts:
+                        sum_elec += comp.as_dict()[p.element]*p.nelectrons
+                        elts.add(p.element)
+            except:
+                for p in dict_params['POTCAR']:
+                    if p.element not in elts:
+                        sum_elec += comp.as_dict()[p.element]*p.nelectrons
+                        elts.add(p.element)
             if charge != 0:
                 incar['NELECT'] = sum_elec - charge
 
             if user_kpoints:
                 kpoint = Kpoints.from_dict(user_kpoints)
             else:
-                kpoint=dict_params['KPOINTS'].monkhorst_automatic()
-                #kpoint = mp_relax_set.kpoints.monkhorst_automatic()
+                try:
+                    kpoint = mp_relax_set.kpoints.monkhorst_automatic()
+                except:
+                    kpoint=dict_params['KPOINTS'].monkhorst_automatic()
 
             path=os.path.join(path_base,defect['name'],"charge_"+str(charge))
             try:
@@ -108,10 +115,12 @@ def make_vasp_defect_files(defects, path_base, user_settings={}, hse=False):
                 pass
             incar.write_file(os.path.join(path,"INCAR"))
             kpoint.write_file(os.path.join(path,"KPOINTS"))
-            dict_params['POSCAR'].write_file(os.path.join(path,"POSCAR"))
-            dict_params['POTCAR'].write_file(os.path.join(path,"POTCAR"))
-            # mp_relax_set.poscar.write_file(os.path.join(path,"POSCAR"))
-            # mp_relax_set.potcar.write_file(os.path.join(path,"POTCAR"))
+            try:
+                mp_relax_set.poscar.write_file(os.path.join(path,"POSCAR"))
+                mp_relax_set.potcar.write_file(os.path.join(path,"POTCAR"))
+            except:
+                dict_params['POSCAR'].write_file(os.path.join(path,"POSCAR"))
+                dict_params['POTCAR'].write_file(os.path.join(path,"POTCAR"))
             dumpfn(dict_transf, os.path.join(path,'transformation.json'),
                    cls=MontyEncoder)
             if hse:
@@ -152,8 +161,10 @@ def make_vasp_defect_files(defects, path_base, user_settings={}, hse=False):
     if user_kpoints:
         kpoint = Kpoints.from_dict(user_kpoints)
     else:
-        kpoint=dict_params['KPOINTS'].monkhorst_automatic()
-        #kpoint = mp_relax_set.kpoints.monkhorst_automatic()
+        try:
+            kpoint = mp_relax_set.kpoints.monkhorst_automatic()
+        except:
+            kpoint=dict_params['KPOINTS'].monkhorst_automatic()
 
     path = os.path.join(path_base,'bulk')
     try:
@@ -161,10 +172,12 @@ def make_vasp_defect_files(defects, path_base, user_settings={}, hse=False):
     except:
         pass
     kpoint.write_file(os.path.join(path,"KPOINTS"))
-    dict_params['POSCAR'].write_file(os.path.join(path,"POSCAR"))
-    dict_params['POTCAR'].write_file(os.path.join(path,"POTCAR"))
-    # mp_relax_set.poscar.write_file(os.path.join(path,"POSCAR"))
-    # mp_relax_set.potcar.write_file(os.path.join(path,"POTCAR"))
+    try:
+        mp_relax_set.poscar.write_file(os.path.join(path,"POSCAR"))
+        mp_relax_set.potcar.write_file(os.path.join(path,"POTCAR"))
+    except:
+        dict_params['POSCAR'].write_file(os.path.join(path,"POSCAR"))
+        dict_params['POTCAR'].write_file(os.path.join(path,"POTCAR"))
     dumpfn(dict_transf, os.path.join(path,'transformation.json'),
            cls=MontyEncoder)
     if hse:
@@ -244,16 +257,23 @@ def make_vasp_defect_files_dos(defects, path_base, user_settings={},
             comp=s['structure'].composition
             sum_elec=0
             elts=set()
-            #for p in mp_relax_set.potcar:
-            for p in dict_params['POTCAR']:
-                if p.element not in elts:
-                    sum_elec += comp.as_dict()[p.element]*p.nelectrons
-                    elts.add(p.element)
+            try:
+                for p in mp_relax_set.potcar:
+                    if p.element not in elts:
+                        sum_elec += comp.as_dict()[p.element]*p.nelectrons
+                        elts.add(p.element)
+            except:
+                for p in dict_params['POTCAR']:
+                    if p.element not in elts:
+                        sum_elec += comp.as_dict()[p.element]*p.nelectrons
+                        elts.add(p.element)
             if charge != 0:
                 incar['NELECT'] = sum_elec-charge
 
-            kpoint=dict_params['KPOINTS'].monkhorst_automatic()
-            #kpoint = mp_relax_set.kpoints.monkhorst_automatic()
+            try:
+                kpoint = mp_relax_set.kpoints.monkhorst_automatic()
+            except:
+                kpoint=dict_params['KPOINTS'].monkhorst_automatic()
             path = os.path.join(
                     path_base, defect['name'], "charge_"+str(charge))
             try:
@@ -273,10 +293,12 @@ def make_vasp_defect_files_dos(defects, path_base, user_settings={},
             else:
                 incar.write_file(os.path.join(path,"INCAR.relax"))
             kpoint.write_file(os.path.join(path, "KPOINTS"))
-            dict_params['POSCAR'].write_file(os.path.join(path, "POSCAR.orig"))
-            dict_params['POTCAR'].write_file(os.path.join(path, "POTCAR"))
-            # mp_relax_set.poscar.write_file(os.path.join(path, "POSCAR.orig"))
-            # mp_relax_set.potcar.write_file(os.path.join(path, "POTCAR"))
+            try:
+                mp_relax_set.poscar.write_file(os.path.join(path, "POSCAR.orig"))
+                mp_relax_set.potcar.write_file(os.path.join(path, "POTCAR"))
+            except:
+                dict_params['POSCAR'].write_file(os.path.join(path, "POSCAR.orig"))
+                dict_params['POTCAR'].write_file(os.path.join(path, "POTCAR"))
             dumpfn(dict_transf, os.path.join(path, 'transformation.json'),
                    cls=MontyEncoder)
 
@@ -322,8 +344,10 @@ def make_vasp_defect_files_dos(defects, path_base, user_settings={},
     #    incar.update({
     #        'LHFCALC': True, "ALGO": "All", "HFSCREEN": 0.2,
     #        "PRECFOCK": "Fast", "AEXX": 0.45})
-    kpoint=dict_params['KPOINTS'].monkhorst_automatic()
-    #kpoint = mp_relax_set.kpoints.monkhorst_automatic()
+    try:
+        kpoint = mp_relax_set.kpoints.monkhorst_automatic()
+    except:
+        kpoint=dict_params['KPOINTS'].monkhorst_automatic()
     path=os.path.join(path_base, 'bulk')
     try:
         os.makedirs(path)
@@ -342,10 +366,12 @@ def make_vasp_defect_files_dos(defects, path_base, user_settings={},
     else:
         incar.write_file(os.path.join(path,"INCAR"))
     kpoint.write_file(os.path.join(path, "KPOINTS"))
-    dict_params['POSCAR'].write_file(os.path.join(path, "POSCAR"))
-    dict_params['POTCAR'].write_file(os.path.join(path,"POTCAR"))
-    # mp_relax_set.poscar.write_file(os.path.join(path, "POSCAR"))
-    # mp_relax_set.potcar.write_file(os.path.join(path,"POTCAR"))
+    try:
+        mp_relax_set.poscar.write_file(os.path.join(path, "POSCAR"))
+        mp_relax_set.potcar.write_file(os.path.join(path,"POTCAR"))
+    except:
+        dict_params['POSCAR'].write_file(os.path.join(path, "POSCAR"))
+        dict_params['POTCAR'].write_file(os.path.join(path,"POTCAR"))
     dumpfn(dict_transf, os.path.join(path,'transformation.json'),
            cls=MontyEncoder)
 
@@ -390,8 +416,10 @@ def make_vasp_dielectric_files(struct, path=None, user_settings={},
             'LHFCALC': True, "ALGO": "All", "HFSCREEN": 0.2,
             "PRECFOCK": "Fast", 'NKRED': 2})#, "AEXX": 0.45})
 
-    kpoints = dict_params['KPOINTS'].automatic_density(struct,1000,force_gamma=True)
-    #kpoints = mp_relax_set.kpoints.automatic_density(struct,1000,force_gamma=True)
+    try:
+        kpoints = mp_relax_set.kpoints.automatic_density(struct,1000,force_gamma=True)
+    except:
+        kpoints = dict_params['KPOINTS'].automatic_density(struct,1000,force_gamma=True)
 
     if not path:
         path_base = struct.composition.reduced_formula
@@ -399,7 +427,9 @@ def make_vasp_dielectric_files(struct, path=None, user_settings={},
     os.makedirs(path)
     incar.write_file(os.path.join(path, "INCAR"))
     kpoints.write_file(os.path.join(path, "KPOINTS"))
-    dict_params['POSCAR'].write_file(os.path.join(path, "POSCAR"))
-    dict_params['POTCAR'].write_file(os.path.join(path, "POTCAR"))
-    # mp_relax_set.poscar.write_file(os.path.join(path, "POSCAR"))
-    # mp_relax_set.potcar.write_file(os.path.join(path, "POTCAR"))
+    try:
+        mp_relax_set.poscar.write_file(os.path.join(path, "POSCAR"))
+        mp_relax_set.potcar.write_file(os.path.join(path, "POTCAR"))
+    except:
+        dict_params['POSCAR'].write_file(os.path.join(path, "POSCAR"))
+        dict_params['POTCAR'].write_file(os.path.join(path, "POTCAR"))
