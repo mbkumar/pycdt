@@ -227,14 +227,14 @@ class QModel():
 
 
 class FreysoldtCorrPlotter(object):
-    class __init__(self, x, v_R, dft_diff, final_shift, check):
+    def __init__(self, x, v_R, dft_diff, final_shift, check):
         self.x = x
         self.v_R = v_R
         self.dft_diff = dft_diff
         self.final_shift = final_shift
         self.check = check
 
-    def plot(title='default'):
+    def plot(self,title='default'):
         """
         """
 
@@ -242,7 +242,7 @@ class FreysoldtCorrPlotter(object):
 
         plt.figure()
         plt.clf()
-        plt.plot(self.x, self.v_R, c="green", zorder=1, 
+        plt.plot(self.x, self.v_R, c="green", zorder=1,
                  label="long range from model")
         plt.plot(self.x, self.dft_diff, c="red", label="DFT locpot diff")
         plt.plot(self.x, self.final_shift, c="blue", 
@@ -264,12 +264,12 @@ class FreysoldtCorrPlotter(object):
 
         plt.savefig(str(title)+'FreyplnravgPlot.pdf')
 
-    def to_datafile(file_name='FreyAxisData'):
+    def to_datafile(self,file_name='FreyAxisData'):
 
         np.savez(file_name, x=self.x, v_R=self.v_R, 
-                 dft_diff=self.dft_diff#defavg-pureavg, 
-                 final_shift=self.final_shift#finalshift, 
-                 check_range=self.check_range)#np.array([mid-checkdis, mid+checkdis]))
+                 dft_diff=self.dft_diff, #defavg-pureavg,
+                 final_shift=self.final_shift, #finalshift,
+                 check_range=self.check_range) #np.array([mid-checkdis, mid+checkdis]))
 
     @classmethod
     def plot_from_datfile(cls, file_name='FreyAxisData.npz', title='default'):
@@ -612,7 +612,7 @@ class FreysoldtCorrection(object):
 
         if title: #TODO: Make title  optional and use a flag for plotting
             plotter = FreysoldtCorrPlotter(x, v_R, defavg-pureavg, finalshift,
-                      np.arry([mid-checkdis, mid+checkdis]))
+                      np.array([mid-checkdis, mid+checkdis]))
 
             if title != 'written':
                 plotter.plot(title=title)
@@ -620,9 +620,7 @@ class FreysoldtCorrection(object):
                 #TODO: make this default fname more defect specific so it doesnt over write previous defect data written
                 fname='FreyAxisData' # Extension is npz
                 plotter.to_datafile(fname)
-                #np.savez(fname, x=x, v_R=v_R, dft_diff=defavg-pureavg, 
-                #         final_shift=finalshift, 
-                #         check_range=np.array([mid-checkdis, mid+checkdis]))
+
 
         return -float(self._q)*C  #pot align energy correction (eV), add to energy output of PCfrey
 
