@@ -269,7 +269,7 @@ class FreysoldtCorrPlotter(object):
         np.savez(file_name, x=self.x, v_R=self.v_R, 
                  dft_diff=self.dft_diff, #defavg-pureavg,
                  final_shift=self.final_shift, #finalshift,
-                 check_range=self.check_range) #np.array([mid-checkdis, mid+checkdis]))
+                 check_range=self.check) #np.array([mid-checkdis, mid+checkdis]))
 
     @classmethod
     def plot_from_datfile(cls, file_name='FreyAxisData.npz', title='default'):
