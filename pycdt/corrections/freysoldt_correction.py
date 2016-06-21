@@ -286,7 +286,7 @@ class FreysoldtCorrPlotter(object):
             final_shift = plotvals['final_shift']
             check = plotvals['check_range']
 
-            plotter = cls.__init__(x, v_R, dft_diff, final_shift, check)
+            plotter = cls(x, v_R, dft_diff, final_shift, check)
             plotter.plot(title)
 
 
