@@ -135,9 +135,9 @@ def generate_reciprocal_vectors_squared(a1, a2, a3, encut):
 
 def closestsites(sb,sd,pos):
     #input bulk and defect structures and get site that is nearest to the (cartesian) input position
-    bulkclosesites=sb.get_sites_in_sphere(pos,5)
+    bulkclosesites=sb.get_sites_in_sphere(pos,5,include_index=True)
     bulkclosesites.sort(key=lambda x:x[1])
-    defclosesites=sd.get_sites_in_sphere(pos,5)
+    defclosesites=sd.get_sites_in_sphere(pos,5,include_index=True)
     defclosesites.sort(key=lambda x:x[1])
     return bulkclosesites[0],defclosesites[0] #returns closest (site object, dist) for both bulk and defect
 
@@ -466,8 +466,10 @@ def disttrans(struct, defstruct, dim):
 
         blksite,defsite=closestsites(struct,defstruct,i.coords)
 
-        blkindex=struct.index(blksite[0])
-        defindex=defstruct.index(defsite[0])
+        # blkindex=struct.index(blksite[0])
+        # defindex=defstruct.index(defsite[0])
+        blkindex=blksite[-1]
+        defindex=defsite[-1]
 
         dcart_coord = defsite[0].coords
         closeimage=returnclosestr(dcart_coord)
