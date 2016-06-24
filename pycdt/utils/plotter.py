@@ -78,6 +78,10 @@ class DefectPlotter(object):
                         sub_str = '_{'+dfct.site.species_string+'}$'
                         if 'vac' in name:
                             base = '$Vac'
+                        elif 'inter' in name:
+                            flds = name.split('_')
+                            base = '$'+flds[2]
+                            sub_str = '_{i_{'+','.join(flds[3:5])+'}}$'
                         else:
                             base = '$'+name.split('_')[2] 
                         legend = base + sub_str
