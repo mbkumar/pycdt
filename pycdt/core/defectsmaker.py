@@ -115,7 +115,7 @@ class DefectChargerSemiconductor(DefectCharger):
     charge assignment for antisites follows vacancies
 
     """
-    def __init__(self, structure):
+    def __init__(self, structure, min_max_oxi={}):
         """
         Charge assignment based on the oxidation states referenced from 
         semiconductor database. Targetted materials are shallow and some 
@@ -125,14 +125,19 @@ class DefectChargerSemiconductor(DefectCharger):
             pymatgen structure object to determine the oxidation states
         """
 
-        self.min_max_oxi_bulk = [0, 0]
+        #self.min_max_oxi_bulk = [0, 0]
+        self.min_max_oxi_bulk = {}
 
         for elem in structure.symbol_set:
+            if elem in min_max_oxi.keys():
+                self.min_max_oxi_bulk[elem]=list(min_max_oxi[elem])
+                continue
+            self.min_max_oxi_bulk[elem] = [0, 0]
             oxi_elem = Element(elem).oxidation_states
-            if min(oxi_elem) < self.min_max_oxi_bulk[0]:
-                self.min_max_oxi_bulk[0] = min(oxi_elem)
-            if max(oxi_elem) > self.min_max_oxi_bulk[1]:
-                self.min_max_oxi_bulk[1] = max(oxi_elem)
+            if min(oxi_elem) < self.min_max_oxi_bulk[elem][0]:
+                self.min_max_oxi_bulk[elem][0] = min(oxi_elem)
+            if max(oxi_elem) > self.min_max_oxi_bulk[elem][1]:
+                self.min_max_oxi_bulk[elem][1] = max(oxi_elem)
 
     def get_charges(self, defect_type, site_specie=None, sub_specie=None):
         """
@@ -144,27 +149,49 @@ class DefectChargerSemiconductor(DefectCharger):
             site_specie (Not used): Specie on the host lattice site 
                          For interstitials, use this
             sub_specie: Specie that is replacing the site specie.
-                        At present used only for substitution defects
+                        At present used for substitution and antisite defects
         """
-        min_max_oxi = self.min_max_oxi_bulk
-
+        print 'site_specie', site_specie
+        site_elem = site_specie.symbol
+        if sub_specie:
+            print 'sub_specie=', sub_specie
+            sub_elem = sub_specie.symbol
+        print 'defect_type', defect_type
         if defect_type == 'vacancy':
             return [-c for c in range(
-                min_max_oxi[0], (min_max_oxi[1]+1)-2)]
-
-        elif defect_type == 'antisite':
-            return range(min_max_oxi[0], (min_max_oxi[1]+1)-2)
-
-        elif defect_type == 'substitution':
-            oxi_sub = list(get_el_sp(sub_specie).oxidation_states)
-            min_max_oxi_sub = [
-                    min(oxi_sub + min_max_oxi),
-                    max(oxi_sub + min_max_oxi)]
-            return range(min_max_oxi_sub[0], (min_max_oxi_sub[1]+1)-3)
-
+                self.min_max_oxi_bulk[site_elem][0]-1,
+                (self.min_max_oxi_bulk[site_elem][1]+2))]
+        elif (defect_type == 'antisite') or (defect_type == 'substitution'):
+            if sub_elem not in self.min_max_oxi_bulk.keys():
+                self.min_max_oxi_bulk[sub_elem] = [0, 0]
+                oxi_elem = Element(sub_elem).oxidation_states
+                if min(oxi_elem) < self.min_max_oxi_bulk[sub_elem][0]:
+                    self.min_max_oxi_bulk[sub_elem][0] = min(oxi_elem)
+                if max(oxi_elem) > self.min_max_oxi_bulk[sub_elem][1]:
+                    self.min_max_oxi_bulk[sub_elem][1] = max(oxi_elem)
+            tmpchgrng = [-c for c in range(
+                self.min_max_oxi_bulk[site_elem][0]-1,
+                (self.min_max_oxi_bulk[site_elem][1]+2))]
+            chgrng = []
+            for sub_chg in range(self.min_max_oxi_bulk[sub_elem][0],
+                                 self.min_max_oxi_bulk[sub_elem][1]):
+                for chg in tmpchgrng:
+                    chgrng.append(sub_chg-chg)
+            #make sure transition charges are represented
+            for fillchg in range(min(chgrng),max(chgrng)):
+                chgrng.append(fillchg)
+            chgrng = list(set(chgrng))
+            chgrng.sort()
+            #trim to reasonable range
+            while max(chgrng) >= self.min_max_oxi_bulk[sub_elem][1]+1:
+                chgrng.remove(max(chgrng))
+            while min(chgrng) <= self.min_max_oxi_bulk[sub_elem][0]-1:
+                chgrng.remove(min(chgrng))
+            return chgrng
         elif defect_type == 'interstitial':
-            return range(min_max_oxi[0], (min_max_oxi[1]+1)-2)
-
+            return [c for c in range(
+                self.min_max_oxi_bulk[site_elem][0]-1,
+                self.min_max_oxi_bulk[site_elem][1]+2)]
         else:
             raise ValueError("Defect type not understood")
 
@@ -390,7 +417,7 @@ class ChargedDefectsStructures(object):
 
         struct_species = self.struct.types_of_specie
         if self.struct_type == 'semiconductor':
-            self.defect_charger = DefectChargerSemiconductor(self.struct)
+            self.defect_charger = DefectChargerSemiconductor(self.struct, max_min_oxi)
         elif self.struct_type == 'insulator':
             self.defect_charger = DefectChargerInsulator(self.struct)
         else:
