@@ -12,7 +12,7 @@ def readme():
 setup(
         name="pycdt",
         packages=find_packages(),
-        version="0.0.1",
+        version="0.5.0",
         install_requires=["pymatgen>=3.0.6", "numpy>=1.8"],
         author="Danny Broberg, Bharat Medasani, Nils Zimmerman",
         author_email="mbkumar@gmail.com",
