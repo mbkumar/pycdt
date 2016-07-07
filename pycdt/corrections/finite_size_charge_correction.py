@@ -33,7 +33,7 @@ def get_correction_freysoldt(defect, bulk_entry, epsilon, title = None):
     Function to compute the isotropic freysoldt correction for each defect.
     Args:
         defect: ComputedDefect object
-        bulk_entry: ComputedStructureEntry corresponding to bulk
+        bulk_entry: ComputedStructureEntry corresponding to bulk OR bulk Locpot Object
         epsilon: dielectric constant
     """
     if type(bulk_entry) is Locpot:
@@ -48,7 +48,7 @@ def get_correction_freysoldt(defect, bulk_entry, epsilon, title = None):
     encut = defect.entry.data['encut']
     if not charge:
         print 'charge is zero so charge correction is zero'
-        return (0.,None)
+        return (0.,bulk_entry)
 
     #if either locpot is already loaded then load pure_locpot= or defect_locpot=
     # if you want to load position then can load it with pos=
