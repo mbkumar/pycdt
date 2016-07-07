@@ -505,7 +505,7 @@ class ChargedDefectsStructures(object):
                     # new species (i.e., of the species that substitutes
                     # a lattice atom).
                     charges_sub = self.defect_charger.get_charges(
-                            'substitution', vac_symbol, subspecie_symbol)
+                            'substitution', vac_specie, Element(subspecie_symbol))
                     sub_defs.append({
                         'name': "sub_{}_{}_on_{}".format(
                             i+1, subspecie_symbol, vac_symbol),
