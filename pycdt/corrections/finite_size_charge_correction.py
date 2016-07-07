@@ -33,7 +33,7 @@ def get_correction_freysoldt(defect, bulk_entry, epsilon, title = None):
     Function to compute the isotropic freysoldt correction for each defect.
     Args:
         defect: ComputedDefect object
-        bulk_entry: ComputedStructureEntry corresponding to bulk
+        bulk_entry: ComputedStructureEntry corresponding to bulk OR bulk Locpot Object
         epsilon: dielectric constant
     """
     if type(bulk_entry) is Locpot:
@@ -48,7 +48,7 @@ def get_correction_freysoldt(defect, bulk_entry, epsilon, title = None):
     encut = defect.entry.data['encut']
     if not charge:
         print 'charge is zero so charge correction is zero'
-        return (0.,None)
+        return (0.,bulk_entry)
 
     #if either locpot is already loaded then load pure_locpot= or defect_locpot=
     # if you want to load position then can load it with pos=
@@ -212,7 +212,7 @@ class ChargeCorrection(object):
             self._purelocpot=s._purelocpot
         if (type(s._deflocpot) is Locpot) and (type(self._deflocpot) is not Locpot):
             self._deflocpot=s._deflocpot
-        if not self._pos: #want them in fractional coords
+        if self._pos is None: #want them in fractional coords
             self._pos = self._purelocpot.structure.lattice.get_fractional_coords(s._pos)
 
         print '\n Final Freysoldt',nomtype,'value is ',freyval
@@ -237,7 +237,7 @@ class ChargeCorrection(object):
                 self._purelocpot = Locpot.from_file(self._purelocpot)
             s=KumagaiCorrection(self._dieltens, 
                     self._q, self._KumagaiBulk.gamma, self._KumagaiBulk.g_sum, 
-                    self._purelocpot.structure, energy_cutoff=self._encut, 
+                    self._purelocpot.structure, energy_cutoff=self._encut,
                     madetol=self._madetol, 
                     bulk_locpot=self._purelocpot, defect_locpot=self._deflocpot)
         else:
