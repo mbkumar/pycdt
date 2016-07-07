@@ -89,7 +89,12 @@ class DefectPlotter(object):
                 legends.append(legend)
             return legends
 
-        plt.legend(get_legends(y.keys()),fontsize=1.8*width,loc=8)
+        if len(y.keys())<5:
+            plt.legend(get_legends(y.keys()),fontsize=1.8*width,loc=8)
+        else: #note to Bharat -> so far I have been having to adjust the bbox_to_anchor based on number of defects
+            #would like to be able to have this be automagic enough that legend won't interfere with plot when lots
+            # of defects exist....
+            plt.legend(get_legends(y.keys()),fontsize=1.8*width,ncol=3, loc='lower center', bbox_to_anchor=(.5,-.6))
         plt.axvline(x=0.0, linestyle='--', color='k', linewidth=3)
         plt.axvline(x=self._analyzer._band_gap, linestyle='--', color='k', linewidth=3)
         if ylim is not None:
