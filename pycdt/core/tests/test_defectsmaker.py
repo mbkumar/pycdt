@@ -53,6 +53,9 @@ class DefectChargerSemiconductorTest(unittest.TestCase):
 
 
     def test_substitution_charges(self):
+	"""
+	TODO: This needs test
+	"""
         s_impurity_qs = self.def_charger.get_charges('substitution', 'As', 'S')
         se_impurity_qs = self.def_charger.get_charges('substitution', 'As', 'Se')
         mg_impurity_qs = self.def_charger.get_charges('substitution', 'Ga', 'Mg')
@@ -72,7 +75,6 @@ class DefectChargerSemiconductorTest(unittest.TestCase):
         self_qs = self.def_charger.get_charges('interstitial', 'Ga')
         self.assertIn(-1, self_qs)
         self.assertIn(2, self_qs)
-        pass
 
 
 class DefectChargerInsulatorTest(unittest.TestCase):
@@ -88,9 +90,7 @@ class DefectChargerInsulatorTest(unittest.TestCase):
         anion charge.
         """
         cr_vac_qs = self.def_charger.get_charges('vacancy', 'Cr')
-        print cr_vac_qs
         o_vac_qs = self.def_charger.get_charges('vacancy', 'O')
-        print o_vac_qs
         self.assertIn(0, cr_vac_qs)
         self.assertIn(-3, cr_vac_qs)
         self.assertNotIn(-4, cr_vac_qs)
