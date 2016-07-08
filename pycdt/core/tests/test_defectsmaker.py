@@ -45,14 +45,18 @@ class DefectChargerSemiconductorTest(unittest.TestCase):
 
     def test_antisite_charges(self):
         ga_on_as_qs = self.def_charger.get_charges('antisite', 'Ga', 'As')
-        as_on_ga_qs = self.def_charger.get_charges('antisite', 'Ga', 'As')
-        pass
+        as_on_ga_qs = self.def_charger.get_charges('antisite', 'As', 'Ga')
+        self.assertIn(0, ga_on_as_qs)
+        self.assertIn(2, ga_on_as_qs)
+        self.assertIn(0, as_on_ga_qs)
+        self.assertIn(-3, as_on_ga_qs)
+
 
     def test_substitution_charges(self):
-        s_impurity_qs = self.def_charger.get_charges('substitution', 'S')
-        se_impurity_qs = self.def_charger.get_charges('substitution', 'Se')
-        mg_impurity_qs = self.def_charger.get_charges('substitution', 'Mg')
-        zn_impurity_qs = self.def_charger.get_charges('substitution', 'Zn')
+        s_impurity_qs = self.def_charger.get_charges('substitution', 'As', 'S')
+        se_impurity_qs = self.def_charger.get_charges('substitution', 'As', 'Se')
+        mg_impurity_qs = self.def_charger.get_charges('substitution', 'Ga', 'Mg')
+        zn_impurity_qs = self.def_charger.get_charges('substitution', 'Ga', 'Zn')
 
     def test_interstitial_charges(self):
         """
@@ -65,7 +69,7 @@ class DefectChargerSemiconductorTest(unittest.TestCase):
         n_qs = self.def_charger.get_charges('interstitial', 'N')
         self.assertIn(1, n_qs)
         self.assertIn(-3, n_qs)
-        self_qs = self.def_charger.get_charges('interstitial')
+        self_qs = self.def_charger.get_charges('interstitial', 'Ga')
         self.assertIn(-1, self_qs)
         self.assertIn(2, self_qs)
         pass
