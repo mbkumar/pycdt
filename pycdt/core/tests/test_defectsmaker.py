@@ -53,9 +53,9 @@ class DefectChargerSemiconductorTest(unittest.TestCase):
 
 
     def test_substitution_charges(self):
-	"""
-	TODO: This needs test
-	"""
+        """
+        TODO: This needs test
+        """
         s_impurity_qs = self.def_charger.get_charges('substitution', 'As', 'S')
         se_impurity_qs = self.def_charger.get_charges('substitution', 'As', 'Se')
         mg_impurity_qs = self.def_charger.get_charges('substitution', 'Ga', 'Mg')
