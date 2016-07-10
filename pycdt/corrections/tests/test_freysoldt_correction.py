@@ -17,9 +17,12 @@ from pymatgen.io.vasp.outputs import Locpot
 from pycdt.corrections.freysoldt_correction import *
 
 #Paths to files we are testing on
-bl_path = 'bLOCPOT.gz'
-dl_path = 'dLOCPOT.gz'
-fad_path = 'testFreyAxisData.npz'
+bl_path = os.path.join('..', '..', '..', 'test_files', 'bLOCPOT.gz')
+dl_path = os.path.join('..', '..', '..', 'test_files', 'dLOCPOT.gz')
+fad_path = os.path.join('..', '..', '..', 'test_files', 'testFreyAxisData.npz')
+#bl_path = 'bLOCPOT.gz'
+#dl_path = 'dLOCPOT.gz'
+#fad_path = 'testFreyAxisData.npz'
 
 class FreysoldtCorrectionTest(unittest.TestCase):
     def setUp(self):

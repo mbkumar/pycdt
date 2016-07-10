@@ -1,7 +1,7 @@
 import unittest
 
 from pymatgen.matproj.rest import MPRester
-from pycdcd.utils.get_vbm import get_vbm
+from pycdt.utils.get_vbm import get_vbm
 
 class GetVBMTest(unittest.TestCase):
     def setUp(self):

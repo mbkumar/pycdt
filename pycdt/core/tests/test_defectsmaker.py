@@ -16,9 +16,12 @@ import os
 from pymatgen.core.structure import Structure
 from pycdt.core.defectsmaker import *
 
+file_loc = os.path.join('..', '..', '..', 'test_files')
+
 class GetOptimizedScScaleTest(unittest.TestCase):
     def setUp(self):
-        self.gaas_prim_struct = Structure.from_file('POSCAR_GaAs')
+        self.gaas_prim_struct = Structure.from_file(
+                os.path.join(file_loc, 'POSCAR_GaAs'))
 
     def test_biggercell_wanted(self):
         pass
@@ -29,7 +32,8 @@ class GetOptimizedScScaleTest(unittest.TestCase):
 
 class DefectChargerSemiconductorTest(unittest.TestCase):
     def setUp(self):
-        self.gaas_struct = Structure.from_file('POSCAR_GaAs')
+        self.gaas_struct = Structure.from_file(
+            os.path.join(file_loc, 'POSCAR_GaAs'))
         self.def_charger = DefectChargerSemiconductor(self.gaas_struct)
 
     def test_vacancy_charges(self):
@@ -79,7 +83,8 @@ class DefectChargerSemiconductorTest(unittest.TestCase):
 
 class DefectChargerInsulatorTest(unittest.TestCase):
     def setUp(self):
-        cr2o3_struct = Structure.from_file('POSCAR_Cr2O3')
+        cr2o3_struct = Structure.from_file(
+                os.path.join(file_loc, 'POSCAR_Cr2O3'))
         self.def_charger = DefectChargerInsulator(cr2o3_struct)
 
     def test_vacancy_charges(self):

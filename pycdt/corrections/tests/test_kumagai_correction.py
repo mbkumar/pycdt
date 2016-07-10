@@ -17,10 +17,13 @@ import numpy as np
 from pymatgen.io.vasp.outputs import Locpot
 from pycdt.corrections.kumagai_correction import *
 
-#Paths to files we are testing on
-bl_path = 'bLOCPOT.gz'
-dl_path = 'dLOCPOT.gz'
-kad_path = 'testKumagaiData.json'
+# Paths to files we are testing on
+# bl_path = 'bLOCPOT.gz'
+# dl_path = 'dLOCPOT.gz'
+# kad_path = 'testKumagaiData.json'
+bl_path = os.path.join('..', '..', '..', 'test_files', 'bLOCPOT.gz')
+dl_path = os.path.join('..', '..', '..', 'test_files', 'dLOCPOT.gz')
+kad_path = os.path.join('..', '..', '..', 'test_files', 'testKumagaiData.json')
 
 class KumagaiBulkInitANDCorrectionTest(unittest.TestCase):
     #TODO: also might want to test outcar Kumagai method...
