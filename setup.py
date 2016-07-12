@@ -13,7 +13,7 @@ setup(
         name="pycdt",
         packages=find_packages(),
         version="0.5.0",
-        install_requires=["pymatgen==4.0.2", "numpy>=1.9", "matplotlib>=1.1"],
+        install_requires=["numpy>=1.9", "pymatgen==4.0.2", "matplotlib>=1.1"],
         author="Danny Broberg, Bharat Medasani, Nils Zimmerman",
         author_email="mbkumar@gmail.com",
         #url="http://github.com/mbkumar/pycdcd",
