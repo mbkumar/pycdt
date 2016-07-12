@@ -501,14 +501,9 @@ def wigner_seitz_radius(structure):
     """
     Calculate the Wigner Seitz radius for the given structure.
     Args:
-        s: Either structure or VolumetricData object
+        structure: pymatgen Structure object
     """
-    try:
-        lat = Lattice(structure.lattice_vectors())
-    except:
-        lat = Lattice(structure.structure.lattice_vectors())
-
-    wz = lat.get_wigner_seitz_cell()
+    wz = structure.lattice.get_wigner_seitz_cell()
 
     dist = []
     for facet in wz:
