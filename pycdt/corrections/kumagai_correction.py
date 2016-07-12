@@ -1100,10 +1100,3 @@ class KumagaiCorrection(object):
 
         forplot = loadfn(name, cls=MontyDecoder)
         cls.plot(forplot, title=title)
-
-
-if __name__ == '__main__':
-    s = KumagaiCorrection(18.099,
-        '../../../../Gavacm3testMachgcorr/LOCPOT_vref','../../../../Gavacm3testMachgcorr/LOCPOT_vdef',-3,
-        gamma=4.160061)
-    s.correction(title='Testing')
