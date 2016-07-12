@@ -52,7 +52,7 @@ def eV_to_k(energy):
     Returns:
         (double) Reciprocal vector magnitude (units of 1/Bohr).
     """
-    return math.sqrt(energy/3.80986)*1.8897
+    return math.sqrt(energy/3.80986) * ang_to_bohr
 
 def cleanlat(dat):
     """
@@ -119,9 +119,9 @@ def generate_reciprocal_vectors_squared(a1, a2, a3, encut):
     b3 = (2 * np.pi / vol) * np.cross(a1, a2)
 
     # Max (i,j,k) that doesn't upset the condition |i*b1+j*b2+k*b3|<=gcut
-    gcut=eV_to_k(encut)
+    gcut = eV_to_k(encut)
     max_index = int(math.ceil(gcut/min(norm(b1), norm(b2), norm(b3))))
-    gcut2 = gcut*gcut
+    gcut2 = gcut * gcut
     recip = []
     for i in range(-max_index, max_index+1):
         for j in range(-max_index, max_index+1):
@@ -133,46 +133,46 @@ def generate_reciprocal_vectors_squared(a1, a2, a3, encut):
     return recip
 
 
-def closestsites(sb,sd,pos):
+def closestsites(struct_blk, struct_def, pos):
     #input bulk and defect structures and get site that is nearest to the (cartesian) input position
-    bulkclosesites=sb.get_sites_in_sphere(pos,5,include_index=True)
+    bulkclosesites = struct_blk.get_sites_in_sphere(pos, 5, include_index=True)
     bulkclosesites.sort(key=lambda x:x[1])
-    defclosesites=sd.get_sites_in_sphere(pos,5,include_index=True)
+    defclosesites = struct_def.get_sites_in_sphere(pos, 5, include_index=True)
     defclosesites.sort(key=lambda x:x[1])
-    return bulkclosesites[0],defclosesites[0] #returns closest (site object, dist) for both bulk and defect
+    return bulkclosesites[0], defclosesites[0] #returns closest (site object, dist) for both bulk and defect
 
 
-def find_defect_pos(sb,sd):
+def find_defect_pos(struct_blk, struct_def):
     #Will output cartesian coords of defect in bulk,defect cells.
     #If vacancy defectpos=None, if interstitial bulkpos=None, if antisite/sub then both defined
-    if len(sb.sites)>len(sd.sites):
-        vactype=True
-        interstittype=False
-    elif len(sb.sites)<len(sd.sites):
-        vactype=False
-        interstittype=True
+    if len(struct_blk.sites) > len(struct_def.sites):
+        vactype = True
+        interstittype = False
+    elif len(struct_blk.sites) < len(struct_def.sites):
+        vactype = False
+        interstittype = True
     else:
-        vactype=False
-        interstittype=False
-    sitematching=[]
+        vactype = False
+        interstittype = False
+    sitematching = []
 
-    for i in sb.sites:
-        blksite,defsite=closestsites(sb,sd,i.coords)
+    for site in struct_blk.sites:
+        blksite, defsite = closestsites(struct_blk, struct_def, site.coords)
         if vactype and blksite[0].specie.symbol != defsite[0].specie.symbol:
             return blksite[0].coords, None
         elif interstittype and blksite[0].specie.symbol != defsite[0].specie.symbol:
             return None, defsite[0].coords
         elif blksite[0].specie.symbol != defsite[0].specie.symbol: #subs or antisite type
             return blksite[0].coords, defsite[0].coords
-        sitematching.append([blksite[0],blksite[1],defsite[0],defsite[1]])
+        sitematching.append([blksite[0], blksite[1], defsite[0], defsite[1]])
 
     if vactype: #just in case site type is same for closest site to vacancy
         sitematching.sort(key=lambda x:x[3])
-        vacant=sitematching[-1]
+        vacant = sitematching[-1]
         return vacant[0].coords, None
     elif interstittype: #just in case site type is same for closest site to interstit
         sitematching.sort(key=lambda x:x[1])
-        interstit=sitematching[-1]
+        interstit = sitematching[-1]
         return  None, interstit[2].coords
 
     return None,None #if you get here there is an error
@@ -271,7 +271,7 @@ def get_g_sum_at_r(g_sum, structure, dim, r):
         reciprocal summ value at g_sum[i_rx,j_ry,k_rz]
     """
 
-    fraccoord=structure.lattice.get_fractional_coords(r)
+    fraccoord = structure.lattice.get_fractional_coords(r)
     i, j, k = getgridind(structure, dim, fraccoord)
 
     return g_sum[i, j, k]
@@ -360,20 +360,20 @@ def getgridind(structure, dim, r, gridavg=0.0):
         [i,j,k]: Indices as list
     TODO: Once final, remove the getgridind inside disttrans function
     """
-    abc=structure.lattice.abc
+    abc = structure.lattice.abc
     grdind = []
 
     if gridavg:
-        radvals=[] #radius in terms of indices
-        dxvals=[]
+        radvals = [] #radius in terms of indices
+        dxvals = []
 
     for i in range(3):
         if r[i] < 0:
-            while r[i]<0:
+            while r[i] < 0:
                 r[i] += 1
         elif r[i] >= 1:
-            while r[i]>=1:
-                r[i]-=1
+            while r[i] >= 1:
+                r[i] -= 1
         r[i] *= abc[i]
         num_pts = dim[i]
         x = [now_num / float(num_pts) * abc[i] for now_num in range(num_pts)]
@@ -400,8 +400,8 @@ def getgridind(structure, dim, r, gridavg=0.0):
                         ival = (i+grdind[0]) % dim[0]
                         jval = (j+grdind[1]) % dim[1]
                         kval = (k+grdind[2]) % dim[2]
-                        grdindfull.append((ival,jval,kval))
-        grdind=grdindfull
+                        grdindfull.append((ival, jval, kval))
+        grdind = grdindfull
 
     return grdind
 
@@ -415,7 +415,7 @@ def disttrans(struct, defstruct, dim):
     """
 
     #Find defect location in bulk and defect cells
-    blksite,defsite = find_defect_pos(struct,defstruct)
+    blksite, defsite = find_defect_pos(struct, defstruct)
     if blksite is None and defsite is None:
         logging.error('Not able to determine defect site')
         return
@@ -431,50 +431,50 @@ def disttrans(struct, defstruct, dim):
                       repr(blksite), repr(defsite))
 
     if blksite is None:
-        blksite=defsite
+        blksite = defsite
     elif defsite is None:
-        defsite=blksite
+        defsite = blksite
 
     def_ccoord = blksite[:]
     defcell_def_ccoord = defsite[:]
 
-    if len(struct.sites)>=len(defstruct.sites):
-        sitelist=struct.sites[:]
+    if len(struct.sites) >= len(defstruct.sites):
+        sitelist = struct.sites[:]
     else: #for interstitial list
-        sitelist=defstruct.sites[:]
+        sitelist = defstruct.sites[:]
 
     #better image getter since pymatgen wasnt working well for this
     def returnclosestr(vec):
         from operator import itemgetter
-        listvals=[]
-        abclats=defstruct.lattice.matrix
-        trylist=[-1,0,1]
+        listvals = []
+        abclats = defstruct.lattice.matrix
+        trylist = [-1, 0, 1]
         for i in trylist:
             for j in trylist:
                 for k in trylist:
-                    transvec=i*abclats[0]+j*abclats[1]+k*abclats[2]
-                    rnew=vec-(defcell_def_ccoord+transvec)
-                    listvals.append([norm(rnew),rnew,transvec])
+                    transvec = i*abclats[0] + j*abclats[1] + k*abclats[2]
+                    rnew = vec - (defcell_def_ccoord + transvec)
+                    listvals.append([norm(rnew), rnew, transvec])
         listvals.sort(key=itemgetter(0))
         return listvals[0] #will return [dist,r to defect, and transvec for defect]
 
     grid_sites = {}  # dictionary with indices keys in order of structure list
     for i in sitelist:
-        if np.array_equal(i.coords,def_ccoord):
+        if np.array_equal(i.coords, def_ccoord):
             logging.debug('Site # %d  is defect! Skipping ', i)
             continue
 
-        blksite,defsite=closestsites(struct,defstruct,i.coords)
+        blksite, defsite = closestsites(struct, defstruct, i.coords)
 
         # blkindex=struct.index(blksite[0])
         # defindex=defstruct.index(defsite[0])
-        blkindex=blksite[-1]
-        defindex=defsite[-1]
+        blkindex = blksite[-1]
+        defindex = defsite[-1]
 
         dcart_coord = defsite[0].coords
-        closeimage=returnclosestr(dcart_coord)
-        cart_reldef=closeimage[1]
-        defdist=closeimage[0]
+        closeimage = returnclosestr(dcart_coord)
+        cart_reldef = closeimage[1]
+        defdist = closeimage[0]
 
         if abs(norm(cart_reldef) - defdist) > 0.1:
             logging.warning('Image locater issue encountered for site = %d', 
@@ -489,10 +489,11 @@ def disttrans(struct, defstruct, dim):
             logging.warning('Index %d already exists in potinddict!', blkindex)
             logging.warning('Overwriting information.')
 
-        grid_sites[blkindex] = {'dist': defdist,'cart': dcart_coord,
+        grid_sites[blkindex] = {
+                'dist': defdist,'cart': dcart_coord,
                 'cart_reldef': cart_reldef,
-                'siteobj':[i.coords,i.frac_coords,i.species_string],
-                'bulk_site_index':blkindex, 'def_site_index':defindex}
+                'siteobj': [i.coords, i.frac_coords, i.species_string],
+                'bulk_site_index': blkindex, 'def_site_index': defindex}
 
     return grid_sites
 
@@ -545,7 +546,7 @@ def read_ES_avg(location_outcar):
         pot = []
         for line_num in range(start_line+3, end_line):
             line = out_dat[line_num].split()
-            avg_es = map(float,line[1::2])
+            avg_es = map(float, line[1::2])
             pot += avg_es
         ES_data.update({'potential': pot})
 
