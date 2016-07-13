@@ -69,16 +69,14 @@ class DefectChargerSemiconductorTest(unittest.TestCase):
         """
         References:
         N interstitial: +1 to -3 [J. Phys.: Condens. Matter 20 (2008) 235231]
-        Mn intersititial:
-        Self interstital: arxiv.org/pdf/1101.1413.pdf
+        As Self interstital: arxiv.org/pdf/1101.1413.pdf
         """
-        mn_qs = self.def_charger.get_charges('interstitial', 'Mn')
         n_qs = self.def_charger.get_charges('interstitial', 'N')
         self.assertIn(1, n_qs)
         self.assertIn(-3, n_qs)
-        self_qs = self.def_charger.get_charges('interstitial', 'Ga')
+        self_qs = self.def_charger.get_charges('interstitial', 'As')
         self.assertIn(-1, self_qs)
-        self.assertIn(2, self_qs)
+        self.assertIn(1, self_qs)
 
 
 class DefectChargerInsulatorTest(unittest.TestCase):
