@@ -198,26 +198,21 @@ class FreysoldtCorrection(object):
                 return 0.0
 
         if not type(self._purelocpot) is Locpot:
-            #if not self._silence:
             logging.debug('Load bulk locpot')
             self._purelocpot = Locpot.from_file(self._purelocpot)
 
-        #if not self._silence:
         logging.debug('\nRun PC energy')
         if partflag!='potalign':
             energy_pc = self.pc()
-            #if not self._silence:
             logging.debug('PC calc done, correction = %f', round(energy_pc, 4))
             logging.debug('Now run potenttial alignment script')
 
         if partflag!='pc':
             if not type(self._deflocpot) is Locpot:
-                #if not self._silence:
                 logging.debug('Load defect locpot')
                 self._deflocpot = Locpot.from_file(self._deflocpot)
             potalign = self.potalign(title=title)
 
-        #if not self._silence:
         logging.info('\n\nFreysoldt Correction details:')
         if partflag!='potalign':
             logging.info('PCenergy (E_lat) = %f', round(energy_pc, 5))
@@ -238,7 +233,7 @@ class FreysoldtCorrection(object):
             return map(lambda x: round(x, 5), 
                        [energy_pc, potalign, energy_pc+potalign])
 
-    def pc(self,struct=None):
+    def pc(self, struct=None):
         """
         Peform Electrostatic Correction
         note this ony needs structural info
@@ -246,22 +241,19 @@ class FreysoldtCorrection(object):
         equivalently fast if input Locpot is a locpot object
         """
         if type(struct) is Structure:
-            s1=struct
+            s1 = struct
         else:
             if not type(self._purelocpot) is Locpot:
-                #if not self._silence:
                 logging.info('load Pure locpot')
                 self._purelocpot = Locpot.from_file(self._purelocpot)
-            s1=self._purelocpot.structure
+            s1 = self._purelocpot.structure
 
         ap = s1.lattice.get_cartesian_coords(1)
-        #if self._silence == False:
         logging.info('run Freysoldt 2011 PC calculation (should be '\
                      'equivalent to sxdefectalign)')
         logging.debug('defect lattice constants are (in angstroms)' \
                       + str(cleanlat(ap)))
         [a1, a2, a3] = ang_to_bohr * ap
-        #if self._silence == False:
         logging.debug( 'In atomic units, lat consts are (in bohr):' \
                       + str(cleanlat([a1, a2, a3])))
         vol = np.dot(a1, np.cross(a2, a3))  #vol in bohr^3
@@ -292,8 +284,7 @@ class FreysoldtCorrection(object):
                     sys.exit()
             encut1 += 20
         eiso = converge[-1]
-        #if self._silence == False:
-        logging.debug('Eisolated : %f, converged at encut: %d', 
+        logging.debug('Eisolated : %f, converged at encut: %d',
                       round(eiso, 5), encut1-20)
 
         #compute periodic energy;
@@ -319,15 +310,14 @@ class FreysoldtCorrection(object):
             encut1 += 20
         eper = converge[-1]
 
-        #if self._silence == False:
         logging.info('Eperiodic : %f hartree, converged at encut %d eV',
                      round(eper, 5), encut1 - 20)
         logging.info('difference (periodic-iso) is %f hartree', 
                      round(eper-eiso, 6))
         logging.info( 'difference in (eV) is %f', 
                      round((eper-eiso) * hart_to_ev, 4))
+
         PCfreycorr = round((eiso-eper)/self._dielectricconst*hart_to_ev, 6)
-        #if self._silence == False:
         logging.info('Defect Correction without alignment %f (eV): ', PCfreycorr)
 
         return PCfreycorr
@@ -348,11 +338,9 @@ class FreysoldtCorrection(object):
             axis = axis
 
         if not type(self._purelocpot) is Locpot:
-            #if not self._silence:
             logging.debug('load pure locpot object')
             self._purelocpot = Locpot.from_file(self._purelocpot)
         if not type(self._deflocpot) is Locpot:
-            #if not self._silence:
             logging.debug('load defect locpot object')
             self._deflocpot = Locpot.from_file(self._deflocpot)
 
@@ -455,23 +443,24 @@ class FreysoldtCorrection(object):
         logging.debug('means sampling region is (%f,%f)', 
                       x[mid-checkdis], x[mid+checkdis])
 
-        C = -np.mean(tmppot)
+        C = -1 * np.mean(tmppot)
         logging.debug('C = %f', C)
-        finalshift = [short[j] + C for j in range(len(v_R))]
-        v_R = [v_R[j]-C for j in range(len(v_R))]
+        final_shift = [short[j] + C for j in range(len(v_R))]
+        v_R = [elmnt - C for elmnt in v_R]
 
         logging.info('C value is averaged to be %f eV ', C)
-        logging.info('Potentital alignment (-q*delta V) is %f (eV)', -self._q*C)
+        logging.info('Potentital alignment (-q*delta V):  %f (eV)', -self._q*C)
 
-        if title: #TODO: Make title  optional and use a flag for plotting
-            plotter = FreysoldtCorrPlotter(x, v_R, defavg-pureavg, finalshift,
+        if title: # TODO: Make title  optional and use a flag for plotting
+            plotter = FreysoldtCorrPlotter(x, v_R, defavg-pureavg, final_shift,
                       np.array([mid-checkdis, mid+checkdis]))
 
             if title != 'written':
                 plotter.plot(title=title)
             else:
-                #TODO: make this default fname more defect specific so it doesnt over write previous defect data written
-                fname='FreyAxisData' # Extension is npz
+                # TODO: Make this default fname more defect specific so it doesnt
+                # over write previous defect data written
+                fname = 'FreyAxisData' # Extension is npz
                 plotter.to_datafile(fname)
 
 

@@ -43,19 +43,16 @@ def kumagai_init(structure, dieltens):
     elif len(dieltens.shape) == 1:
         dieltens = np.diagflat(dieltens)
 
-    #if not sil:
-    logging.debug('defect lattice constants are (in angstroms)' + 
+    logging.debug('defect lattice constants are (in angstroms)' +
                   str(cleanlat(angset)))
     [a1, a2, a3] = ang_to_bohr * angset  # convert to bohr
     bohrset = [a1, a2, a3]
     vol = np.dot(a1, np.cross(a2, a3))
 
-    #if not sil:
-    logging.debug('Lattice constants (in Bohr) are:' + 
+    logging.debug('Lattice constants (in Bohr) are:' +
                   str(cleanlat([a1, a2, a3])))
     determ = np.linalg.det(dieltens)
     invdiel = np.linalg.inv(dieltens)
-    #if not sil:
     logging.debug('inv dielectric tensor is ' + str(invdiel))
 
     return angset, bohrset, vol, determ, invdiel
@@ -105,7 +102,6 @@ def real_sum(a1, a2, a3, r, q, dieltens, gamma, tolerance):
         elif len(r_sums) > 3:
             if abs(abs(r_sums[-1][1])-abs(r_sums[-2][1])) < tolerance:
                 r_sum = r_sums[-1][1]
-                #if not silence:
                 logging.debug("gamma is {}".format(gamma))
                 logging.debug("convergence for real summatin term occurs at " + 
                        "step {}  where real sum is {}".format(
@@ -159,12 +155,9 @@ def anisotropic_madelung_potential(structure, dim, g_sum, r, dieltens, q,
     #now add up total madelung potential part with two extra parts:
     #self interaction term
     selfint = q * np.pi / (vol * (gamma ** 2))
-    #if not silence:
     logging.debug('self interaction piece is {}'.format(selfint * hart_to_ev))
 
-    #pot = (hart_to_ev/-q) * (directpart + recippartreal - selfint)
-    pot = hart_to_ev * (directpart + recippartreal - selfint)  #reverted dividing by q to match kumagai data...
-
+    pot = hart_to_ev * (directpart + recippartreal - selfint)
     return pot
 
 
@@ -184,21 +177,16 @@ def anisotropic_pc_energy(structure, g_sum, dieltens, q, gamma, tolerance):
 
     g_part = q*g_sum[0,0,0]
     r_part = real_sum(a1, a2, a3, [0,0,0], q, dieltens, gamma, tolerance)
+    selfint = q*np.pi / (vol * (gamma**2)) #self interaction term
+    #surface term (only for r not at origin)
+    surfterm = 2*gamma*q / np.sqrt(np.pi*determ)
 
-    #self interaction term
-    selfint = q*np.pi / (vol * (gamma**2))
-    #if not silence:
     logging.debug('reciprocal piece is {}'.format(g_part * hart_to_ev))
     logging.debug('real piece is {}'.format(r_part * hart_to_ev))
     logging.debug('self interaction piece is {}'.format(selfint * hart_to_ev))
-
-    #surface term (only for r not at origin)
-    surfterm = 2*gamma*q / np.sqrt(np.pi*determ)
-    #if not silence:
     logging.debug('surface term is {}'.format(surfterm * hart_to_ev))
 
     pc_energy = -q*0.5*hart_to_ev*(r_part + g_part - selfint - surfterm)
-    #if not silence:
     logging.debug('Final PC Energy term is %f eV', pc_energy)
 
     return pc_energy
@@ -264,10 +252,12 @@ def getgridind(structure, dim, r, gridavg=0.0):
 
 def disttrans(struct, defstruct, dim):
     """
-    for calculating distance from defect to each atom and finding NGX grid pts at each atom
+    To calculate distance from defect to each atom and finding NGX grid
+    pts at each atom.
     Args:
         struct: Bulk structure object
         defstruct: Defect structure object
+        dim: dimensions of FFT grid
     """
 
     #Find defect location in bulk and defect cells
@@ -275,7 +265,6 @@ def disttrans(struct, defstruct, dim):
     if blksite is None and defsite is None:
         logging.error('Not able to determine defect site')
         return
-    #if not silence:
     if blksite is None:
         logging.debug('Found defect to be Interstitial type at %s', 
                       repr(defsite))
@@ -475,8 +464,8 @@ class KumagaiBulkInit(object):
     def find_optimal_gamma(self):
         """
         Find optimal gamma by evaluating the brute force reciprocal
-        summation and seeing when the values are on the order of 1
-        this calculation is the anisotropic Madelung potential at r = (0, 0, 0)
+        summation and seeing when the values are on the order of 1,
+        This calculation is the anisotropic Madelung potential at r = (0,0,0).
         Note this only requires the STRUCTURE not the LOCPOT object.
         """
         angset, [a1, a2, a3], vol, determ, invdiel = kumagai_init(
@@ -609,7 +598,6 @@ class KumagaiBulkInit(object):
         r_arr_real = np.real(r_array)
         r_arr_imag = np.imag(r_array)
 
-        #if not self.silence:
         max_imag = r_arr_imag.max()
         logging.debug('Max imaginary part found to be %f', max_imag)
 
@@ -650,9 +638,7 @@ class KumagaiCorrection(object):
                 If not given, Materials Project default 520 eV is used.
             madetol: 
                 Tolerance for convergence of energy terms in eV 
-            silence
-                : Flag for disabling/enabling  messages (Bool)
-            lengths: 
+            lengths:
                 Lengths of axes, for speeding up plotting slightly
             keywords:
                 1) bulk_locpot: Bulk Locpot file path OR Bulk Locpot 
@@ -697,7 +683,6 @@ class KumagaiCorrection(object):
         self.madetol = madetol
         self.q = q
         self.encut = energy_cutoff
-        #self.silence = silence
         self.structure = bulk_structure
         self.defstructure = defect_structure
         self.gamma = gamma
@@ -734,7 +719,6 @@ class KumagaiCorrection(object):
         if partflag != 'pc':
             potalign = self.potalign(title=title)
 
-        #if not self.silence:
         logging.info('Kumagai Correction details:')
         if partflag != 'potalign':
             logging.info('PCenergy (E_lat) = %f', round(energy_pc, 5))
@@ -781,15 +765,14 @@ class KumagaiCorrection(object):
 
         potinddict = disttrans(self.structure, self.defstructure, self.dim) 
 
-        minlat=min(norm(a1),norm(a2),norm(a3))
-        lat_perc_diffs=[100*abs(norm(a1)-norm(lat))/minlat for lat in [a2,a3]]
-        lat_perc_diffs.append(100*abs(norm(a2)-norm(a3))/minlat)
+        minlat = min(norm(a1), norm(a2), norm(a3))
+        lat_perc_diffs = [100 * abs(norm(a1) - norm(lat))/minlat for lat in [a2,a3]]
+        lat_perc_diffs.append(100 * abs(norm(a2) - norm(a3))/minlat)
         if not all(i < 45 for i in lat_perc_diffs):
             logging.warning('Detected that cell was not very cubic.')
             logging.warning('Sampling atoms outside wigner-seitz cell may '\
                             'not be optimal')
         wsrad = wigner_seitz_radius(self.structure)
-        #if not self.silence:
         logging.debug('wsrad %f', wsrad)
 
         for i in potinddict.keys():

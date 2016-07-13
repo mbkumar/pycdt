@@ -71,16 +71,9 @@ def make_vasp_defect_files(defects, path_base, user_settings={}, hse=False):
                 incar = dict_params['INCAR']
             incar.update({
                 'IBRION': 2, 'ISIF': 2, 'ISPIN': 2, 'LWAVE':False, 
-                'EDIFF': 1e-5, 'EDIFFG': -1e-2, 'ISMEAR': 0, 'SIGMA': 0.05,
+                'EDIFF': 1e-6, 'EDIFFG': -1e-2, 'ISMEAR': 0, 'SIGMA': 0.05,
                 'LVTOT': True, 'LVHAR': True, 'LORBIT': 11, 'ALGO': "Fast",
                 'ISYM':0})
-            #if hse == True:
-            #    incar.update({
-            #        'LHFCALC': True, "ALGO": "All", "HFSCREEN": 0.2,
-            #        "PRECFOCK": "Fast", 'NKRED': 2})#, "AEXX": 0.45})
-            #if user_settings:
-            #    if 'INCAR' in user_settings.get('defects', {}):
-            #        incar.update(user_settings['defects']['INCAR'])
             incar.update(user_incar)
             incar.update(user_incar_def)
 
@@ -149,15 +142,8 @@ def make_vasp_defect_files(defects, path_base, user_settings={}, hse=False):
         'IBRION': -1, "NSW": 0, 'ISPIN': 2, 'LWAVE': False, 'EDIFF': 1e-5,
         'ISMEAR': 0, 'SIGMA': 0.05, 'LVTOT': True, 'LVHAR': True, 
         'ALGO': 'Fast', 'ISYM': 0})
-    #if user_settings:
-    #    if 'INCAR' in user_settings.get('bulk', {}):
-    #        incar.update(user_settings['bulk']['INCAR'])
     incar.update(user_incar)
     incar.update(user_incar_blk)
-    #if hse == True:
-    #    incar.update({
-    #        'LHFCALC': True, "ALGO": "All", "HFSCREEN": 0.2, "AEXX": 0.45, 
-    #        "PRECFOCK": "Fast", 'NKRED': 2})
     if user_kpoints:
         kpoint = Kpoints.from_dict(user_kpoints)
     else:
@@ -246,10 +232,6 @@ def make_vasp_defect_files_dos(defects, path_base, user_settings={},
                 'EDIFF': 1e-5, 'EDIFFG': -1e-2, 'ISMEAR': 0, 'SIGMA': 0.05, 
                 'LVTOT': True, 'LVHAR': True, 'LORBIT': 11, 'ALGO': "Fast",
                 'ISYM': 0})
-            #if hse == True:
-            #    incar.update({
-            #        'LHFCALC': True, "ALGO": "All", "HFSCREEN": 0.2,
-            #        "PRECFOCK": "Fast", 'NKRED': 2})#, "AEXX": 0.45})
             if user_settings:
                 if 'INCAR' in user_settings.get('defects', None):
                     incar.update(user_settings['defects']['INCAR'])
@@ -284,7 +266,7 @@ def make_vasp_defect_files_dos(defects, path_base, user_settings={},
                 incar.update({"LWAVE": True})
                 incar.write_file(os.path.join(path,"INCAR.relax.gga"))
                 incar.update({
-                    'LHFCALC': True, "ALGO": "All", "HFSCREEN": 0.2, #"AEXX": 0.45, 
+                    'LHFCALC': True, "ALGO": "All", "HFSCREEN": 0.2,
                     "PRECFOCK": "Fast", 'NKRED': 2})
                 incar.write_file(os.path.join(path,"INCAR.relax.hse1"))
                 del incar['PRECFOCK']
@@ -340,10 +322,7 @@ def make_vasp_defect_files_dos(defects, path_base, user_settings={},
     if user_settings:
         if 'INCAR' in user_settings.get('bulk', None):
             incar.update(user_settings['bulk']['INCAR'])
-    #if hse == True:
-    #    incar.update({
-    #        'LHFCALC': True, "ALGO": "All", "HFSCREEN": 0.2,
-    #        "PRECFOCK": "Fast", "AEXX": 0.45})
+
     try:
         kpoint = mp_relax_set.kpoints.monkhorst_automatic()
     except:
@@ -404,8 +383,8 @@ def make_vasp_dielectric_files(struct, path=None, user_settings={},
     incar.update({'IBRION': 8, 'LEPSILON': True, 'LPEAD': True})
     user_settings = deepcopy(user_settings)
     user_incar = user_settings.pop('INCAR', {})
-    tmp = user_incar.pop('bulk', {})
-    tmp = user_incar.pop('defects', {})
+    user_incar.pop('bulk', {})
+    user_incar.pop('defects', {})
     user_incar_diel = user_incar.pop('dielectric', {})
     incar.update(user_incar)
     incar.update(user_incar_diel)
@@ -417,9 +396,11 @@ def make_vasp_dielectric_files(struct, path=None, user_settings={},
             "PRECFOCK": "Fast", 'NKRED': 2})#, "AEXX": 0.45})
 
     try:
-        kpoints = mp_relax_set.kpoints.automatic_density(struct,1000,force_gamma=True)
+        kpoints = mp_relax_set.kpoints.automatic_density(struct, 1000,
+                                                         force_gamma=True)
     except:
-        kpoints = dict_params['KPOINTS'].automatic_density(struct,1000,force_gamma=True)
+        kpoints = dict_params['KPOINTS'].automatic_density(struct, 1000,
+                                                           force_gamma=True)
 
     if not path:
         path_base = struct.composition.reduced_formula

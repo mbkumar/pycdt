@@ -217,7 +217,7 @@ class DefectsAnalyzer(object):
         The vbm-like will follow the vbm and the cbm_like the cbm. If nothing
         is specified the defect transition level does not move
         Args:
-            dict_levels: a dictionnary of type {defect_name:
+            dict_levels: a dictionary of type {defect_name:
             {'type':type_of_defect,'q*':formal_ox_state}}
             Where type_of_defect is a string: 'vbm_like' or 'cbm_like'
         """
@@ -282,6 +282,8 @@ class DefectsAnalyzer(object):
             df_coords = d.site.frac_coords
             target_site=None
             #TODO make a better check this large tol. is weird
+            #TODO: Get the equivalent sites from the defect class, because
+            #TODO: this method is not designed with interstitials in mind.
             for s in struct.sites:
                 sf_coords = s.frac_coords
                 if abs(s.frac_coords[0]-df_coords[0]) < 0.1 \

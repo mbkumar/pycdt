@@ -61,7 +61,7 @@ class DefectPlotter(object):
                 y_tmp.append(min)
             y[t] = y_tmp
 
-        width,height = 12,8
+        width, height = 12, 8
         import matplotlib.pyplot as plt
         plt.clf()
         import matplotlib.cm as cm
@@ -90,17 +90,19 @@ class DefectPlotter(object):
             return legends
 
         if len(y.keys())<5:
-            plt.legend(get_legends(y.keys()),fontsize=1.8*width,loc=8)
+            plt.legend(get_legends(y.keys()), fontsize=1.8*width, loc=8)
         else: #note to Bharat -> so far I have been having to adjust the bbox_to_anchor based on number of defects
             #would like to be able to have this be automagic enough that legend won't interfere with plot when lots
             # of defects exist....
-            plt.legend(get_legends(y.keys()),fontsize=1.8*width,ncol=3, loc='lower center', bbox_to_anchor=(.5,-.6))
+            plt.legend(get_legends(y.keys()), fontsize=1.8*width, ncol=3,
+                       loc='lower center', bbox_to_anchor=(.5,-.6))
         plt.axvline(x=0.0, linestyle='--', color='k', linewidth=3)
-        plt.axvline(x=self._analyzer._band_gap, linestyle='--', color='k', linewidth=3)
+        plt.axvline(x=self._analyzer._band_gap, linestyle='--', color='k',
+                    linewidth=3)
         if ylim is not None:
             plt.ylim(ylim)
-        plt.xlabel("Fermi energy (eV)",size=2*width)
-        plt.ylabel("Defect Formation Energy (eV)",size=2*width)
+        plt.xlabel("Fermi energy (eV)", size=2*width)
+        plt.ylabel("Defect Formation Energy (eV)", size=2*width)
         return plt
 
     def plot_conc_temp(self, me=[1.0, 1.0, 1.0], mh=[1.0, 1.0, 1.0]):
@@ -119,9 +121,9 @@ class DefectPlotter(object):
         qi = []
         qi_non_eq = []
         for t in temps:
-            qi.append(self._analyzer.get_eq_Ef(t,me,mh)['Qi']*1e-6)
+            qi.append(self._analyzer.get_eq_Ef(t, me, mh)['Qi']*1e-6)
             qi_non_eq.append(
-                    self._analyzer.get_non_eq_Ef(t,300,me,mh)['Qi']*1e-6)
+                    self._analyzer.get_non_eq_Ef(t, 300, me, mh)['Qi']*1e-6)
 
         plt = get_publication_quality_plot(12, 8)
         plt.xlabel("temperature (K)")
@@ -149,6 +151,6 @@ class DefectPlotter(object):
         efs = []
         for ef in [x * 0.01 for x in range(0, 100)]:
             efs.append(ef)
-            qi.append(self._analyzer.get_Qi(ef,temp,me,mh)*1e-6)
+            qi.append(self._analyzer.get_Qi(ef, temp, me, mh)*1e-6)
         plt.ylim([1e14, 1e22])
         return plt.semilogy(efs, qi)
