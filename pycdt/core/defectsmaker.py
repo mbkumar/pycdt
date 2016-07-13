@@ -71,12 +71,12 @@ def get_optimized_sc_scale(inp_struct, final_site_no):
                     dictio[min_dist]={}
                     dictio[min_dist]['num_sites'] = struct.num_sites
                     dictio[min_dist]['supercell'] = [k1,k2,k3]
-    min_dist=-1.0
-    biggest=None
+    min_dist = -1.0
+    biggest = None
     for c in dictio:
-        if c>min_dist:
-            biggest=dictio[c]['supercell']
-            min_dist=c
+        if c > min_dist:
+            biggest = dictio[c]['supercell']
+            min_dist = c
     if biggest is None or min_dist < 0.0:
         raise RuntimeError('could not find any supercell scaling vector')
     return biggest
