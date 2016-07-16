@@ -129,7 +129,7 @@ class DefectChargerSemiconductor(DefectCharger):
             oxi_states[struct_species[0].symbol] = 0
         else:
             vir = VIRE(structure)
-            for elt,oxi in vir.valences.items():
+            for elt, oxi in vir.valences.items():
                 strip_key = ''.join([s for s in elt if s.isalpha()])
                 if strip_key not in oxi_states.keys():
                     oxi_states[strip_key] = oxi
@@ -177,34 +177,28 @@ class DefectChargerSemiconductor(DefectCharger):
         if defect_type == 'vacancy':
             site_oxi = self.oxi_states[site_specie]
             if site_oxi:
-                return [c for c in range(-abs(site_oxi),
-                                     abs(site_oxi)+1)]
+                return list(range(-abs(site_oxi), abs(site_oxi) + 1))
             else:
                 min_oxi = self.min_max_oxi[site_specie][0]
                 max_oxi = self.min_max_oxi[site_specie][1]
                 if abs(min_oxi) < abs(max_oxi):
-                    return [c for c in range(-abs(max_oxi),
-                                             abs(max_oxi)+1)]
+                    return list(range(-abs(max_oxi), abs(max_oxi) + 1))
                 else:
-                    return [c for c in range(-abs(min_oxi),
-                                             abs(min_oxi)+1)]
-        elif (defect_type == 'antisite'):
-            return [c for c in range(
-                        self.min_max_oxi_bulk[0],
-                        self.min_max_oxi_bulk[1]-1)]
+                    return list(range(-abs(min_oxi), abs(min_oxi) + 1))
+        elif defect_type == 'antisite':
+            return list(range(self.min_max_oxi_bulk[0],
+                              self.min_max_oxi_bulk[1]-1))
         elif defect_type == 'substitution':
             oxi_sub = Element(sub_specie).oxidation_states
-            min_max_oxi_bulk_sub = \
-                            [min(min(set(oxi_sub) - set(self.min_max_oxi_bulk)),0), \
-                            max(max(set(oxi_sub) - set(self.min_max_oxi_bulk)),0)]
+            min_max_oxi_bulk_sub = [
+                        min(min(set(oxi_sub) - set(self.min_max_oxi_bulk)),0),
+                        max(max(set(oxi_sub) - set(self.min_max_oxi_bulk)),0)]
             if (min_max_oxi_bulk_sub[1] - min_max_oxi_bulk_sub[0]) > 2:
-                return [c for c in range(
-                                min_max_oxi_bulk_sub[0],
-                                min_max_oxi_bulk_sub[1]-2)] # if range exists, less likely to be a higher charge
+                return list(range(min_max_oxi_bulk_sub[0],
+                                  min_max_oxi_bulk_sub[1]-2)) # if range exists, less likely to be a higher charge
             else:
-                return [c for c in range(
-                                min_max_oxi_bulk_sub[0]-1,
-                                min_max_oxi_bulk_sub[1]+2)] #likely upper bound is 0, so extend to 2
+                return list(range(min_max_oxi_bulk_sub[0]-1,
+                                  min_max_oxi_bulk_sub[1]+2)) #likely upper bound is 0, so extend to 2
         elif defect_type == 'interstitial':
             if self.min_max_oxi[site_specie][0] > 0:
                 min_oxi = 0
@@ -214,7 +208,7 @@ class DefectChargerSemiconductor(DefectCharger):
                 max_oxi = 0
             else:
                 max_oxi = self.min_max_oxi[site_specie][1]
-            return [c for c in range(min_oxi, max_oxi+1)]
+            return list(range(min_oxi, max_oxi+1))
         else:
             raise ValueError("Defect type not understood")
 
@@ -319,7 +313,7 @@ class DefectChargerInsulator(DefectCharger):
                     raise ValueError("Substitution seems not possible")
                 else:
                     if max_oxi_sub > vac_oxi_state:
-                        return range(max_oxi_sub - vac_oxi_state + 1)
+                        return list(range(max_oxi_sub - vac_oxi_state + 1))
                     else:
                         return [max_oxi_sub - vac_oxi_state]
             else:
@@ -327,7 +321,7 @@ class DefectChargerInsulator(DefectCharger):
                     raise ValueError("Substitution seems not possible")
                 else:
                     if min_oxi_sub < vac_oxi_state:
-                        return range(min_oxi_sub - vac_oxi_state, 1)
+                        return list(range(min_oxi_sub - vac_oxi_state, 1))
                     else:
                         return [min_oxi_sub - vac_oxi_state]
         
@@ -337,7 +331,7 @@ class DefectChargerInsulator(DefectCharger):
             min_oxi = min(min(site_specie.common_oxidation_states), 0)
             max_oxi = max(max(site_specie.common_oxidation_states), 0)
 
-            return range(min_oxi, max_oxi+1)
+            return list(range(min_oxi, max_oxi+1))
 
 
 class ChargedDefectsStructures(object):
