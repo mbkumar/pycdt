@@ -15,18 +15,16 @@ import os
 
 import numpy as np
 
-from pymatgen.io.vasp.outputs import Locpot
+from pymatgen.core.structure import Structure
 from pycdt.corrections.utils import *
 
-bl_path = os.path.join('..', '..', '..', 'test_files', 'bLOCPOT.gz')
-dl_path = os.path.join('..', '..', '..', 'test_files', 'dLOCPOT.gz')
+bs_path = os.path.join('..', '..', '..', 'test_files', 'POSCAR_Ga4As4')
+ds_path = os.path.join('..', '..', '..', 'test_files', 'POSCAR_Ga3As4')
 
 class StructureFunctionsTest(unittest.TestCase):
     def setUp(self):
-        self.bl = Locpot.from_file(bl_path)
-        self.dl = Locpot.from_file(dl_path)
-        self.bs = self.bl.structure
-        self.ds = self.dl.structure
+        self.bs = Structure.from_file(bs_path)
+        self.ds = Structure.from_file(ds_path)
         self.a = self.bs.lattice.matrix[0]
         self.b = self.bs.lattice.matrix[1]
         self.c = self.bs.lattice.matrix[2]
@@ -45,13 +43,13 @@ class StructureFunctionsTest(unittest.TestCase):
                                 [1.0926931033637688, 0.0, 0.0]])
         recip =  genrecip(self.a, self.b, self.c, 1.3)
         for i in range(len(brecip)):
-            self.assertTrue(np.isclose(recip[i], brecip[i]).all())
+            self.assertTrue(np.isclose(next(recip), brecip[i]).all())
 
     def test_generate_reciprocal_vectors_squared(self):
         brecip = [1.1939782181387439 for i in range(6)]
         self.assertAlmostEqual(
-            generate_reciprocal_vectors_squared(
-                self.a, self.b, self.c, 1.3),
+            list(generate_reciprocal_vectors_squared(
+                    self.a, self.b, self.c, 1.3)),
             brecip)
 
     def test_closestsites(self):
