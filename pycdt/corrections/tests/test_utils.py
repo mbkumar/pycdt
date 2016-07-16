@@ -36,14 +36,14 @@ class StructureFunctionsTest(unittest.TestCase):
 
     def test_genrecip(self):
         brecip = map(np.array, [[-1.0926931033637688, 0.0, 0.0],
-                                [0.0, -1.0926931033637688, 0.0],
-                                [0.0, 0.0, -1.0926931033637688],
-                                [0.0, 0.0, 1.0926931033637688],
-                                [0.0, 1.0926931033637688, 0.0],
-                                [1.0926931033637688, 0.0, 0.0]])
+                                     [0.0, -1.0926931033637688, 0.0],
+                                     [0.0, 0.0, -1.0926931033637688],
+                                     [0.0, 0.0, 1.0926931033637688],
+                                     [0.0, 1.0926931033637688, 0.0],
+                                     [1.0926931033637688, 0.0, 0.0]])
         recip =  genrecip(self.a, self.b, self.c, 1.3)
-        for i in range(len(brecip)):
-            self.assertTrue(np.isclose(next(recip), brecip[i]).all())
+        for vec in brecip:
+            self.assertTrue(np.isclose(next(recip), vec).all())
 
     def test_generate_reciprocal_vectors_squared(self):
         brecip = [1.1939782181387439 for i in range(6)]

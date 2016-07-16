@@ -51,7 +51,7 @@ def cleanlat(dat):
     Returns:
         (double) Lattice constants (in same units as lattice vectors)
     """
-    return map(norm, dat)
+    return list(map(norm, dat))
 
 
 def genrecip(a1, a2, a3, encut):
