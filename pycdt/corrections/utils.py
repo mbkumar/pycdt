@@ -71,16 +71,17 @@ def genrecip(a1, a2, a3, encut):
     gcut = eV_to_k(encut)
     imax = int(math.ceil(gcut/min(map(norm, [b1, b2, b3]))))
 
-    recip = []
+    #recip = []
     for i in range(-imax, imax + 1):
         for j in range(-imax, imax + 1):
             for k in range(-imax, imax + 1):
                 vec = i*b1 + j*b2 + k*b3
                 en = 3.80986 * (((1.0/ang_to_bohr) * norm(vec))**2)
                 if (en <= encut and en != 0):
-                    recip.append(vec)
+                    yield vec
+                    #recip.append(vec)
 
-    return recip  #output is 1/bohr recip
+    #return recip  #output is 1/bohr recip
 
 
 def generate_reciprocal_vectors_squared(a1, a2, a3, encut):
@@ -106,15 +107,16 @@ def generate_reciprocal_vectors_squared(a1, a2, a3, encut):
     gcut = eV_to_k(encut)
     imax = int(math.ceil(gcut/min(norm(b1), norm(b2), norm(b3))))
     gcut2 = gcut * gcut
-    recip = []
+    #recip = []
     for i in range(-imax, imax+1):
         for j in range(-imax, imax+1):
             for k in range(-imax, imax+1):
                 vec = i*b1 + j*b2 + k*b3
                 vec2 = np.dot(vec,vec)
                 if (vec2 <= gcut2 and vec2 != 0.0):
-                    recip.append(vec2)
-    return recip
+                    #recip.append(vec2)
+                    yield vec2
+    #return recip
 
 
 def closestsites(struct_blk, struct_def, pos):

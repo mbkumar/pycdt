@@ -474,31 +474,27 @@ class KumagaiBulkInit(object):
 
         #do brute force recip summation
         def get_recippart(encut, gamma):
-            recip = genrecip(a1, a2, a3, encut)
             recippart = 0.0
-            for rec in recip:
+            for rec in genrecip(a1, a2, a3, encut):
                 Gdotdiel = np.dot(rec, np.dot(self.epsilon, rec))
                 summand = math.exp(-Gdotdiel / (4 * (gamma ** 2))) / Gdotdiel
                 recippart += summand
             recippart *= 4*np.pi/vol
-            return recippart, 0.0, len(recip)
+            return recippart, 0.0
 
         def do_summation(gamma):
             # Do recip sum until it is bigger than 1eV
             # First do Recip space sum convergence with respect to encut for 
             # this gamma
             encut = 20  #start with small encut for expediency
-            recippartreal1, recippartimag1, len_recip = get_recippart(
-                    encut, gamma)
+            recippartreal1, recippartimag1 = get_recippart(encut, gamma)
             encut += 10
-            recippartreal, recippartimag, len_recip = get_recippart(
-                    encut, gamma)
+            recippartreal, recippartimag = get_recippart(encut, gamma)
             converge = [recippartreal1, recippartreal]
             while abs(abs(converge[0]) - abs(converge[1])) * hart_to_ev > \
                     self.tolerance:
                 encut += 10
-                recippartreal, recippartimag, len_recip = get_recippart(
-                        encut, gamma)
+                recippartreal, recippartimag = get_recippart(encut, gamma)
                 converge.reverse()
                 converge[1] = recippartreal
                 if encut > self.encut:
@@ -507,19 +503,15 @@ class KumagaiBulkInit(object):
                                 self.encut))
 
             if abs(recippartimag) * hart_to_ev > self.tolerance:
-                #if not self.silence:
                 logging.error("Imaginary part of reciprocal sum not converged.")
                 logging.error("Imaginary sum value is {} (eV)".format(
                     recippartimag * hart_to_ev))
                 return None, None
-            #if not self.silence:
             logging.info('Reciprocal sum converged to %f eV',
                          recippartreal * hart_to_ev)
             logging.info('Convergin encut = %d eV', encut)
-            logging.info('Number of reciprocal vectors is %d', len_recip)
 
             if (abs(converge[1]) * hart_to_ev < 1 and not optgam):
-                #if not self.silence:
                 logging.warning('Reciprocal summation value is less than 1 eV.')
                 logging.warning('Might lead to errors')
                 logging.warning('Change gamma.')
@@ -704,7 +696,6 @@ class KumagaiCorrection(object):
                 'All' (default): pc and potalign combined into one value, 
                 'AllSplit' for correction in form [PC, potterm, full]
         """
-        #if not self.silence:
         logging.info('This is Kumagai Correction.')
 
         if not self.q:
@@ -756,7 +747,6 @@ class KumagaiCorrection(object):
         Args:
             title: Title for the plot. None will not generate the plot
         """
-        #if not self.silence:
         logging.info('\nrun potential alignment (atomic site averaging)')
 
         

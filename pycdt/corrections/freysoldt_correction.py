@@ -293,8 +293,7 @@ class FreysoldtCorrection(object):
         converge = []
         while flag != 1:
             eper = 0.0
-            recip1 = generate_reciprocal_vectors_squared(a1, a2, a3, encut1)
-            for g2 in recip1:
+            for g2 in generate_reciprocal_vectors_squared(a1, a2, a3, encut1):
                 eper += (self._q_model.rho_rec(g2) ** 2) / g2
             eper *= (self._q**2) *2* round(np.pi, 6) / vol
             eper += (self._q**2) *4* round(np.pi, 6) \
