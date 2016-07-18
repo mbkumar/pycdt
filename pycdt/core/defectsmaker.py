@@ -16,7 +16,8 @@ __status__ = "Development"
 __date__ = "Janurary 6, 2016"
 
 import copy
-import abc 
+import abc
+import math
 
 from monty.string import str2unicode
 from pymatgen.core.structure import PeriodicSite
@@ -98,7 +99,7 @@ class DefectCharger:
         Args:
             defect_type (str): Options are vacancy, antisite, substitution,
                                and interstitial
-            site_specie: Specie on the host lattice site 
+            site_specie: Specie on the host lattice site
                          For interstitials, use this
             sub_specie: Specie that is replacing the site specie.
                         For antisites and substitution defects
@@ -211,7 +212,6 @@ class DefectChargerSemiconductor(DefectCharger):
             return list(range(min_oxi, max_oxi+1))
         else:
             raise ValueError("Defect type not understood")
-
 
 
 class DefectChargerInsulator(DefectCharger):
@@ -416,7 +416,7 @@ class ChargedDefectsStructures(object):
                 imat = intersite.lattice.matrix
                 for i1 in range(3):
                     for i2 in range(3):
-                        if fabs(imat[i1][i2]-smat[i1][i2])/fabs(
+                        if math.fabs(imat[i1][i2]-smat[i1][i2])/math.fabs(
                                 imat[i1][i2]) > 1.0e-4:
                             raise RuntimeError("Discrepancy between lattices"
                                     " underlying the input interstitials and"
