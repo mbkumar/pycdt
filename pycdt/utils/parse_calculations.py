@@ -15,6 +15,7 @@ __date__  = "Sep 14, 2014"
 
 import os
 import glob
+import logging
 
 from monty.serialization import loadfn, dumpfn
 from monty.json import MontyEncoder, MontyDecoder
@@ -51,32 +52,38 @@ class PostProcess(object):
         Parses the defect calculations as ComputedStructureEntries/ComputedDefects.
         Charge correction is missing in the first run.
         """
+        logger = logging.getLogger(__name__)
         parsed_defects = []
-        subfolders = glob.glob(os.path.join(self._root_fldr,"bulk"))
-        subfolders += glob.glob(os.path.join(self._root_fldr,"vac_*"))
-        subfolders += glob.glob(os.path.join(self._root_fldr,"as_*"))
-        subfolders += glob.glob(os.path.join(self._root_fldr,"sub_*"))
-        subfolders += glob.glob(os.path.join(self._root_fldr,"inter_*"))
+        subfolders = glob.glob(os.path.join(self._root_fldr, "bulk"))
+        subfolders += glob.glob(os.path.join(self._root_fldr, "vac_*"))
+        subfolders += glob.glob(os.path.join(self._root_fldr, "as_*"))
+        subfolders += glob.glob(os.path.join(self._root_fldr, "sub_*"))
+        subfolders += glob.glob(os.path.join(self._root_fldr, "inter_*"))
 
         def get_vr_and_check_locpot(fldr):
             vr_file = os.path.join(fldr,'vasprun.xml')
             if not os.path.exists(vr_file):
+                logger.warning("{} doesn't exit".format(vr_file))
                 error_msg = ": Failure, vasprun.xml doesn't exist."
                 return (None, error_msg) #Further processing is not useful
 
             try:
                 vr = Vasprun(vr_file)
             except:
+                logger.warning("Couldn't parse {}".format(vr_file))
                 error_msg = ": Failure, couldn't parse vaprun.xml file."
                 return (None, error_msg)
 
             if not vr.converged:
+                logger.warning("Vasp calculation at {} not converged".format(
+                    fldr))
                 error_msg = ": Failure, Vasp calculation not converged."
                 return (None, error_msg) # Further processing is not useful
 
             # Check if locpot exists
             locpot_file = os.path.join(fldr, 'LOCPOT')
             if not os.path.exists(locpot_file):
+                logger.warning("{} doesn't exit".format(locpot_file))
                 error_msg = ": Failure, LOCPOT doesn't exist"
                 return (None, error_msg) #Further processing is not useful
 
@@ -85,12 +92,14 @@ class PostProcess(object):
         def get_encut_from_potcar(fldr):
             potcar_file = os.path.join(fldr,'POTCAR')
             if not os.path.exists(potcar_file):
+                logger.warning("Not POTCAR in {} to parse ENCUT".format(fldr))
                 error_msg = ": Failure, No POTCAR file."
                 return (None, error_msg) #Further processing is not useful
 
             try:
                 potcar = Potcar.from_file(potcar_file)
             except:
+                logger.warning("Couldn't parse {}".format(potcar_file))
                 error_msg = ": Failure, couldn't read POTCAR file."
                 return (None, error_msg)
 
@@ -104,8 +113,8 @@ class PostProcess(object):
             if 'bulk' in fldr_fields:
                 vr, error_msg = get_vr_and_check_locpot(fldr)
                 if error_msg:
-                    print(fldr_name, error_msg)
-                    print("Abandoning parsing of the calculations")
+                    #print(fldr_name, error_msg)
+                    logger.error("Abandoning parsing of the calculations")
                     break
                 bulk_energy = vr.final_energy
                 bulk_struct = vr.final_structure
@@ -114,7 +123,9 @@ class PostProcess(object):
                 except: # ENCUT not specified in INCAR. Read from POTCAR
                     encut, error_msg = get_encut_from_potcar(fldr)
                     if error_msg:
-                        raise AttributeError(error_msg)
+                        logger.error("Abandoning parsing of the calculations")
+                        break
+                        #raise AttributeError(error_msg)
 
                 bulk_locpot_path = os.path.abspath(os.path.join(fldr,'LOCPOT'))
                 bulk_entry = ComputedStructureEntry(
@@ -129,8 +140,9 @@ class PostProcess(object):
                     chrg = trans_dict['charge']
                     vr, error_msg = get_vr_and_check_locpot(chrg_fldr)
                     if error_msg:
-                        print(fldr_name, 'charge- ', chrg, error_msg)
-                        print("But parsing of the rest of the calculations")
+                        #print(fldr_name, 'charge- ', chrg, error_msg)
+                        logger.warning("Parsing the rest of the calculations")
+                        #print("But parsing of the rest of the calculations")
                         continue
                     if 'substitution_specie' in trans_dict:
                         self._substitution_species.add(
@@ -144,9 +156,13 @@ class PostProcess(object):
                     except: # ENCUT not specified in INCAR. Read from POTCAR
                         encut, error_msg = get_encut_from_potcar(chrg_fldr)
                         if error_msg:
-                            print(fldr_name, 'Not able to determine ENCUT') 
-                            print(error_msg)
-                            print("But parsing the rest of the calculations")
+                            logger.warning("Not able to determine ENCUT "
+                                           "in {}".format(fldr_name))
+                            logger.warning("Parsing the rest of the "
+                                           "calculations")
+                            #print(fldr_name, 'Not able to determine ENCUT')
+                            #print(error_msg)
+                            #print("But parsing the rest of the calculations")
                             continue
 
                     locpot_path = os.path.abspath(
@@ -179,10 +195,14 @@ class PostProcess(object):
             mpid (str): MP-ID for which the valence band maximum is to
                 be fetched from the Materials Project database
         """
+        logger = logging.getLogger(__name__)
         if self._mpid is None:
-                print 'No mp-id provided, will fetch CBM/VBM details from the bulk calculation.' \
-                      '\nNote that it would be better to perform real band structure calculation...'
-                vr = Vasprun(os.path.join(self._root_fldr,'bulk','vasprun.xml'))
+                logger.warning(
+                    'No mp-id provided, will fetch CBM/VBM details from the '
+                    'bulk calculation.\nNote that it would be better to '
+                    'perform real band structure calculation...')
+                vr = Vasprun(os.path.join(self._root_fldr, 'bulk',
+                                          'vasprun.xml'))
                 bandgap = vr.eigenvalue_band_properties[0]
                 vbm = vr.eigenvalue_band_properties[2]
         else:
@@ -193,6 +213,7 @@ class PostProcess(object):
                 with MPRester(self._mapi_key) as mp:
                     bs = mp.get_bandstructure_by_material_id(self._mpid)
             if not bs:
+                logger.error("Could not fetch band structure!")
                 raise ValueError("Could not fetch band structure!")
 
             vbm = bs.get_vbm()['energy']
@@ -215,6 +236,7 @@ class PostProcess(object):
 
         accounts for all different defect phases
         """
+        logger = logging.getLogger(__name__)
         if not structure:
             if not self._mpid:
                     bulkvr = Vasprun(os.path.join(self._root_fldr,"bulk","vasprun.xml"))
@@ -226,7 +248,9 @@ class PostProcess(object):
                 with MPRester(self._mapi_key) as mp:
                     structure = mp.get_structure_by_material_id(self._mpid)
             if  not structure:
-                raise ValueError("Could not fetch structure for atomic chempots!")
+                msg = "Could not fetch structure for atomic chempots!"
+                logger.warning(msg)
+                raise ValueError(msg)
 
         bulk_species = structure.types_of_specie
         bulk_species_symbol = [s.symbol for s in bulk_species]
@@ -254,7 +278,9 @@ class PostProcess(object):
                 with MPRester(self._mapi_key) as mp:
                     entries = mp.get_entries_in_chemsys(list_spec_symbol)
             if  not entries:
-                raise ValueError("Could not fetch entries for atomic chempots!")
+                msg = "Could not fetch entries for atomic chempots!"
+                logger.warning(msg)
+                raise ValueError(msg)
 
             chem_lims = {}
             pd = PhaseDiagram(entries)
@@ -264,7 +290,7 @@ class PostProcess(object):
 
             if self._mpid:
                 if (self._mpid in full_idlist) and (self._mpid in stable_idlist):
-                   print("Verified that mp-id is stable within Materials Project",
+                   logger.debug("Verified that mp-id is stable within Materials Project",
                             '-'.join(list_spec_symbol),"phase diagram")
                    common_approach = True
                 elif (self._mpid in full_idlist) and not (self._mpid in stable_idlist):
@@ -272,53 +298,82 @@ class PostProcess(object):
                     common_approach = False
                     for i in pd.stable_entries:
                         if i.composition.reduced_composition==redcomp:
-                            print("WARNING: Input mp-id (",self._mpid,") is unstable. Stable composition mp-id found to be",i.entry_id)
-                            print("Proceeding with atomic chemical potentials with respect to stable phase.")
+                            logger.warning(
+                                "Input mp-id {} is unstable. Stable "
+                                "composition mp-id found to be {}".format(
+                                    self._mpid, i.entry_id))
+                            logger.warning(
+                                "Proceeding with atomic chemical potentials "
+                                "with respect to stable phase.")
                             common_approach = True
                     if not common_approach:
-                        print("WARNING: Input mp-id (",self._mpid,") is unstable. No stable structure with same composition exists")
-                        print("Proceeding with atomic chemical potentials according to composition position within phase diagram.")
+                        logger.warning(
+                            "Input mp-id {} is unstable. No stable structure "
+                            "with same composition exists".format(self._mpid))
+                        logger.warning(
+                            "Proceeding with atomic chemical potentials "
+                            "according to composition position within phase "
+                            "diagram.")
                 else:
-                    print("WARNING: specified mp-id was",self._mpid,"but could not find it in MP phase diagram. "
-                            "Reverting to assumption that mp-id is not known.")
+                    logger.warning(
+                        "Specified mp-id {} could not find it in MP phase "
+                        "diagram. Reverting to assumption that mp-id is not "
+                        "known.".format(self._mpid))
                     self._mpid = None
-                    bulkvr = Vasprun(os.path.join(self._root_fldr,"bulk","vasprun.xml"))
+                    bulkvr = Vasprun(os.path.join(self._root_fldr, "bulk",
+                                                  "vasprun.xml"))
 
             if not self._mpid:
                 try:
                     ce = bulkvr.get_computed_entry()
                 except:
-                    bulkvr = Vasprun(os.path.join(self._root_fldr,"bulk","vasprun.xml"))
+                    bulkvr = Vasprun(os.path.join(self._root_fldr, "bulk",
+                                                  "vasprun.xml"))
                     ce = bulkvr.get_computed_entry()
-                decomp_en = round(PDA.get_decomp_and_e_above_hull(ce, allow_negative=True)[1],4)
+                decomp_en = round(PDA.get_decomp_and_e_above_hull(
+                            ce, allow_negative=True)[1],4)
                 redcomp = comp.reduced_composition
                 stable_composition_exists = False
                 for i in pd.stable_entries:
                     if i.composition.reduced_composition==redcomp:
                         stable_composition_exists = True
 
-                if (decomp_en <= 0.) and stable_composition_exists: #then stable and can proceed as normal
-                    print("Bulk Computed Entry found to be stable with respect to MP Phase Diagram. "
-                          "No mp-id specified, but found stable MP composition to exist.")
+                if (decomp_en <= 0.) and stable_composition_exists:
+                    #then stable and can proceed as normal
+                    logger.debug(
+                        "Bulk Computed Entry found to be stable with respect "
+                        "to MP Phase Diagram. No mp-id specified, but found "
+                        "stable MP composition to exist.")
                     common_approach = True
                 elif (decomp_en <= 0.) and not stable_composition_exists:
-                    print("Bulk Computed Entry found to be stable with respect to MP Phase Diagram. "
-                          "However, no stable entry with this composition exists in the MP database! "
-                          "Please consider submitting the POSCAR to the MP xtaltoolkit so future users will know about this structure:"
-                          " https://materialsproject.org/#apps/xtaltoolkit"
-                          "\nManually inserting structure into phase diagram and proceeding as normal.")
+                    logger.info(
+                        "Bulk Computed Entry found to be stable with respect "
+                        "to MP Phase Diagram.\nHowever, no stable entry with "
+                        "this composition exists in the MP database!\nPlease "
+                        "consider submitting the POSCAR to the MP xtaltoolkit,"
+                        " so future users will know about this structure:"
+                        " https://materialsproject.org/#apps/xtaltoolkit\n"
+                        "Manually inserting structure into phase diagram and "
+                        "proceeding as normal.")
                     entries.append(ce)
                     pd = PhaseDiagram(entries)
                     PDA = PDAnalyzer(pd)
                     common_approach = True
                 elif stable_composition_exists:
-                    print("WARNING: Bulk Computed Entry not stable with respect to MP Phase Diagram (e_above_hull=",decomp_en,"eV/atom)"
-                          " ,but found stable MP composition to exist. Producing chemical potentials with respect to stable phase.")
+                    logger.warning(
+                        "Bulk Computed Entry not stable with respect to MP "
+                        "Phase Diagram (e_above_hull = %f eV/atom), but found "
+                        "stable MP composition to exist.\nProducing chemical "
+                        "potentials with respect to stable phase.", decomp_en)
                     common_approach = True
                 else:
-                    print("WARNING: Bulk Computed Entry not stable with respect to MP Phase Diagram (e_above_hull=",decomp_en,"eV/atom)"
-                          " and no stable structure with this composition exists in the MP database."
-                          "\nProceeding with atomic chemical potentials according to composition position within phase diagram.")
+                    logger.warning(
+                        "Bulk Computed Entry not stable with respect to MP "
+                        "Phase Diagram (e_above_hull = %f eV/atom) and no "
+                        "stable structure with this composition exists in the "
+                        "MP database.\nProceeding with atomic chemical "
+                        "potentials according to composition position within "
+                        "phase diagram.", decomp_en)
                     common_approach = False
 
             if common_approach:
@@ -339,7 +394,8 @@ class PostProcess(object):
                         chemdict = {el.symbol:chempots[el] for el in pd.elements}
                         chem_lims[limnom]=chemdict
             else:
-                #this uses basic form of creation of facets from initialization of phase diagram object
+                #this uses basic form of creation of facets from
+                # initialization of phase diagram object
                 from scipy.spatial import ConvexHull
                 tmpnew_qdata = list(pd.qhull_data)
                 del tmpnew_qdata[-1]
@@ -350,7 +406,8 @@ class PostProcess(object):
                 unstable_qdata_elt = [comp.get_atomic_fraction(el) for el in tmp_elts]
                 new_qdata.append(unstable_qdata_elt)
 
-                #take facets of composition space and see if the new composition changes volume of facet
+                #take facets of composition space and see if the new
+                # composition changes volume of facet
                 facets = []
                 for facet in pd.facets:
                     tmp_facet = [new_qdata[e] for e in facet]
@@ -407,7 +464,8 @@ class PostProcess(object):
             vr = Vasprun(os.path.join(
                 self._root_fldr,"dielectric","vasprun.xml"))
         except:
-            print('Parsing Dielectric calculation failed')
+            logging.getLogger(__name__).warning(
+                'Parsing Dielectric calculation failed')
             return None
 
         eps_ion = vr.epsilon_ionic

@@ -189,8 +189,8 @@ class FreysoldtCorrection(object):
                'All' for both, or
                'AllSplit' for individual parts split up (form [PC,potterm,full])
         """
-        #if not self._silence:
-        logging.debug('This is Freysoldt Correction.')
+        logger = logging.getLogger(__name__)
+        logger.info('This is Freysoldt Correction.')
         if not self._q:
             if partflag=='AllSplit':
                 return [0.0,0.0,0.0]
@@ -198,29 +198,29 @@ class FreysoldtCorrection(object):
                 return 0.0
 
         if not type(self._purelocpot) is Locpot:
-            logging.debug('Load bulk locpot')
+            logger.debug('Load bulk locpot')
             self._purelocpot = Locpot.from_file(self._purelocpot)
 
-        logging.debug('\nRun PC energy')
+        logger.debug('\nRun PC energy')
         if partflag!='potalign':
             energy_pc = self.pc()
-            logging.debug('PC calc done, correction = %f', round(energy_pc, 4))
-            logging.debug('Now run potenttial alignment script')
+            logger.debug('PC calc done, correction = %f', round(energy_pc, 4))
+            logger.debug('Now run potenttial alignment script')
 
         if partflag!='pc':
             if not type(self._deflocpot) is Locpot:
-                logging.debug('Load defect locpot')
+                logger.debug('Load defect locpot')
                 self._deflocpot = Locpot.from_file(self._deflocpot)
             potalign = self.potalign(title=title)
 
-        logging.info('\n\nFreysoldt Correction details:')
+        logger.info('\n\nFreysoldt Correction details:')
         if partflag!='potalign':
-            logging.info('PCenergy (E_lat) = %f', round(energy_pc, 5))
+            logger.info('PCenergy (E_lat) = %f', round(energy_pc, 5))
         if partflag!='pc':
-            logging.info('potential alignment (-q*delta V) = %f', 
+            logger.info('potential alignment (-q*delta V) = %f',
                          round(potalign, 5))
         if partflag in ['All','AllSplit']:
-            logging.info('TOTAL Freysoldt correction = %f', 
+            logger.info('TOTAL Freysoldt correction = %f',
                          round(energy_pc + potalign, 5))
 
         if partflag=='pc':
@@ -240,6 +240,7 @@ class FreysoldtCorrection(object):
         so struct input object speeds this calculation up
         equivalently fast if input Locpot is a locpot object
         """
+        logger = logging.getLogger(__name__)
         if type(struct) is Structure:
             s1 = struct
         else:
@@ -249,9 +250,9 @@ class FreysoldtCorrection(object):
             s1 = self._purelocpot.structure
 
         ap = s1.lattice.get_cartesian_coords(1)
-        logging.info('run Freysoldt 2011 PC calculation (should be '\
+        logger.info('Running Freysoldt 2011 PC calculation (should be '\
                      'equivalent to sxdefectalign)')
-        logging.debug('defect lattice constants are (in angstroms)' \
+        logger.debug('defect lattice constants are (in angstroms)' \
                       + str(cleanlat(ap)))
         [a1, a2, a3] = ang_to_bohr * ap
         logging.debug( 'In atomic units, lat consts are (in bohr):' \
@@ -279,12 +280,12 @@ class FreysoldtCorrection(object):
                 if abs(converge[-1] - converge[-2]) < self._madetol:
                     flag = 1
                 elif encut1 > self._encut:
-                    logging.error('Eiso did not converge before ' \
+                    logger.error('Eiso did not converge before ' \
                                   + str(self._encut) + ' eV')
-                    sys.exit()
+                    raise
             encut1 += 20
         eiso = converge[-1]
-        logging.debug('Eisolated : %f, converged at encut: %d',
+        logger.debug('Eisolated : %f, converged at encut: %d',
                       round(eiso, 5), encut1-20)
 
         #compute periodic energy;
@@ -303,21 +304,21 @@ class FreysoldtCorrection(object):
                 if abs(converge[-1] - converge[-2]) < self._madetol:
                     flag = 1
                 elif encut1 > self._encut:
-                    logging.error('Eper did not converge before %d eV', 
+                    logger.error('Eper did not converge before %d eV',
                                   self._encut)
                     return
             encut1 += 20
         eper = converge[-1]
 
-        logging.info('Eperiodic : %f hartree, converged at encut %d eV',
+        logger.info('Eperiodic : %f hartree, converged at encut %d eV',
                      round(eper, 5), encut1 - 20)
-        logging.info('difference (periodic-iso) is %f hartree', 
+        logger.info('difference (periodic-iso) is %f hartree',
                      round(eper-eiso, 6))
-        logging.info( 'difference in (eV) is %f', 
+        logger.info( 'difference in (eV) is %f',
                      round((eper-eiso) * hart_to_ev, 4))
 
         PCfreycorr = round((eiso-eper)/self._dielectricconst*hart_to_ev, 6)
-        logging.info('Defect Correction without alignment %f (eV): ', PCfreycorr)
+        logger.info('Defect Correction without alignment %f (eV): ', PCfreycorr)
 
         return PCfreycorr
 
@@ -331,33 +332,34 @@ class FreysoldtCorrection(object):
         axis allows you to override the axis setting of class
                 (good for quickly plotting multiple axes without having to reload Locpot)
         """
+        logger = logging.getLogger(__name__)
         if not axis:
             axis = self._axis
         else:
             axis = axis
 
         if not type(self._purelocpot) is Locpot:
-            logging.debug('load pure locpot object')
+            logger.debug('load pure locpot object')
             self._purelocpot = Locpot.from_file(self._purelocpot)
         if not type(self._deflocpot) is Locpot:
-            logging.debug('load defect locpot object')
+            logger.debug('load defect locpot object')
             self._deflocpot = Locpot.from_file(self._deflocpot)
 
         #determine location of defects
         blksite, defsite = find_defect_pos(self._purelocpot.structure, 
                                            self._deflocpot.structure)
         if blksite is None and defsite is None:
-            logging.error('Not able to determine defect site')
+            logger.error('Not able to determine defect site')
             return
 
         if blksite is None:
-            logging.debug('Found defect to be Interstitial type at %s',
+            logger.debug('Found defect to be Interstitial type at %s',
                           repr(defsite))
         elif defsite is None:
-            logging.debug('Found defect to be Vacancy type at %s', 
+            logger.debug('Found defect to be Vacancy type at %s',
                           repr(blksite))
         else:
-            logging.debug('Found defect to be antisite/substitution type at ' \
+            logger.debug('Found defect to be antisite/substitution type at '
                           '%s in bulk, and %s in defect cell', 
                           repr(blksite), repr(defsite))
 
@@ -402,7 +404,7 @@ class FreysoldtCorrection(object):
             defavg = np.roll(defavg,rollind)
 
         #if not self._silence:
-        logging.debug('calculating lr part along planar avg axis')
+        logger.debug('calculating lr part along planar avg axis')
         latt = self._purelocpot.structure.lattice
         reci_latt = latt.reciprocal_lattice
         dg = reci_latt.abc[axis]
@@ -437,18 +439,18 @@ class FreysoldtCorrection(object):
         mid = len(short) / 2
 
         tmppot = [short[i] for i in range(mid - checkdis, mid + checkdis)]
-        logging.debug('shifted defect position on axis (%s) to origin', 
+        logger.debug('shifted defect position on axis (%s) to origin',
                       repr(axbulkval))
-        logging.debug('means sampling region is (%f,%f)', 
+        logger.debug('means sampling region is (%f,%f)',
                       x[mid-checkdis], x[mid+checkdis])
 
         C = -1 * np.mean(tmppot)
-        logging.debug('C = %f', C)
+        logger.debug('C = %f', C)
         final_shift = [short[j] + C for j in range(len(v_R))]
         v_R = [elmnt - C for elmnt in v_R]
 
-        logging.info('C value is averaged to be %f eV ', C)
-        logging.info('Potentital alignment (-q*delta V):  %f (eV)', -self._q*C)
+        logger.info('C value is averaged to be %f eV ', C)
+        logger.info('Potentital alignment (-q*delta V):  %f (eV)', -self._q*C)
 
         if title: # TODO: Make title  optional and use a flag for plotting
             plotter = FreysoldtCorrPlotter(x, v_R, defavg-pureavg, final_shift,

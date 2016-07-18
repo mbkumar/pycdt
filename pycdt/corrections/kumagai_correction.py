@@ -31,8 +31,6 @@ norm = np.linalg.norm
 hart_to_ev = 27.2114
 ang_to_bohr = 1.8897
 
-# Define the logging stuff here
-
 
 def kumagai_init(structure, dieltens):
     angset = structure.lattice.get_cartesian_coords(1)
@@ -43,17 +41,18 @@ def kumagai_init(structure, dieltens):
     elif len(dieltens.shape) == 1:
         dieltens = np.diagflat(dieltens)
 
-    logging.debug('defect lattice constants are (in angstroms)' +
-                  str(cleanlat(angset)))
+    logging.getLogger(__name__).debug('Lattice constants (in Angs): ' + \
+                                      str(cleanlat(angset)))
     [a1, a2, a3] = ang_to_bohr * angset  # convert to bohr
     bohrset = [a1, a2, a3]
     vol = np.dot(a1, np.cross(a2, a3))
 
-    logging.debug('Lattice constants (in Bohr) are:' +
-                  str(cleanlat([a1, a2, a3])))
+    logging.getLogger(__name__).debug('Lattice constants (in Bohr): ' + \
+                                      str(cleanlat([a1, a2, a3])))
     determ = np.linalg.det(dieltens)
     invdiel = np.linalg.inv(dieltens)
-    logging.debug('inv dielectric tensor is ' + str(invdiel))
+    logging.getLogger(__name__).debug('inv dielectric tensor: ' + \
+                                      str(invdiel))
 
     return angset, bohrset, vol, determ, invdiel
 
@@ -95,17 +94,17 @@ def real_sum(a1, a2, a3, r, q, dieltens, gamma, tolerance):
         r_sums.append([N, realpre * r_sum])
 
         if N == Nmaxlength-1:
-            logging.warning('Direct part could not converge with real space ' +
-                   'translation tolerance of {} for gamma {}'.format(
-                       Nmaxlength-1, gamma))
+            logging.getLogger(__name__).warning(
+                'Direct part could not converge with real space translation '
+                'tolerance of {} for gamma {}'.format(Nmaxlength-1, gamma))
             return
         elif len(r_sums) > 3:
             if abs(abs(r_sums[-1][1])-abs(r_sums[-2][1])) < tolerance:
                 r_sum = r_sums[-1][1]
                 logging.debug("gamma is {}".format(gamma))
-                logging.debug("convergence for real summatin term occurs at " + 
-                       "step {}  where real sum is {}".format(
-                           N,  r_sum * hart_to_ev))
+                logging.getLogger(__name__).debug(
+                    "convergence for real summatin term occurs at step {} "
+                    "where real sum is {}".format(N,  r_sum * hart_to_ev))
                 break
 
         N += 1
@@ -155,7 +154,8 @@ def anisotropic_madelung_potential(structure, dim, g_sum, r, dieltens, q,
     #now add up total madelung potential part with two extra parts:
     #self interaction term
     selfint = q * np.pi / (vol * (gamma ** 2))
-    logging.debug('self interaction piece is {}'.format(selfint * hart_to_ev))
+    logging.getLogger(__name__).debug('self interaction piece is {}'.format(
+            selfint * hart_to_ev))
 
     pot = hart_to_ev * (directpart + recippartreal - selfint)
     return pot
@@ -181,13 +181,14 @@ def anisotropic_pc_energy(structure, g_sum, dieltens, q, gamma, tolerance):
     #surface term (only for r not at origin)
     surfterm = 2*gamma*q / np.sqrt(np.pi*determ)
 
-    logging.debug('reciprocal piece is {}'.format(g_part * hart_to_ev))
-    logging.debug('real piece is {}'.format(r_part * hart_to_ev))
-    logging.debug('self interaction piece is {}'.format(selfint * hart_to_ev))
-    logging.debug('surface term is {}'.format(surfterm * hart_to_ev))
+    logger = logging.getLogger(__name__)
+    logger.debug('reciprocal part: {}'.format(g_part * hart_to_ev))
+    logger.debug('real part: {}'.format(r_part * hart_to_ev))
+    logger.debug('self interaction part: {}'.format(selfint * hart_to_ev))
+    logger.debug('surface term: {}'.format(surfterm * hart_to_ev))
 
     pc_energy = -q*0.5*hart_to_ev*(r_part + g_part - selfint - surfterm)
-    logging.debug('Final PC Energy term is %f eV', pc_energy)
+    logging.debug('Final PC Energy term: {} eV'.format(pc_energy))
 
     return pc_energy
 
@@ -225,9 +226,10 @@ def getgridind(structure, dim, r, gridavg=0.0):
         x_rprojection_delta_abs = np.absolute(x - r[i])
         ind = np.argmin(x_rprojection_delta_abs)
         if x_rprojection_delta_abs[ind] > dx*1.1: #to avoid numerical errors
-            logging.error("Input position not within the locpot grid")
-            logging.error("%d, %d, %f", i, ind, r)
-            logging.error("%f", x_rprojection_delta_abs)
+            logger = logging.getLogger(__name__)
+            logger.error("Input position not within the locpot grid")
+            logger.error("%d, %d, %f", i, ind, r)
+            logger.error("%f", x_rprojection_delta_abs)
             raise ValueError("Input position is not within the locpot grid")
         grdind.append(ind)
         if gridavg:
@@ -262,16 +264,17 @@ def disttrans(struct, defstruct, dim):
 
     #Find defect location in bulk and defect cells
     blksite, defsite = find_defect_pos(struct, defstruct)
+    logger = logging.getLogger(__name__)
     if blksite is None and defsite is None:
-        logging.error('Not able to determine defect site')
+        logger.error('Not able to determine defect site')
         return
     if blksite is None:
-        logging.debug('Found defect to be Interstitial type at %s', 
+        logger.debug('Found defect to be Interstitial type at %s',
                       repr(defsite))
     elif defsite is None:
-        logging.debug('Found defect to be Vacancy type at %s', repr(blksite))
+        logger.debug('Found defect to be Vacancy type at %s', repr(blksite))
     else:
-        logging.debug('Found defect to be antisite/subsitution type at %s ' \
+        logger.debug('Found defect to be antisite/subsitution type at %s ' \
                       ' in bulk, and %s in defect cell', 
                       repr(blksite), repr(defsite))
 
@@ -322,17 +325,17 @@ def disttrans(struct, defstruct, dim):
         defdist = closeimage[0]
 
         if abs(norm(cart_reldef) - defdist) > 0.1:
-            logging.warning('Image locater issue encountered for site = %d', 
+            logger.warning('Image locater issue encountered for site = %d',
                             blkindex)
-            logging.warning('In defect supercell') 
-            logging.warning('Distance should be %f', defdist)
-            logging.warning('But, calculated distance is %f', norm(cart_reldef))
+            logger.warning('In defect supercell')
+            logger.warning('Distance should be %f', defdist)
+            logger.warning('But, calculated distance is %f', norm(cart_reldef))
             #dont want to break the code here, but want flag to exist...what to do?
             #return 
 
         if blkindex in grid_sites:
-            logging.warning('Index %d already exists in potinddict!', blkindex)
-            logging.warning('Overwriting information.')
+            logger.warning('Index %d already exists in potinddict!', blkindex)
+            logger.warning('Overwriting information.')
 
         grid_sites[blkindex] = {
                 'dist': defdist,'cart': dcart_coord,
@@ -382,10 +385,10 @@ def read_ES_avg(location_outcar):
                 end_line = line_num
 
         ngxlineout = out_dat[ngxf_line].split()
-        ngxf_dims = map(int, ngxlineout[3:8:2])
+        ngxf_dims = list(map(int, ngxlineout[3:8:2]))
 
         rad_line = out_dat[start_line+1].split()
-        radii = [float(rad) for rad in rad_line[5:]] #would be better to do this as dictionary but no structure available
+        radii = list(map(float, rad_line[5:])) #would be better to do this as dictionary but no structure available
 
         ES_data = {'sampling_radii': radii, 'ngxf_dims': ngxf_dims}
         pot = []
@@ -459,7 +462,7 @@ class KumagaiBulkInit(object):
         else:
             self.gamma = optgamma
         self.g_sum = self.reciprocal_sum()
-        logging.info('optimized gamma: %f', self.gamma)
+        logging.getLogger(__name__).info('optimized gamma: %f', self.gamma)
 
     def find_optimal_gamma(self):
         """
@@ -491,6 +494,8 @@ class KumagaiBulkInit(object):
             encut += 10
             recippartreal, recippartimag = get_recippart(encut, gamma)
             converge = [recippartreal1, recippartreal]
+
+            logger = logging.getLogger(__name__)
             while abs(abs(converge[0]) - abs(converge[1])) * hart_to_ev > \
                     self.tolerance:
                 encut += 10
@@ -498,44 +503,47 @@ class KumagaiBulkInit(object):
                 converge.reverse()
                 converge[1] = recippartreal
                 if encut > self.encut:
-                    raise ValueError(
-                            'Optimal gamma not found at {} eV cutoff'.format(
-                                self.encut))
+                    msg = 'Optimal gamma not found at {} eV cutoff'.format(
+                                self.encut)
+                    logger.error(msg)
+                    raise ValueError(msg)
 
             if abs(recippartimag) * hart_to_ev > self.tolerance:
-                logging.error("Imaginary part of reciprocal sum not converged.")
-                logging.error("Imaginary sum value is {} (eV)".format(
+                logger.error("Imaginary part of reciprocal sum not converged.")
+                logger.error("Imaginary sum value is {} (eV)".format(
                     recippartimag * hart_to_ev))
                 return None, None
-            logging.info('Reciprocal sum converged to %f eV',
+            logger.debug('Reciprocal sum converged to %f eV',
                          recippartreal * hart_to_ev)
-            logging.info('Convergin encut = %d eV', encut)
+            logger.debug('Convergin encut = %d eV', encut)
 
             if (abs(converge[1]) * hart_to_ev < 1 and not optgam):
-                logging.warning('Reciprocal summation value is less than 1 eV.')
-                logging.warning('Might lead to errors')
-                logging.warning('Change gamma.')
+                logger.warning('Reciprocal summation value is less than 1 eV.')
+                logger.warning('Might lead to errors')
+                logger.warning('Change gamma.')
                 return None, 'Try Again'
 
             return recippartreal, gamma
 
+        logger = logging.getLogger(__name__)
         #start with gamma s.t. gamma*L=5 (some paper said this is optimal)
         #optimizing gamma for the reciprocal sum to improve convergence 
         gamma = 5./(vol ** (1/3.))
         optimal_gamma_found = False
+
         while not optimal_gamma_found:
             recippartreal, optgamma = do_summation(gamma)
             if optgamma == gamma:
-                logging.info('optimized gamma found to be %f', optgamma)
+                logger.debug('optimized gamma found to be %f', optgamma)
                 optimal_gamma_found = True
             elif 'Try Again' in optgamma:
                 gamma *= 1.5
             else:
-                logging.error('Had problem in gamma optimization process.')
+                logger.error('Had problem in gamma optimization process.')
                 return None
 
             if gamma > 50:
-                logging.error('Could not optimize gamma before gamma = %d', 50)
+                logger.error('Could not optimize gamma before gamma = %d', 50)
                 return None
 
         return optgamma 
@@ -547,7 +555,8 @@ class KumagaiBulkInit(object):
 
         TODO: Get the input to fft cut by half by using rfft instead of fft
         """
-        logging.debug('Reciprocal summation in Madeling potential')
+        logger = logging.getLogger(__name__)
+        logger.debug('Reciprocal summation in Madeling potential')
         over_atob = 1.0/ang_to_bohr
         atob3=ang_to_bohr**3
 
@@ -591,7 +600,7 @@ class KumagaiBulkInit(object):
         r_arr_imag = np.imag(r_array)
 
         max_imag = r_arr_imag.max()
-        logging.debug('Max imaginary part found to be %f', max_imag)
+        logger.debug('Max imaginary part found to be %f', max_imag)
 
         return r_arr_real
 
@@ -638,8 +647,6 @@ class KumagaiCorrection(object):
                 2) (Or) bulk_outcar:   Bulk Outcar file path 
                    defect_outcar: Defect outcar file path 
         """
-        #if not silence:
-        logging.info('This is Anisotropic Freysoldt (Kumagai) Correction')
         if isinstance(dielectric_tensor, int) or \
                 isinstance(dielectric_tensor, float):
             self.dieltens = np.identity(3) * dielectric_tensor
@@ -696,7 +703,8 @@ class KumagaiCorrection(object):
                 'All' (default): pc and potalign combined into one value, 
                 'AllSplit' for correction in form [PC, potterm, full]
         """
-        logging.info('This is Kumagai Correction.')
+        logger = logging.getLogger(__name__)
+        logger.info('This is Kumagai Correction.')
 
         if not self.q:
             if partflag == 'AllSplit':
@@ -710,14 +718,14 @@ class KumagaiCorrection(object):
         if partflag != 'pc':
             potalign = self.potalign(title=title)
 
-        logging.info('Kumagai Correction details:')
-        if partflag != 'potalign':
-            logging.info('PCenergy (E_lat) = %f', round(energy_pc, 5))
-        if partflag != 'pc':
-            logging.info('potential alignment (-q*delta V) = %f', 
-                         round(potalign, 5))
+        #logger.info('Kumagai Correction details:')
+        #if partflag != 'potalign':
+        #    logger.info('PCenergy (E_lat) = %f', round(energy_pc, 5))
+        #if partflag != 'pc':
+        #    logger.info('potential alignment (-q*delta V) = %f',
+        #                 round(potalign, 5))
         if partflag in ['All','AllSplit']:
-            logging.info('Kumagai correction = %f', 
+            logger.info('Total Kumagai correction = %f',
                          round(energy_pc+potalign, 5))
 
         if partflag == 'pc':
@@ -736,7 +744,7 @@ class KumagaiCorrection(object):
                 self.structure, self.g_sum, self.dieltens, self.q,
                 self.gamma, self.madetol)
 
-        logging.info('PC energy determined to be %f eV (%f Hartree)', 
+        logger.info('PC energy determined to be %f eV (%f Hartree)',
                      energy_pc, energy_pc/hart_to_ev)
 
         return energy_pc
@@ -747,7 +755,8 @@ class KumagaiCorrection(object):
         Args:
             title: Title for the plot. None will not generate the plot
         """
-        logging.info('\nrun potential alignment (atomic site averaging)')
+        logger = logging.getLogger(__name__)
+        logger.info('\nRunning potential alignment (atomic site averaging)')
 
         
         angset, [a1, a2, a3], vol, determ, invdiel = kumagai_init(
@@ -759,14 +768,14 @@ class KumagaiCorrection(object):
         lat_perc_diffs = [100 * abs(norm(a1) - norm(lat))/minlat for lat in [a2,a3]]
         lat_perc_diffs.append(100 * abs(norm(a2) - norm(a3))/minlat)
         if not all(i < 45 for i in lat_perc_diffs):
-            logging.warning('Detected that cell was not very cubic.')
-            logging.warning('Sampling atoms outside wigner-seitz cell may '\
+            logger.warning('Detected that cell was not very cubic.')
+            logger.warning('Sampling atoms outside wigner-seitz cell may '\
                             'not be optimal')
         wsrad = wigner_seitz_radius(self.structure)
-        logging.debug('wsrad %f', wsrad)
+        logger.debug('wsrad %f', wsrad)
 
         for i in potinddict.keys():
-            logging.debug("Atom %d, distance: %f", i, potinddict[i]['dist'])
+            logger.debug("Atom %d, distance: %f", i, potinddict[i]['dist'])
             if potinddict[i]['dist'] > wsrad:
                 potinddict[i]['OutsideWS'] = True
             else:
@@ -796,14 +805,14 @@ class KumagaiCorrection(object):
             v_pc = anisotropic_madelung_potential(
                     self.structure, self.dim, self.g_sum, cart_reldef, 
                     self.dieltens, self.q, self.gamma, self.madetol)
-            v_qb*=-1 #change charge sign convention
+            v_qb *= -1 #change charge sign convention
 
             potinddict[i]['Vpc'] = v_pc
             potinddict[i]['Vqb'] = v_qb
             
-            logging.debug('Atom: %d, anisotropic madelung potential: %f', 
+            logger.debug('Atom: %d, anisotropic madelung potential: %f',
                           i, v_pc)
-            logging.debug('Atom: %d, bulk/defect difference = %f', i, v_qb)
+            logger.debug('Atom: %d, bulk/defect difference = %f', i, v_qb)
 
 
         if title:
@@ -850,9 +859,9 @@ class KumagaiCorrection(object):
                 fname = 'KumagaiData.json'
                 dumpfn(forplot, fname, cls=MontyEncoder)
 
-        logging.info('potential alignment (site averaging): %f', 
+        logger.info('potential alignment (site averaging): %f',
                      np.mean(forcorrection))
-        logging.info('Potential correction energy: %f eV', 
+        logger.info('Potential correction energy: %f eV',
                      -self.q * np.mean(forcorrection))
 
         return -self.q * np.mean(forcorrection)
@@ -899,9 +908,9 @@ class KumagaiCorrection(object):
         for i in realfull:
             r.append(i[0])
             y.append(i[1])
-        wsrad=forplot['EXTRA']['wsrad']
-        potalign=forplot['EXTRA']['potalign']
-        plt.plot(r, y, color=collis[-1], marker='x', linestyle='None', 
+        wsrad = forplot['EXTRA']['wsrad']
+        potalign = forplot['EXTRA']['potalign']
+        plt.plot(r, y, color=collis[-1], marker='x', linestyle='None',
                  label='$V_{q/b}$ - $V_{pc}$')
         plt.xlabel('Distance from defect (A)')
         plt.ylabel('Potential (V)')
@@ -909,10 +918,11 @@ class KumagaiCorrection(object):
         x = np.arange(wsrad, max(forplot['EXTRA']['lengths']), 0.01)
         plt.fill_between(x, min(ylis) - 1, max(ylis) + 1, facecolor='red', 
                          alpha=0.15, label='sampling region')
-        plt.axhline(y=potalign, linewidth=0.5, color='red', label='pot. align. / q')
+        plt.axhline(y=potalign, linewidth=0.5, color='red',
+                    label='pot. align. / q')
         plt.legend(loc=8)
         plt.axhline(y=0, linewidth=0.2, color='black')
-        plt.ylim([min(ylis) - .5, max(ylis) + .5])
+        plt.ylim([min(ylis) - 0.5, max(ylis) + 0.5])
         plt.xlim([0, max(rlis) + 3])
 
         plt.title('%s atomic site potential plot' % title)
