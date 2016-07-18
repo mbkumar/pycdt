@@ -14,6 +14,7 @@ import unittest
 import os
 
 from pymatgen.core.structure import Structure
+from pymatgen.core import PeriodicSite
 from pycdt.core.defectsmaker import *
 
 file_loc = os.path.join('..', '..', '..', 'test_files')
@@ -24,10 +25,10 @@ class GetOptimizedScScaleTest(unittest.TestCase):
                 os.path.join(file_loc, 'POSCAR_GaAs'))
 
     def test_biggercell_wanted(self):
-        pass
-
-    def test_smallercell_wanted(self):
-        pass
+        lattchange = get_optimized_sc_scale(self.gaas_prim_struct, 300)
+        self.assertEqual([5, 5, 5], lattchange)
+        lattchange = get_optimized_sc_scale(self.gaas_prim_struct, 100)
+        self.assertEqual([3, 3, 3], lattchange)
 
 
 class DefectChargerSemiconductorTest(unittest.TestCase):
@@ -130,30 +131,64 @@ class DefectChargerInsulatorTest(unittest.TestCase):
         self.assertNotIn(5, ti_inter_qs)
 
 
-
 class ChargedDefectsStructuresTest(unittest.TestCase):
     def setUp(self):
-        pass
+        self.gaas_struct = Structure.from_file(
+            os.path.join(file_loc, 'POSCAR_GaAs'))
+        self.ga_site = self.gaas_struct.sites[0]
+        self.as_site = self.gaas_struct.sites[1]
 
-    def test_vacancies(self):
-        pass
+    def test_simple_initialization(self):
+        #test simple attributes
+        CDS = ChargedDefectsStructures(self.gaas_struct)
+        self.assertIsInstance(CDS.struct, Structure)
+        self.assertIsInstance(CDS.defect_charger, DefectChargerSemiconductor)
+        self.assertFalse(CDS.substitutions)
+        superstruct = CDS.defects['bulk']['supercell']['structure']
+        self.assertIsInstance(superstruct, Structure)
+        cellsize = CDS.defects['bulk']['supercell']['size']
+        self.assertEqual([4, 4, 4], cellsize)
 
-    def test_antisites(self):
-        pass
+        #test native (intrinsic) defect generation
+        self.assertEqual('vac_1_Ga', CDS.defects['vacancies'][0]['name'])
+        self.assertEqual(self.ga_site, CDS.defects['vacancies'][0]['unique_site'])
+        self.assertEqual('vac_2_As', CDS.defects['vacancies'][1]['name'])
+        self.assertEqual(self.as_site, CDS.defects['vacancies'][1]['unique_site'])
 
-    def test_substitutions(self):
-        pass
+        self.assertEqual('as_1_As_on_Ga', CDS.defects['substitutions'][0]['name'])
+        self.assertEqual(self.ga_site, CDS.defects['substitutions'][0]['unique_site'])
+        self.assertEqual('as_2_Ga_on_As', CDS.defects['substitutions'][1]['name'])
+        self.assertEqual(self.as_site, CDS.defects['substitutions'][1]['unique_site'])
 
-    def test_interstitials(self):
-        pass
+
+    def test_extra_initialization(self):
+        CDS = ChargedDefectsStructures(self.gaas_struct, cellmax = 513,
+                                            struct_type='insulator',
+                                            antisites_flag=False)
+        self.assertIsInstance(CDS.defect_charger, DefectChargerInsulator)
+        cellsize = CDS.defects['bulk']['supercell']['size']
+        self.assertEqual([5, 5, 5], cellsize)
+        self.assertFalse(len(CDS.defects['substitutions'])) #testing antisite flag
 
 
-    def test_anion_on_cation_substitution(self):
-        """
-        Check the charge states for cases like As substitution on Ga site
-        """
-        pass
+    def test_subs_and_interstits(self):
+        # latt = self.gaas_struct.lattice
+        # pregen_intersite = [PeriodicSite('As', [0.4750, 0.4750, 0.5250], latt),
+        #                     PeriodicSite('As', [0.7250, 0.7250, 0.7750], latt)]
+        # CDS = ChargedDefectsStructures(self.gaas_struct,
+        #                                substitutions={'Ga':['Si','In'], 'As':['Sb']},
+        #                                intersites= pregen_intersite,
+        #                                include_interstitials=True)
+        CDS = ChargedDefectsStructures(self.gaas_struct,
+                                       substitutions={'Ga':['Si','In'], 'As':['Sb']})
+        self.assertEqual('sub_1_Si_on_Ga', CDS.defects['substitutions'][0]['name'])
+        self.assertEqual(self.ga_site, CDS.defects['substitutions'][0]['unique_site'])
+        self.assertEqual('sub_1_In_on_Ga', CDS.defects['substitutions'][1]['name'])
+        self.assertEqual(self.ga_site, CDS.defects['substitutions'][1]['unique_site'])
+        self.assertEqual('sub_2_Sb_on_As', CDS.defects['substitutions'][2]['name'])
+        self.assertEqual(self.as_site, CDS.defects['substitutions'][2]['unique_site'])
 
+        #NEXT do intersites
 
 if __name__ == '__main__':
     unittest.main()
