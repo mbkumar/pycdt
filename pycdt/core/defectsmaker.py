@@ -334,6 +334,93 @@ class DefectChargerInsulator(DefectCharger):
             return list(range(min_oxi, max_oxi+1))
 
 
+class DefectChargerUserCustom(DefectCharger):
+    """
+    Determine oxidation states from bond valence method (unless oxidation states specified)
+    Then ask user what charges they want
+    """
+    def __init__(self, structure, oxi_states={}):
+        """
+        Does initial Valence bond method to initialize oxidation states for user help
+        Overwridden by oxi_state specified by
+        Args: structure
+            pymatgen structure object to determine the oxidation states
+            min_max_oxi: any user specified min/max oxidation ranges for elements in structure
+            oxi_states: any user specified oxidation states of elements in structure
+        """
+        struct_species = structure.types_of_specie
+        if (len(struct_species) == 1) and struct_species[0].symbol not in oxi_states.keys():
+            oxi_states[struct_species[0].symbol] = 0
+        else:
+            vir = VIRE(structure)
+            for elt, oxi in vir.valences.items():
+                strip_key = ''.join([s for s in elt if s.isalpha()])
+                if strip_key not in oxi_states.keys():
+                    oxi_states[strip_key] = oxi
+        self.oxi_states = oxi_states
+        print ('\nThis is Full-User Charge Generation Mode.\n'
+               'Options are: (1) Range mode (input min and max of each each type of defect) '
+               'or (2) Individual mode (input each charge state you want for each defect)\n'
+               '\nWhen finished with specific defect, press ENTER to continue.')
+        rng_mod = raw_input('Please specify Range (R) or Individual (I) Mode:')
+        if 'R' == rng_mod.upper()[0]:
+            self.rangemode = True
+        else:
+            self.rangemode = False
+
+
+    def get_charges(self, defect_type, site_specie=None, sub_specie=None):
+        """
+        Based on the type of defect, site and substitution (if any) species
+        the defect charge states are generated.
+        Args:
+            defect_type (str): Options are vacancy, antisite, substitution,
+                               and interstitial
+            site_specie: Specie on the host lattice site
+                         For interstitials, use this
+            sub_specie: Specie that is replacing the site specie.
+                        For antisites and substitution defects
+        """
+        if site_specie in self.oxi_states.keys():
+            sitechg = self.oxi_states[site_specie]
+        else:
+            sitechg = False
+
+        if sub_specie:
+            if sub_specie in self.oxi_states.keys():
+                subchg = self.oxi_states[sub_specie]
+            else:
+                subchg = False
+
+        def get_users_charges():
+            tmpchgs = raw_input('What charges would you like? : ')
+            chgs = [int(c) for c in tmpchgs.split()]
+            if self.rangemode:
+                return list(range(chgs[0],chgs[-1]+1))
+            else:
+                return list(chgs)
+
+        if defect_type == 'vacancy':
+            if not sitechg:
+                print (site_specie,defect_type,'charge suggestion unknown (specify oxidation states to get suggestion)')
+            else:
+                print (site_specie,defect_type,'has charge =',-sitechg,'according to Simple Ionic Theory')
+        elif defect_type in ['antisite','substitution']:
+            nom = sub_specie+'_on_'+site_specie
+            if not sitechg or not subchg:
+                print (nom,defect_type,'charge suggestion unknown (specify oxidation states to get suggestion)')
+            else:
+                print (nom,defect_type,'has charge = ',subchg - sitechg,'according to Simple Ionic Theory')
+        elif defect_type == 'interstitial':
+            if not sitechg:
+                print (site_specie,defect_type,'charge suggestion unknown (specify oxidation states to get suggestion)')
+            else:
+                print (site_specie,defect_type,'has charge = ',sitechg,'according to Simple Ionic Theory')
+        outchgs = get_users_charges()
+        print ('    Charges generated:',outchgs)
+        return outchgs
+
+
 class ChargedDefectsStructures(object):
     """
     A class to generate charged defective structures for use in first
@@ -429,6 +516,9 @@ class ChargedDefectsStructures(object):
                                                              max_min_oxi)
         elif self.struct_type == 'insulator':
             self.defect_charger = DefectChargerInsulator(self.struct)
+        elif self.struct_type == 'manual':
+            self.defect_charger = DefectChargerUserCustom(self.struct,
+                                                          oxi_states)
         else:
             raise NotImplementedError
         
