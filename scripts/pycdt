@@ -174,7 +174,7 @@ def compute_corrections(args):
 
     # Initialize logging
     # TODO: Get the log file and loglevel from command line
-    logging.basicConfig(filename='correction.log', level=logging.INFO)
+    logging.basicConfig(filename='correction.log', level=logging.DEBUG)
 
     # initialize variables
     defect_data_file_name = args.defect_data_file_name
@@ -293,7 +293,9 @@ def compute_formation_energies(args):
         if args.plot_results:
             plotter = DefectPlotter(da)
             form_en_plot = plotter.get_plot_form_energy()
-            form_en_plot.savefig(region+'_region_defect_form_energy.eps', bbox_inches='tight')
+            form_en_plot.savefig(
+                    region+'_region_defect_form_energy.'+args.file_format, 
+                    bbox_inches='tight')
             print('printed ',region,' plot')
 
 
@@ -382,6 +384,9 @@ def main():
     bandgap_string = "User defined band gap to plot the defect formation " \
         "energies.\nBy default, Materials Project (MP) bandgap is " \
         "used.\nHowever, MP bandgap could be a severly underpredicted value." 
+    plot_format_string = "User defined file format to store the defect formation " \
+        "energies plot.\nBy default, 'eps' formation is used.\nSupported" \
+        "options are png, eps, jpg." 
 
 
     parser_input_files = subparsers.add_parser(
@@ -491,6 +496,9 @@ def main():
                                     type=float, default=0,
                                     dest="bandgap",
                                     help=bandgap_string)
+    parser_compute_energies.add_argument("-f", "--format", default='eps',
+                                    dest="file_format",
+                                    help=plot_format_string)
     parser_compute_energies.set_defaults(func = compute_formation_energies)
 
     args = parser.parse_args()
