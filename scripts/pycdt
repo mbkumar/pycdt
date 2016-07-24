@@ -34,6 +34,7 @@ from pycdt.utils.vasp import make_vasp_defect_files, \
                               make_vasp_dielectric_files
 from pycdt.utils.parse_calculations import PostProcess
 from pycdt.utils.plotter import  DefectPlotter
+from pycdt.utils.log_util import initialize_logging
 from pycdt.corrections.defects_analyzer import DefectsAnalyzer
 from pycdt.corrections.finite_size_charge_correction import \
         get_correction_freysoldt, get_correction_kumagai
@@ -177,7 +178,7 @@ def compute_corrections(args):
 
     # Initialize logging
     # TODO: Get the log file and loglevel from command line
-    logging.basicConfig(filename='correction.log', level=logging.DEBUG)
+    initialize_logging(filename='correction.log')
 
     # initialize variables
     defect_data_file_name = args.defect_data_file_name
@@ -239,7 +240,7 @@ def compute_formation_energies(args):
     """
     # Initialize logging
     # TODO: Get the log file and loglevel from command line
-    logging.basicConfig(filename='formation_energy.log', level=logging.DEBUG)
+    initialize_logging(filename='formation_energy.log')
 
     # initialize variables
     defect_data_file_name = args.defect_data_file_name

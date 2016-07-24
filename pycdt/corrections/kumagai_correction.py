@@ -309,7 +309,7 @@ def disttrans(struct, defstruct, dim):
     grid_sites = {}  # dictionary with indices keys in order of structure list
     for i in sitelist:
         if np.array_equal(i.coords, def_ccoord):
-            logging.debug('Site # %d  is defect! Skipping ', i)
+            logging.debug('Site {} is defect! Skipping '.format(i))
             continue
 
         blksite, defsite = closestsites(struct, defstruct, i.coords)
@@ -744,6 +744,7 @@ class KumagaiCorrection(object):
                 self.structure, self.g_sum, self.dieltens, self.q,
                 self.gamma, self.madetol)
 
+        logger = logging.getLogger(__name__)
         logger.info('PC energy determined to be %f eV (%f Hartree)',
                      energy_pc, energy_pc/hart_to_ev)
 
