@@ -13,7 +13,7 @@ __date__ = "May 6, 2015"
 import unittest
 import os
 
-from pycdcd.utils.vasp import make_vasp_defect_files, \
+from pycdt.utils.vasp import make_vasp_defect_files, \
         make_vasp_dielectric_files
 
 class VaspDefectFilesTest(unittest.TestCase):

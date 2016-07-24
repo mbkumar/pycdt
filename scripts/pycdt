@@ -42,10 +42,10 @@ from pycdt.corrections.kumagai_correction import KumagaiBulkInit
 
 
 def print_error_message(err_str):
-    print("\n=================================================================="
+    print("\n================================================================"
         "=============\n\nError: "+err_str)
     print("\n================================================================"
-        "===============\n")
+        "=============\n")
 
 
 def generate_input(args):
@@ -150,9 +150,10 @@ def parse_output(args):
 
     # error-checking;
     if not mp_id:
-        print_error_message("No Materials Project structure ID provided! (proceeding anyway)")
+        print_error_message("No Materials Project structure ID provided! "
+                            "(proceeding anyway)")
         #return
-        mp_id=None
+        mp_id = None
 
     # parse results to get defect data and correction terms
     defect_data = PostProcess(root_fldr, mp_id, mapi_key).compile_all()
@@ -161,8 +162,10 @@ def parse_output(args):
 
 def compute_corrections(args):
     """
-    TODO 1: have option to suppress potential plots (but for now want to plot them to make sure correction is working)
-    TODO 2: also include option for printing pot. plots to defect files, rather than main directory
+    TODO 1: have option to suppress potential plots
+            (but for now want to plot them to make sure correction is working)
+    TODO 2: Include option for printing pot. plots to defect files,
+            rather than main directory
     ----------
     Computes corrections for the charged point defects
     Supported: Isotropic Freysoldt method, Extended Freysoldt method (Kumagai)
@@ -201,9 +204,8 @@ def compute_corrections(args):
         for defect in defects:
             print ('defect_name: ', defect._full_name)
             print ('-----------------------------------------\n\n')
-            correction,blklpt = get_correction_freysoldt(
-                    defect, blklpt, epsilon, 
-                    title=defect._full_name)
+            correction, blklpt = get_correction_freysoldt(
+                    defect, blklpt, epsilon, title=defect._full_name)
             defect.charge_correction = correction
             corrections[defect._name].append({
                 'charge_correction': correction, 'charge':defect._charge})
@@ -220,8 +222,8 @@ def compute_corrections(args):
                     defect, path_blk, kumagai_init, bulk_locpot=blklpt,
                     title=defect._full_name)
             defect.charge_correction = correction
-            corrections[defect._name].append(
-                    {'charge_correction': correction, 'charge': defect._charge})
+            corrections[defect._name].append({
+                    'charge_correction': correction, 'charge': defect._charge})
 
     dumpfn(corrections, corrections_file_name, cls=MontyEncoder, indent=2)
 
@@ -283,7 +285,7 @@ def compute_formation_energies(args):
 
         if region == mu_range.keys()[0]:
             da_trans = da.get_transition_levels()
-            print ("===============\nDefect Transition Levels (eV):\n==============")
+            print ("============\nDefect Transition Levels (eV):\n===========")
             for dfct_name, trans_lvls in da_trans.items():
                 print (dfct_name)
                 ky_vals = sorted(trans_lvls.items(), key=lambda x: x[0][0])
@@ -436,7 +438,7 @@ def main():
     parser_vasp_output = subparsers.add_parser(
             "parse_output",
             help="Parses VASP output for calculation of formation energies of"
-             " charged point defects.")
+                " charged point defects.")
     parser_vasp_output.add_argument("-i", "--mpid", type=str.lower,
                                     dest="mp_id", help=mp_id_string)
     parser_vasp_output.add_argument("-k", "--mapi_key", default=None,
@@ -449,56 +451,58 @@ def main():
                                     default="defect_data.json",
                                     dest="defect_data_file_name",
                                     help=defect_data_file_name_string)
-    parser_vasp_output.set_defaults(func = parse_output)
+    parser_vasp_output.set_defaults(func=parse_output)
 
     parser_compute_corrections = subparsers.add_parser(
             "compute_corrections",
             help="Computes correction for finite size supercell error "
             "associated with charged point defects.")
     parser_compute_corrections.add_argument("-i", "--input_file_name",
-                                    default="defect_data.json",
-                                    dest="defect_data_file_name",
-                                    help=defect_data_file_name_string)
+                                            default="defect_data.json",
+                                            dest="defect_data_file_name",
+                                            help=defect_data_file_name_string)
     parser_compute_corrections.add_argument("-o", "--output_file_name",
-                                    default="corrections.json",
-                                    dest="corrections_file_name",
-                                    help=corrections_file_name_string)
+                                            default="corrections.json",
+                                            dest="corrections_file_name",
+                                            help=corrections_file_name_string)
     parser_compute_corrections.add_argument("-p", "--plot_results",
-                                    action='store_true', dest="plot_results",
-                                    help=plot_results_string)
+                                            action='store_true',
+                                            dest="plot_results",
+                                            help=plot_results_string)
     parser_compute_corrections.add_argument("-e",  "--epsilon", type=float, 
-                                    default=None, dest="epsilon", 
-                                    help=epsilon_string)
+                                            default=None, dest="epsilon",
+                                            help=epsilon_string)
     parser_compute_corrections.add_argument("-c", "--correction_method",
-                                    type=str, default="freysoldt",
-                                    dest="correction_method",
-                                    help=correction_string)
-    parser_compute_corrections.set_defaults(func = compute_corrections)
+                                            type=str, default="freysoldt",
+                                            dest="correction_method",
+                                            help=correction_string)
+    parser_compute_corrections.set_defaults(func=compute_corrections)
 
     parser_compute_energies = subparsers.add_parser(
             "compute_formation_energies",
             help="Computes formation energies of charged point defects from "
             "the parsed VASP output.")
     parser_compute_energies.add_argument("-i", "--input_file_name",
-                                    default="defect_data.json",
-                                    dest="defect_data_file_name",
-                                    help=defect_data_file_name_string)
+                                         default="defect_data.json",
+                                         dest="defect_data_file_name",
+                                         help=defect_data_file_name_string)
     parser_compute_energies.add_argument("-c", "--corrections_file_name",
-                                    default="corrections.json",
-                                    dest="corrections_file_name",
-                                    help=corrections_file_name_string)
+                                         default="corrections.json",
+                                         dest="corrections_file_name",
+                                         help=corrections_file_name_string)
     parser_compute_energies.add_argument("-p", "--plot_results",
-                                    action='store_true', dest="plot_results",
-                                    help=plot_results_string)
+                                         action='store_true',
+                                         dest="plot_results",
+                                         help=plot_results_string)
     parser_compute_energies.add_argument("-e", "--epsilon", default=None,
-                                    dest="epsilon_tensor", help=epsilon_string)
+                                         dest="epsilon_tensor",
+                                         help=epsilon_string)
     parser_compute_energies.add_argument("-bg", "--bandgap",
-                                    type=float, default=0,
-                                    dest="bandgap",
-                                    help=bandgap_string)
+                                         type=float, default=0, dest="bandgap",
+                                         help=bandgap_string)
     parser_compute_energies.add_argument("-f", "--format", default='eps',
-                                    dest="file_format",
-                                    help=plot_format_string)
+                                         dest="file_format",
+                                         help=plot_format_string)
     parser_compute_energies.set_defaults(func = compute_formation_energies)
 
     args = parser.parse_args()

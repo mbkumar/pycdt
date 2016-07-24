@@ -16,7 +16,8 @@ __status__ = "Development"
 __date__ = "Janurary 6, 2016"
 
 import copy
-import abc 
+import abc
+import math
 
 from monty.string import str2unicode
 from pymatgen.core.structure import PeriodicSite
@@ -56,9 +57,9 @@ def get_optimized_sc_scale(inp_struct, final_site_no):
                     for b in range(-1,2):
                         for c in range(-1,2):
                             try:
-                                distance = struct.get_distance(0,0,(a,b,c))
+                                distance = struct.get_distance(0, 0, (a,b,c))
                             except:
-                                print a, b, c 
+                                print (a, b, c)
                                 raise
                             if  distance < min_dist and distance>0.00001:
                                 min_dist = distance
@@ -71,12 +72,12 @@ def get_optimized_sc_scale(inp_struct, final_site_no):
                     dictio[min_dist]={}
                     dictio[min_dist]['num_sites'] = struct.num_sites
                     dictio[min_dist]['supercell'] = [k1,k2,k3]
-    min_dist=-1.0
-    biggest=None
+    min_dist = -1.0
+    biggest = None
     for c in dictio:
-        if c>min_dist:
-            biggest=dictio[c]['supercell']
-            min_dist=c
+        if c > min_dist:
+            biggest = dictio[c]['supercell']
+            min_dist = c
     if biggest is None or min_dist < 0.0:
         raise RuntimeError('could not find any supercell scaling vector')
     return biggest
@@ -98,7 +99,7 @@ class DefectCharger:
         Args:
             defect_type (str): Options are vacancy, antisite, substitution,
                                and interstitial
-            site_specie: Specie on the host lattice site 
+            site_specie: Specie on the host lattice site
                          For interstitials, use this
             sub_specie: Specie that is replacing the site specie.
                         For antisites and substitution defects
@@ -109,13 +110,11 @@ class DefectCharger:
 
 class DefectChargerSemiconductor(DefectCharger):
     """
-    Charge Generator based on the oxidation states referenced from 
-    semiconductor database. Targetted materials are shallow and some wideband
-    semiconductors. For these systems, antisites are common and their
-    charge assignment for antisites follows vacancies
-
+    Determine oxidation states from bond valence method (unless oxidation states specified)
+    Use BVM or specified oxidation states for site oxidation preference
+    Use possible oxidation state list for sub_site elements
     """
-    def __init__(self, structure, min_max_oxi={}):
+    def __init__(self, structure, min_max_oxi={}, oxi_states={}):
         """
         Charge assignment based on the oxidation states referenced from 
         semiconductor database. Targetted materials are shallow and some 
@@ -123,74 +122,94 @@ class DefectChargerSemiconductor(DefectCharger):
         their charge assignment for antisites follows vacancies
         Args: structure
             pymatgen structure object to determine the oxidation states
+            min_max_oxi: any user specified min/max oxidation ranges for elements in structure
+            oxi_states: any user specified oxidation states of elements in structure
         """
+        struct_species = structure.types_of_specie
+        if (len(struct_species) == 1) and struct_species[0].symbol not in oxi_states.keys():
+            oxi_states[struct_species[0].symbol] = 0
+        else:
+            vir = VIRE(structure)
+            for elt, oxi in vir.valences.items():
+                strip_key = ''.join([s for s in elt if s.isalpha()])
+                if strip_key not in oxi_states.keys():
+                    oxi_states[strip_key] = oxi
+        self.oxi_states = oxi_states
 
-        self.min_max_oxi_bulk = {}
-
-        for elem in structure.symbol_set:
-            if elem in min_max_oxi.keys():
-                self.min_max_oxi_bulk[elem]=list(min_max_oxi[elem])
+        self.min_max_oxi_bulk = [0,0]
+        for s in struct_species:
+            if isinstance(s, Specie):
+                el = s.element
+            elif isinstance(s, Element):
+                el = s
+            else:
                 continue
-            self.min_max_oxi_bulk[elem] = [0, 0]
-            oxi_elem = Element(elem).oxidation_states
-            if min(oxi_elem) < self.min_max_oxi_bulk[elem][0]:
-                self.min_max_oxi_bulk[elem][0] = min(oxi_elem)
-            if max(oxi_elem) > self.min_max_oxi_bulk[elem][1]:
-                self.min_max_oxi_bulk[elem][1] = max(oxi_elem)
+            if el.symbol not in min_max_oxi.keys():
+                max_oxi = max(el.common_oxidation_states)
+                min_oxi = min(el.common_oxidation_states)
+                min_max_oxi[el.symbol] = [min_oxi,max_oxi]
+            if min_max_oxi[el.symbol][0] < self.min_max_oxi_bulk[0]:
+                self.min_max_oxi_bulk[0] = min_max_oxi[el.symbol][0]
+            if min_max_oxi[el.symbol][1] > self.min_max_oxi_bulk[1]:
+                self.min_max_oxi_bulk[1] = min_max_oxi[el.symbol][1]
+        self.min_max_oxi = min_max_oxi
 
-    def get_charges(self, defect_type, site_specie=None, sub_specie=None):
+    def get_charges(self, defect_type, site_specie, sub_specie=None):
         """
         Based on the type of defect, site and substitution (if any) species
         the defect charge states are generated.
         Args:
             defect_type (str): Options are vacancy, antisite, substitution,
                                and interstitial
-            site_specie (Not used): Specie on the host lattice site 
-                         For interstitials, use this
-            sub_specie: Specie that is replacing the site specie.
+            site_specie (str): Specie on the host lattice site
+                         Use this for interstitials as well
+            sub_specie (str): Specie that is replacing the site specie.
                         At present used for substitution and antisite defects
         """
-        print 'site_specie', site_specie
-        site_elem = site_specie.symbol
+        if site_specie not in self.min_max_oxi.keys():
+            max_oxi = max(Element(site_specie).common_oxidation_states)
+            min_oxi = min(Element(site_specie).common_oxidation_states)
+            self.min_max_oxi[site_specie] = [min_oxi, max_oxi]
         if sub_specie:
-            print 'sub_specie=', sub_specie
-            sub_elem = sub_specie.symbol
-        print 'defect_type', defect_type
+            if sub_specie not in self.min_max_oxi.keys():
+                max_oxi = max(Element(sub_specie).common_oxidation_states)
+                min_oxi = min(Element(sub_specie).common_oxidation_states)
+                self.min_max_oxi[sub_specie] = [min_oxi, max_oxi]
         if defect_type == 'vacancy':
-            return [-c for c in range(
-                self.min_max_oxi_bulk[site_elem][0]-1,
-                (self.min_max_oxi_bulk[site_elem][1]+2))]
-        elif (defect_type == 'antisite') or (defect_type == 'substitution'):
-            if sub_elem not in self.min_max_oxi_bulk.keys():
-                self.min_max_oxi_bulk[sub_elem] = [0, 0]
-                oxi_elem = Element(sub_elem).oxidation_states
-                if min(oxi_elem) < self.min_max_oxi_bulk[sub_elem][0]:
-                    self.min_max_oxi_bulk[sub_elem][0] = min(oxi_elem)
-                if max(oxi_elem) > self.min_max_oxi_bulk[sub_elem][1]:
-                    self.min_max_oxi_bulk[sub_elem][1] = max(oxi_elem)
-            tmpchgrng = [-c for c in range(
-                self.min_max_oxi_bulk[site_elem][0]-1,
-                (self.min_max_oxi_bulk[site_elem][1]+2))]
-            chgrng = []
-            for sub_chg in range(self.min_max_oxi_bulk[sub_elem][0],
-                                 self.min_max_oxi_bulk[sub_elem][1]):
-                for chg in tmpchgrng:
-                    chgrng.append(sub_chg-chg)
-            #make sure transition charges are represented
-            for fillchg in range(min(chgrng),max(chgrng)):
-                chgrng.append(fillchg)
-            chgrng = list(set(chgrng))
-            chgrng.sort()
-            #trim to reasonable range
-            while max(chgrng) >= self.min_max_oxi_bulk[sub_elem][1]+1:
-                chgrng.remove(max(chgrng))
-            while min(chgrng) <= self.min_max_oxi_bulk[sub_elem][0]-1:
-                chgrng.remove(min(chgrng))
-            return chgrng
+            site_oxi = self.oxi_states[site_specie]
+            if site_oxi:
+                return list(range(-abs(site_oxi), abs(site_oxi) + 1))
+            else:
+                min_oxi = self.min_max_oxi[site_specie][0]
+                max_oxi = self.min_max_oxi[site_specie][1]
+                if abs(min_oxi) < abs(max_oxi):
+                    return list(range(-abs(max_oxi), abs(max_oxi) + 1))
+                else:
+                    return list(range(-abs(min_oxi), abs(min_oxi) + 1))
+        elif defect_type == 'antisite':
+            return list(range(self.min_max_oxi_bulk[0],
+                              self.min_max_oxi_bulk[1]-1))
+        elif defect_type == 'substitution':
+            oxi_sub = Element(sub_specie).oxidation_states
+            min_max_oxi_bulk_sub = [
+                        min(min(set(oxi_sub) - set(self.min_max_oxi_bulk)),0),
+                        max(max(set(oxi_sub) - set(self.min_max_oxi_bulk)),0)]
+            if (min_max_oxi_bulk_sub[1] - min_max_oxi_bulk_sub[0]) > 2:
+                return list(range(min_max_oxi_bulk_sub[0],
+                                  min_max_oxi_bulk_sub[1]-2)) # if range exists, less likely to be a higher charge
+            else:
+                return list(range(min_max_oxi_bulk_sub[0]-1,
+                                  min_max_oxi_bulk_sub[1]+2)) #likely upper bound is 0, so extend to 2
         elif defect_type == 'interstitial':
-            return [c for c in range(
-                self.min_max_oxi_bulk[site_elem][0]-1,
-                self.min_max_oxi_bulk[site_elem][1]+2)]
+            if self.min_max_oxi[site_specie][0] > 0:
+                min_oxi = 0
+            else:
+                min_oxi = self.min_max_oxi[site_specie][0]
+            if self.min_max_oxi[site_specie][1] < 0:
+                max_oxi = 0
+            else:
+                max_oxi = self.min_max_oxi[site_specie][1]
+            return list(range(min_oxi, max_oxi+1))
         else:
             raise ValueError("Defect type not understood")
 
@@ -225,7 +244,7 @@ class DefectChargerInsulator(DefectCharger):
             strip_key = ''.join([s for s in key if s.isalpha()])
             self.oxi_states[str2unicode(strip_key)] = val
 
-        print 'self.oxistes', self.oxi_states    
+        print ('self.oxistes', self.oxi_states)
 
         self.min_max_oxi = {}
         for s in struct_species:
@@ -238,7 +257,7 @@ class DefectChargerInsulator(DefectCharger):
             max_oxi = max(el.common_oxidation_states)
             min_oxi = min(el.common_oxidation_states)
             self.min_max_oxi[str2unicode(el.symbol)] = (min_oxi,max_oxi)
-        print 'self.min_max_oxi', self.min_max_oxi    
+        print ('self.min_max_oxi', self.min_max_oxi)
         
     def get_charges(self, defect_type, site_specie=None, sub_specie=None):
         """
@@ -255,7 +274,7 @@ class DefectChargerInsulator(DefectCharger):
         if defect_type == 'vacancy':
             vac_symbol = get_el_sp(site_specie).symbol
             vac_oxi_state = self.oxi_states[str2unicode(vac_symbol)]
-            print 'vac_oxi_state', vac_oxi_state
+            print ('vac_oxi_state', vac_oxi_state)
             if vac_oxi_state < 0:
                 min_oxi = max(vac_oxi_state, self.min_max_oxi[vac_symbol][0])
                 max_oxi = 0
@@ -294,7 +313,7 @@ class DefectChargerInsulator(DefectCharger):
                     raise ValueError("Substitution seems not possible")
                 else:
                     if max_oxi_sub > vac_oxi_state:
-                        return range(max_oxi_sub - vac_oxi_state + 1)
+                        return list(range(max_oxi_sub - vac_oxi_state + 1))
                     else:
                         return [max_oxi_sub - vac_oxi_state]
             else:
@@ -302,17 +321,104 @@ class DefectChargerInsulator(DefectCharger):
                     raise ValueError("Substitution seems not possible")
                 else:
                     if min_oxi_sub < vac_oxi_state:
-                        return range(min_oxi_sub - vac_oxi_state, 1)
+                        return list(range(min_oxi_sub - vac_oxi_state, 1))
                     else:
                         return [min_oxi_sub - vac_oxi_state]
         
         elif defect_type == 'interstitial':
-            print 'inter_symbol=', site_specie
+            print ('inter_symbol=', site_specie)
             site_specie = get_el_sp(site_specie)
             min_oxi = min(min(site_specie.common_oxidation_states), 0)
             max_oxi = max(max(site_specie.common_oxidation_states), 0)
 
-            return range(min_oxi, max_oxi+1)
+            return list(range(min_oxi, max_oxi+1))
+
+
+class DefectChargerUserCustom(DefectCharger):
+    """
+    Determine oxidation states from bond valence method (unless oxidation states specified)
+    Then ask user what charges they want
+    """
+    def __init__(self, structure, oxi_states={}):
+        """
+        Does initial Valence bond method to initialize oxidation states for user help
+        Overwridden by oxi_state specified by
+        Args: structure
+            pymatgen structure object to determine the oxidation states
+            min_max_oxi: any user specified min/max oxidation ranges for elements in structure
+            oxi_states: any user specified oxidation states of elements in structure
+        """
+        struct_species = structure.types_of_specie
+        if (len(struct_species) == 1) and struct_species[0].symbol not in oxi_states.keys():
+            oxi_states[struct_species[0].symbol] = 0
+        else:
+            vir = VIRE(structure)
+            for elt, oxi in vir.valences.items():
+                strip_key = ''.join([s for s in elt if s.isalpha()])
+                if strip_key not in oxi_states.keys():
+                    oxi_states[strip_key] = oxi
+        self.oxi_states = oxi_states
+        print ('\nThis is Full-User Charge Generation Mode.\n'
+               'Options are: (1) Range mode (input min and max of each each type of defect) '
+               'or (2) Individual mode (input each charge state you want for each defect)\n'
+               '\nWhen finished with specific defect, press ENTER to continue.')
+        rng_mod = raw_input('Please specify Range (R) or Individual (I) Mode:')
+        if 'R' == rng_mod.upper()[0]:
+            self.rangemode = True
+        else:
+            self.rangemode = False
+
+
+    def get_charges(self, defect_type, site_specie=None, sub_specie=None):
+        """
+        Based on the type of defect, site and substitution (if any) species
+        the defect charge states are generated.
+        Args:
+            defect_type (str): Options are vacancy, antisite, substitution,
+                               and interstitial
+            site_specie: Specie on the host lattice site
+                         For interstitials, use this
+            sub_specie: Specie that is replacing the site specie.
+                        For antisites and substitution defects
+        """
+        if site_specie in self.oxi_states.keys():
+            sitechg = self.oxi_states[site_specie]
+        else:
+            sitechg = False
+
+        if sub_specie:
+            if sub_specie in self.oxi_states.keys():
+                subchg = self.oxi_states[sub_specie]
+            else:
+                subchg = False
+
+        def get_users_charges():
+            tmpchgs = raw_input('What charges would you like? : ')
+            chgs = [int(c) for c in tmpchgs.split()]
+            if self.rangemode:
+                return list(range(chgs[0],chgs[-1]+1))
+            else:
+                return list(chgs)
+
+        if defect_type == 'vacancy':
+            if not sitechg:
+                print (site_specie,defect_type,'charge suggestion unknown (specify oxidation states to get suggestion)')
+            else:
+                print (site_specie,defect_type,'has charge =',-sitechg,'according to Simple Ionic Theory')
+        elif defect_type in ['antisite','substitution']:
+            nom = sub_specie+'_on_'+site_specie
+            if not sitechg or not subchg:
+                print (nom,defect_type,'charge suggestion unknown (specify oxidation states to get suggestion)')
+            else:
+                print (nom,defect_type,'has charge = ',subchg - sitechg,'according to Simple Ionic Theory')
+        elif defect_type == 'interstitial':
+            if not sitechg:
+                print (site_specie,defect_type,'charge suggestion unknown (specify oxidation states to get suggestion)')
+            else:
+                print (site_specie,defect_type,'has charge = ',sitechg,'according to Simple Ionic Theory')
+        outchgs = get_users_charges()
+        print ('    Charges generated:',outchgs)
+        return outchgs
 
 
 class ChargedDefectsStructures(object):
@@ -397,7 +503,7 @@ class ChargedDefectsStructures(object):
                 imat = intersite.lattice.matrix
                 for i1 in range(3):
                     for i2 in range(3):
-                        if fabs(imat[i1][i2]-smat[i1][i2])/fabs(
+                        if math.fabs(imat[i1][i2]-smat[i1][i2])/math.fabs(
                                 imat[i1][i2]) > 1.0e-4:
                             raise RuntimeError("Discrepancy between lattices"
                                     " underlying the input interstitials and"
@@ -406,9 +512,13 @@ class ChargedDefectsStructures(object):
 
         struct_species = self.struct.types_of_specie
         if self.struct_type == 'semiconductor':
-            self.defect_charger = DefectChargerSemiconductor(self.struct, max_min_oxi)
+            self.defect_charger = DefectChargerSemiconductor(self.struct,
+                                                             max_min_oxi)
         elif self.struct_type == 'insulator':
             self.defect_charger = DefectChargerInsulator(self.struct)
+        elif self.struct_type == 'manual':
+            self.defect_charger = DefectChargerUserCustom(self.struct,
+                                                          oxi_states)
         else:
             raise NotImplementedError
         
@@ -443,17 +553,8 @@ class ChargedDefectsStructures(object):
             vac_symbol = vac_site.specie.symbol
             vac_sc = vac_scs[i+1]
             vac_sc_site = list(set(vac_scs[0].sites) - set(vac_sc.sites))[0]
-
-            # We trim the range by decreasing the max. oxi. state by 2,
-            # which we found by testing the charge assignment model
-            # implemented here against literature values on
-            # diamond and zinc blende-lattice structures.
-            # The objective was to successfully include all literature
-            # charge states for all structures in the test set,
-            # while simultaneously minimizing the number of overhead
-            # charge states prodcued by the procedure below.
-            charges_vac = self.defect_charger.get_charges('vacancy', vac_specie)
-
+            charges_vac = self.defect_charger.get_charges('vacancy',
+                                                          vac_symbol)
             vacancies.append({
                 'name': "vac_{}_{}".format(i+1, vac_symbol),
                 'unique_site': vac_site,
@@ -464,17 +565,10 @@ class ChargedDefectsStructures(object):
                 'supercell': {'size': sc_scale,'structure': vac_sc},
                 'charges': charges_vac})
 
-            # Antisite defects generation
             if antisites_flag:
-                # Similar to the vacancy charge-assignment procedure,
-                # we trim the range by decreasing the max. oxi. state by 2
-                # for antisites, too, based on insights from the
-                # test set.
-
-
                 for as_specie in set(struct_species)-set([vac_specie]):
                     charges_as = self.defect_charger.get_charges(
-                            'antisite', vac_specie, as_specie)
+                            'antisite', vac_symbol, as_specie.symbol)
                     as_symbol = as_specie.symbol
                     as_sc = vac_sc.copy()
                     as_sc.append(as_symbol, vac_sc_site.frac_coords)
@@ -491,21 +585,13 @@ class ChargedDefectsStructures(object):
                         'supercell': {'size': sc_scale,'structure': as_sc},
                         'charges': charges_as})
 
-            # Substitutional defects generation
             if vac_symbol in self.substitutions:
                 for subspecie_symbol in self.substitutions[vac_symbol]:
                     sub_sc = vac_sc.copy()
                     sub_sc.append(subspecie_symbol, vac_sc_site.frac_coords)
 
-                    # Similar to the vacancy charge-assignment procedure,
-                    # we trim the range, this time however,
-                    # by decreasing the max. oxi. state by 3 instead of 2,
-                    # based on insights from our test set.
-                    # Also note that we include the oxidation states of the
-                    # new species (i.e., of the species that substitutes
-                    # a lattice atom).
                     charges_sub = self.defect_charger.get_charges(
-                            'substitution', vac_specie, Element(subspecie_symbol))
+                            'substitution', vac_symbol, subspecie_symbol)
                     sub_defs.append({
                         'name': "sub_{}_{}_on_{}".format(
                             i+1, subspecie_symbol, vac_symbol),
@@ -537,50 +623,42 @@ class ChargedDefectsStructures(object):
                 raise RuntimeError("empty element list for interstitials")
             if not intersites and gen_inter:
                 intersites = []
-                smi = StructureMotifInterstitial(
-                        self.struct,
-                        inter_elems[0],
-                        dl=0.2)
+                smi = StructureMotifInterstitial(self.struct, inter_elems[0],
+                                                 dl=0.2)
                 n_inters = len(smi.enumerate_defectsites())
-                for i_inter in range(n_inters):
-                    intersites.append(
-                            smi.get_defectsite(i_inter))
-                    inter_types.append(smi.get_motif_type(i_inter))
-                    inter_cns.append(smi.get_coordinating_elements_cns(i_inter))
-                    inter_multi.append(int(smi.get_defectsite_multiplicity(
-                            i_inter)/conv_prim_rat))
+                for i in range(n_inters):
+                    intersites.append(smi.get_defectsite(i))
+                    inter_types.append(smi.get_motif_type(i))
+                    inter_cns.append(smi.get_coordinating_elements_cns(i))
+                    inter_multi.append(int(
+                        smi.get_defectsite_multiplicity(i)/conv_prim_rat))
 
             # Now set up the interstitials.
             for elt in inter_elems:
-                for i_inter, intersite in enumerate(intersites):
+                for i, intersite in enumerate(intersites):
                     if inter_types and inter_cns:
                         tmp_string = ""
-                        for elem, cn in inter_cns[i_inter].items():
+                        for elem, cn in inter_cns[i].items():
                             tmp_string = tmp_string + "_{}{}".format(elem, cn)
                         if tmp_string == "":
                             raise RuntimeError("no coordinating neighbors")
-                        name = "inter_{}_{}_{}{}".format(i_inter+1, elt, inter_types[i_inter],
-                                tmp_string)
-                        site_mult = inter_multi[i_inter]
+                        name = "inter_{}_{}_{}{}".format(
+                                    i+1, elt, inter_types[i], tmp_string)
+                        site_mult = inter_multi[i]
 
                     else:
-                        name = "inter_{}_{}".format(i_inter+1, elt)
+                        name = "inter_{}_{}".format(i+1, elt)
                         # This needs further attention at some point.
-                        site_mult = int(1 / conv_prim_rat)
+                        site_mult = int(1.0 / conv_prim_rat)
 
                     site = PeriodicSite(Element(elt), intersite.frac_coords,
-                            intersite.lattice)
-                    site_sc = PeriodicSite(Element(elt), site.coords, sc.lattice,
+                                        intersite.lattice)
+                    site_sc = PeriodicSite(
+                            Element(elt), site.coords, sc.lattice,
                             coords_are_cartesian=True)
                     sc_with_inter = sc.copy()
-                    sc_with_inter.append(elt,
-                        site_sc.frac_coords)
+                    sc_with_inter.append(elt, site_sc.frac_coords)
 
-                    # Similar to the vacancy & antisite
-                    # charge-assignment procedure,
-                    # we trim the range by decreasing the max. oxi. state by 2
-                    # for interstitials, too, based on insights from the
-                    # test set.
                     charges_inter = self.defect_charger.get_charges(
                             'interstitial', elt)
 
@@ -591,7 +669,8 @@ class ChargedDefectsStructures(object):
                             'defect_type': 'interstitial',
                             'site_specie': Element(elt),
                             'site_multiplicity': site_mult,
-                            'supercell': {'size': sc_scale, 'structure': sc_with_inter},
+                            'supercell': {'size': sc_scale,
+                                          'structure': sc_with_inter},
                             'charges': charges_inter})
 
             self.defects['interstitials'] = interstitials
@@ -601,12 +680,13 @@ class ChargedDefectsStructures(object):
         for j in self.defects.keys():
             if j=='bulk':
                 print("    bulk = 1")
-                tottmp+=1
+                tottmp += 1
             else:
                 print("    {}:".format(j))
                 for lis in self.defects[j]:
-                    print("        {} = {}".format(lis['name'], len(lis['charges'])))
-                    tottmp+=len(lis['charges'])
+                    print("        {} = {}".format(lis['name'],
+                                                   len(lis['charges'])))
+                    tottmp += len(lis['charges'])
         print("Total (non dielectric) jobs created = {}\n".format(tottmp))
 
     def make_interstitial(self, target_site, sc_scale):

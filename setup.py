@@ -13,7 +13,7 @@ setup(
         name="pycdt",
         packages=find_packages(),
         version="0.5.0",
-        install_requires=["pymatgen>=3.0.6", "numpy>=1.8"],
+        install_requires=["numpy>=1.9", "pymatgen==4.0.2", "matplotlib>=1.1"],
         author="Danny Broberg, Bharat Medasani, Nils Zimmerman",
         author_email="mbkumar@gmail.com",
         #url="http://github.com/mbkumar/pycdcd",
@@ -23,7 +23,7 @@ setup(
         classifiers=[
             "Programming Language :: Python :: 2",
             "Programming Language :: Python :: 2.7",
-            "Programming Language :: Python :: 3.4",
+            #"Programming Language :: Python :: 3.4",
             "Development Status :: 1 - Alpha",
             "Intended Audience :: Science/Research",
             "License :: OSI Approved :: MIT License",

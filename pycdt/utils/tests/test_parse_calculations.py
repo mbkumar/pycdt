@@ -13,9 +13,9 @@ __date__ = "May 6, 2015"
 import unittest
 import os
 
-from pycdcd.utils.parse_calculations import parse_defect_energy
+from pycdt.utils.parse_calculations import PostProcess
 
-class ParseDefectEnergyTest(unittest.TestCase):
+class PostProcessTest(unittest.TestCase):
     def setUp(self):
         pass
 

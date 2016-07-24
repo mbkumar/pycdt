@@ -21,6 +21,8 @@ import numpy as np
 from pymatgen.io.vasp.outputs import Locpot
 from pymatgen.core.structure import Structure
 
+from pycdt.corrections.utils import *
+
 norm = np.linalg.norm
 
 # Define conversion_constants
@@ -28,155 +30,6 @@ hart_to_ev = 27.2114
 ang_to_bohr = 1.8897
 
 # Define any logging stuff here
-
-def k_to_eV(g):
-    """
-    Convert a k-vector to energy [eV] via hbar*k^2/2m
-    Args:
-        a: Reciprocal vector (units of 1/A).
-
-    Returns:
-        (double) Energy in eV
-    """
-    return 3.80986 * np.dot(g,g)
-
-def eV_to_k(energy):
-    """
-    Convert energy to reciprocal vector magnitude k via hbar*k^2/2m
-    Args:
-        a: Energy in eV.
-
-    Returns:
-        (double) Reciprocal vector magnitude (units of 1/Bohr).
-    """
-    return math.sqrt(energy/3.80986)*1.8897
-
-def cleanlat(dat):
-    """
-    return lattice constants
-    Args:
-        dat: array of lattice vectors
-
-    Returns:
-        (double) Lattice constants (in same units as lattice vectors)
-    """
-    return norm(dat[0]), norm(dat[1]), norm(dat[2])
-
-def genrecip(a1, a2, a3, encut):
-    """
-    Args:
-        a1, a2, a3: lattice vectors in bohr
-        encut: energy cut off in eV
-    Returns:
-        reciprocal lattice vectors with energy less than encut
-    """
-
-    # define recip vectors first, (units of 1/angstrom).
-    vol = np.dot(a1, np.cross(a2, a3))  # 1/bohr^3
-    b1 = (2 * np.pi / vol) * np.cross(a2, a3)  # units 1/bohr
-    b2 = (2 * np.pi / vol) * np.cross(a3, a1)
-    b3 = (2 * np.pi / vol) * np.cross(a1, a2)
-    recip = []
-    flag = 0
-
-    # create list of recip space vectors that satisfy |i*b1+j*b2+k*b3|<=encut
-    tol = 0
-    while flag != 1:
-        if 3.80986 * ((tol * (1 / ang_to_bohr) * min(norm(b1), norm(b2), norm(b3))) ** 2) < encut:
-            tol = tol + 1
-        else:
-            flag = 1
-
-    for i in range(-tol, tol + 1):
-        for j in range(-tol, tol + 1):
-            for k in range(-tol, tol + 1):
-                vec = (i * b1 + j * b2 + k * b3)
-                en = 3.80986 * (((1 / ang_to_bohr) * norm(vec))** 2)
-                if (en <= encut and en != 0):
-                    recip.append([i * b1[m] + j * b2[m] + k * b3[m] for m in range(3)])
-
-    return recip
-
-def generate_reciprocal_vectors_squared(a1, a2, a3, encut):
-    """
-    Generate reciprocal vector magnitudes within the cutoff along the specied
-    lattice vectors. 
-    Args:
-        a1: Lattice vector a (in Bohrs)
-        a2: Lattice vector b (in Bohrs)
-        a3: Lattice vector c (in Bohrs)
-        encut: Reciprocal vector energy cutoff
-
-    Returns:
-        [[g1^2], [g2^2], ...] Square of reciprocal vectors (1/Bohr)^2 
-        determined by a1, a2, a3 and whose magntidue is less than gcut^2.
-    """
-    vol = np.dot(a1, np.cross(a2, a3))  
-    b1 = (2 * np.pi / vol) * np.cross(a2, a3)  
-    b2 = (2 * np.pi / vol) * np.cross(a3, a1)
-    b3 = (2 * np.pi / vol) * np.cross(a1, a2)
-
-    # Max (i,j,k) that doesn't upset the condition |i*b1+j*b2+k*b3|<=gcut
-    gcut=eV_to_k(encut)
-    max_index = int(math.ceil(gcut/min(norm(b1), norm(b2), norm(b3))))
-    gcut2 = gcut*gcut
-    recip = []
-    for i in range(-max_index, max_index+1):
-        for j in range(-max_index, max_index+1):
-            for k in range(-max_index, max_index+1):
-                vec = (i*b1 + j*b2 + k*b3)
-                vec2 = np.dot(vec,vec)
-                if (vec2 <= gcut2 and vec2 != 0.0):
-                    recip.append(vec2)
-    return recip
-
-def closestsites(struct_blk, struct_def, pos):
-    #input bulk and defect structures and get site that is nearest to the (cartesian) input position
-    bulkclosesites = struct_blk.get_sites_in_sphere(pos, 5)
-    bulkclosesites.sort(key=lambda x:x[1])
-    defclosesites = struct_def.get_sites_in_sphere(pos, 5)
-    defclosesites.sort(key=lambda x:x[1])
-
-    return bulkclosesites[0],defclosesites[0] #returns closest (site object, dist) for both bulk and defect
-
-def find_defect_pos(struct_blk, struct_def):
-    """
-    output cartesian coords of defect in bulk,defect cells.
-
-    If vacancy defectpos=None, if interstitial bulkpos=None, if antisite/sub then both defined
-    """
-    if len(struct_blk.sites) > len(struct_def.sites):
-        vactype = True
-        interstittype = False
-    elif len(struct_blk.sites) < len(struct_def.sites):
-        vactype = False
-        interstittype = True
-    else:
-        vactype = False
-        interstittype = False
-
-    sitematching = []
-    for site in struct_blk.sites:
-        blksite, defsite = closestsites(struct_blk, struct_def, site.coords)
-        if vactype and blksite[0].specie.symbol != defsite[0].specie.symbol:
-            return blksite[0].coords, None
-        elif interstittype and blksite[0].specie.symbol != defsite[0].specie.symbol:
-            return None, defsite[0].coords
-        elif blksite[0].specie.symbol != defsite[0].specie.symbol: #subs or antisite type
-            return blksite[0].coords, defsite[0].coords
-        sitematching.append([blksite[0],blksite[1],defsite[0],defsite[1]])
-
-    if vactype: #just in case site type is same for closest site to vacancy
-        sitematching.sort(key=lambda x:x[3])
-        vacant = sitematching[-1]
-        return vacant[0].coords, None
-    elif interstittype: #just in case site type is same for closest site to interstit
-        sitematching.sort(key=lambda x:x[1])
-        interstit = sitematching[-1]
-        return  None, interstit[2].coords
-
-    return None,None #if you get here there is an error
-
 
 class QModel():
     """
@@ -336,8 +189,8 @@ class FreysoldtCorrection(object):
                'All' for both, or
                'AllSplit' for individual parts split up (form [PC,potterm,full])
         """
-        #if not self._silence:
-        logging.debug('This is Freysoldt Correction.')
+        logger = logging.getLogger(__name__)
+        logger.info('This is Freysoldt Correction.')
         if not self._q:
             if partflag=='AllSplit':
                 return [0.0,0.0,0.0]
@@ -345,34 +198,29 @@ class FreysoldtCorrection(object):
                 return 0.0
 
         if not type(self._purelocpot) is Locpot:
-            #if not self._silence:
-            logging.debug('Load bulk locpot')
+            logger.debug('Load bulk locpot')
             self._purelocpot = Locpot.from_file(self._purelocpot)
 
-        #if not self._silence:
-        logging.debug('\nRun PC energy')
+        logger.debug('\nRun PC energy')
         if partflag!='potalign':
             energy_pc = self.pc()
-            #if not self._silence:
-            logging.debug('PC calc done, correction = %f', round(energy_pc, 4))
-            logging.debug('Now run potenttial alignment script')
+            logger.debug('PC calc done, correction = %f', round(energy_pc, 4))
+            logger.debug('Now run potenttial alignment script')
 
         if partflag!='pc':
             if not type(self._deflocpot) is Locpot:
-                #if not self._silence:
-                logging.debug('Load defect locpot')
+                logger.debug('Load defect locpot')
                 self._deflocpot = Locpot.from_file(self._deflocpot)
             potalign = self.potalign(title=title)
 
-        #if not self._silence:
-        logging.info('\n\nFreysoldt Correction details:')
+        logger.info('\n\nFreysoldt Correction details:')
         if partflag!='potalign':
-            logging.info('PCenergy (E_lat) = %f', round(energy_pc, 5))
+            logger.info('PCenergy (E_lat) = %f', round(energy_pc, 5))
         if partflag!='pc':
-            logging.info('potential alignment (-q*delta V) = %f', 
+            logger.info('potential alignment (-q*delta V) = %f',
                          round(potalign, 5))
         if partflag in ['All','AllSplit']:
-            logging.info('TOTAL Freysoldt correction = %f', 
+            logger.info('TOTAL Freysoldt correction = %f',
                          round(energy_pc + potalign, 5))
 
         if partflag=='pc':
@@ -385,30 +233,28 @@ class FreysoldtCorrection(object):
             return map(lambda x: round(x, 5), 
                        [energy_pc, potalign, energy_pc+potalign])
 
-    def pc(self,struct=None):
+    def pc(self, struct=None):
         """
         Peform Electrostatic Correction
         note this ony needs structural info
         so struct input object speeds this calculation up
         equivalently fast if input Locpot is a locpot object
         """
+        logger = logging.getLogger(__name__)
         if type(struct) is Structure:
-            s1=struct
+            s1 = struct
         else:
             if not type(self._purelocpot) is Locpot:
-                #if not self._silence:
                 logging.info('load Pure locpot')
                 self._purelocpot = Locpot.from_file(self._purelocpot)
-            s1=self._purelocpot.structure
+            s1 = self._purelocpot.structure
 
         ap = s1.lattice.get_cartesian_coords(1)
-        #if self._silence == False:
-        logging.info('run Freysoldt 2011 PC calculation (should be '\
+        logger.info('Running Freysoldt 2011 PC calculation (should be '\
                      'equivalent to sxdefectalign)')
-        logging.debug('defect lattice constants are (in angstroms)' \
+        logger.debug('defect lattice constants are (in angstroms)' \
                       + str(cleanlat(ap)))
         [a1, a2, a3] = ang_to_bohr * ap
-        #if self._silence == False:
         logging.debug( 'In atomic units, lat consts are (in bohr):' \
                       + str(cleanlat([a1, a2, a3])))
         vol = np.dot(a1, np.cross(a2, a3))  #vol in bohr^3
@@ -434,13 +280,12 @@ class FreysoldtCorrection(object):
                 if abs(converge[-1] - converge[-2]) < self._madetol:
                     flag = 1
                 elif encut1 > self._encut:
-                    logging.error('Eiso did not converge before ' \
+                    logger.error('Eiso did not converge before ' \
                                   + str(self._encut) + ' eV')
-                    sys.exit()
+                    raise
             encut1 += 20
         eiso = converge[-1]
-        #if self._silence == False:
-        logging.debug('Eisolated : %f, converged at encut: %d', 
+        logger.debug('Eisolated : %f, converged at encut: %d',
                       round(eiso, 5), encut1-20)
 
         #compute periodic energy;
@@ -449,8 +294,7 @@ class FreysoldtCorrection(object):
         converge = []
         while flag != 1:
             eper = 0.0
-            recip1 = generate_reciprocal_vectors_squared(a1, a2, a3, encut1)
-            for g2 in recip1:
+            for g2 in generate_reciprocal_vectors_squared(a1, a2, a3, encut1):
                 eper += (self._q_model.rho_rec(g2) ** 2) / g2
             eper *= (self._q**2) *2* round(np.pi, 6) / vol
             eper += (self._q**2) *4* round(np.pi, 6) \
@@ -460,22 +304,21 @@ class FreysoldtCorrection(object):
                 if abs(converge[-1] - converge[-2]) < self._madetol:
                     flag = 1
                 elif encut1 > self._encut:
-                    logging.error('Eper did not converge before %d eV', 
+                    logger.error('Eper did not converge before %d eV',
                                   self._encut)
                     return
             encut1 += 20
         eper = converge[-1]
 
-        #if self._silence == False:
-        logging.info('Eperiodic : %f hartree, converged at encut %d eV',
+        logger.info('Eperiodic : %f hartree, converged at encut %d eV',
                      round(eper, 5), encut1 - 20)
-        logging.info('difference (periodic-iso) is %f hartree', 
+        logger.info('difference (periodic-iso) is %f hartree',
                      round(eper-eiso, 6))
-        logging.info( 'difference in (eV) is %f', 
+        logger.info( 'difference in (eV) is %f',
                      round((eper-eiso) * hart_to_ev, 4))
+
         PCfreycorr = round((eiso-eper)/self._dielectricconst*hart_to_ev, 6)
-        #if self._silence == False:
-        logging.info('Defect Correction without alignment %f (eV): ', PCfreycorr)
+        logger.info('Defect Correction without alignment %f (eV): ', PCfreycorr)
 
         return PCfreycorr
 
@@ -489,35 +332,34 @@ class FreysoldtCorrection(object):
         axis allows you to override the axis setting of class
                 (good for quickly plotting multiple axes without having to reload Locpot)
         """
+        logger = logging.getLogger(__name__)
         if not axis:
             axis = self._axis
         else:
             axis = axis
 
         if not type(self._purelocpot) is Locpot:
-            #if not self._silence:
-            logging.debug('load pure locpot object')
+            logger.debug('load pure locpot object')
             self._purelocpot = Locpot.from_file(self._purelocpot)
         if not type(self._deflocpot) is Locpot:
-            #if not self._silence:
-            logging.debug('load defect locpot object')
+            logger.debug('load defect locpot object')
             self._deflocpot = Locpot.from_file(self._deflocpot)
 
         #determine location of defects
         blksite, defsite = find_defect_pos(self._purelocpot.structure, 
                                            self._deflocpot.structure)
         if blksite is None and defsite is None:
-            logging.error('Not able to determine defect site')
+            logger.error('Not able to determine defect site')
             return
 
         if blksite is None:
-            logging.debug('Found defect to be Interstitial type at %s',
+            logger.debug('Found defect to be Interstitial type at %s',
                           repr(defsite))
         elif defsite is None:
-            logging.debug('Found defect to be Vacancy type at %s', 
+            logger.debug('Found defect to be Vacancy type at %s',
                           repr(blksite))
         else:
-            logging.debug('Found defect to be antisite/substitution type at ' \
+            logger.debug('Found defect to be antisite/substitution type at '
                           '%s in bulk, and %s in defect cell', 
                           repr(blksite), repr(defsite))
 
@@ -562,7 +404,7 @@ class FreysoldtCorrection(object):
             defavg = np.roll(defavg,rollind)
 
         #if not self._silence:
-        logging.debug('calculating lr part along planar avg axis')
+        logger.debug('calculating lr part along planar avg axis')
         latt = self._purelocpot.structure.lattice
         reci_latt = latt.reciprocal_lattice
         dg = reci_latt.abc[axis]
@@ -597,41 +439,32 @@ class FreysoldtCorrection(object):
         mid = len(short) / 2
 
         tmppot = [short[i] for i in range(mid - checkdis, mid + checkdis)]
-        logging.debug('shifted defect position on axis (%s) to origin', 
+        logger.debug('shifted defect position on axis (%s) to origin',
                       repr(axbulkval))
-        logging.debug('means sampling region is (%f,%f)', 
+        logger.debug('means sampling region is (%f,%f)',
                       x[mid-checkdis], x[mid+checkdis])
 
-        C = -np.mean(tmppot)
-        logging.debug('C = %f', C)
-        finalshift = [short[j] + C for j in range(len(v_R))]
-        v_R = [v_R[j]-C for j in range(len(v_R))]
+        C = -1 * np.mean(tmppot)
+        logger.debug('C = %f', C)
+        final_shift = [short[j] + C for j in range(len(v_R))]
+        v_R = [elmnt - C for elmnt in v_R]
 
-        logging.info('C value is averaged to be %f eV ', C)
-        logging.info('Potentital alignment (-q*delta V) is %f (eV)', -self._q*C)
+        logger.info('C value is averaged to be %f eV ', C)
+        logger.info('Potentital alignment (-q*delta V):  %f (eV)', -self._q*C)
 
-        if title: #TODO: Make title  optional and use a flag for plotting
-            plotter = FreysoldtCorrPlotter(x, v_R, defavg-pureavg, finalshift,
+        if title: # TODO: Make title  optional and use a flag for plotting
+            plotter = FreysoldtCorrPlotter(x, v_R, defavg-pureavg, final_shift,
                       np.array([mid-checkdis, mid+checkdis]))
 
             if title != 'written':
                 plotter.plot(title=title)
             else:
-                #TODO: make this default fname more defect specific so it doesnt over write previous defect data written
-                fname='FreyAxisData' # Extension is npz
+                # TODO: Make this default fname more defect specific so it doesnt
+                # over write previous defect data written
+                fname = 'FreyAxisData' # Extension is npz
                 plotter.to_datafile(fname)
 
 
         return -float(self._q)*C  #pot align energy correction (eV), add to energy output of PCfrey
-
-
-
-if __name__ == '__main__':
-    s = FreysoldtCorrection(0,11.814,'../../bulk/LOCPOT', 'LOCPOT', 1)
-    #s.correction(title='written',partflag='AllSplit')
-    s.plot_from_datfile()
-    # s = FreysoldtCorrection(0, 18.099, '../../../../Gavacm3testMachgcorr/LOCPOT_vref',
-    #         '../../../../Gavacm3testMachgcorr/LOCPOT_vdef', -3)
-    #s.correction(title='ThisIstest')
 
 

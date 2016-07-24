@@ -13,7 +13,7 @@ __date__ = "May 6, 2015"
 import unittest
 import os
 
-from pycdcd.utils.plotter import DefectPlotter
+from pycdt.utils.plotter import DefectPlotter
 
 class DefectPlotterTest(unittest.TestCase):
     def setUp(self):
