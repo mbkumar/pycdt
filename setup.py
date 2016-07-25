@@ -14,11 +14,11 @@ setup(
         packages=find_packages(),
         version="0.5.0",
         install_requires=["numpy>=1.9", "pymatgen==4.0.2", "matplotlib>=1.1"],
-        package_data = {"pycdt.utils": ["*.yaml"]},
-        author="Danny Broberg, Bharat Medasani, Nils Zimmerman",
+        package_data={"pycdt.utils": ["*.yaml"]},
+        author = "Danny Broberg, Bharat Medasani, Nils Zimmerman",
         author_email="mbkumar@gmail.com",
         maintainer="Bharat Medasani",
-        maintainer_email="mbkumar@gmail.com"
+        maintainer_email="mbkumar@gmail.com",
         #url="http://github.com/mbkumar/pycdcd",
         description="PyCDT is a python package to facilitate "
                   "DFT calculations for point defects in solids",
