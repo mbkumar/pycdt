@@ -23,6 +23,6 @@ def initialize_logging(filename=None, level=None):
         config_dict['handlers']['file_handler'].update({'filename': filename})
     if level:
         config_dict['handlers']['file_handler'].update({'level': level})
-    print config_dict
+
     logging.config.dictConfig(config_dict)
 
