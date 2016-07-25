@@ -156,6 +156,9 @@ def parse_output(args):
         #return
         mp_id = None
 
+    formula = os.path.split(os.path.abspath(root_fldr))[-1]
+    initialize_logging(filename=formula+'_parser.log')
+
     # parse results to get defect data and correction terms
     defect_data = PostProcess(root_fldr, mp_id, mapi_key).compile_all()
     dumpfn(defect_data, args.defect_data_file_name, cls=MontyEncoder, indent=2)
@@ -176,9 +179,6 @@ def compute_corrections(args):
             this command.
     """
 
-    # Initialize logging
-    # TODO: Get the log file and loglevel from command line
-    initialize_logging(filename='correction.log')
 
     # initialize variables
     defect_data_file_name = args.defect_data_file_name
@@ -197,6 +197,9 @@ def compute_corrections(args):
     bulk_structure = bulk.structure
     defects = defect_data['defects']
     corrections = defaultdict(list)
+
+    formula = bulk.composition.reduced_formula
+    initialize_logging(filename=formula+'_correction.log')
 
     #loading locpot object now is useful for both corrections
     print ('loading bulk locpot for corrections')
@@ -238,9 +241,6 @@ def compute_formation_energies(args):
         args (Namespace): contains the parsed command-line arguments for
             this command.
     """
-    # Initialize logging
-    # TODO: Get the log file and loglevel from command line
-    initialize_logging(filename='formation_energy.log')
 
     # initialize variables
     defect_data_file_name = args.defect_data_file_name
@@ -253,6 +253,9 @@ def compute_formation_energies(args):
     if epsilon_tensor is None:
         epsilon_tensor = defect_data['epsilon']
     defects = defect_data['defects']
+
+    formula = defect_data['bulk_entry'].structure.composition.reduced_formula
+    initialize_logging(filename=formula+'_formation_energy.log')
 
     if os.path.isfile(corrections_file_name):
         correction_data = loadfn(corrections_file_name)  

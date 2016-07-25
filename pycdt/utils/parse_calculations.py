@@ -290,8 +290,9 @@ class PostProcess(object):
 
             if self._mpid:
                 if (self._mpid in full_idlist) and (self._mpid in stable_idlist):
-                   logger.debug("Verified that mp-id is stable within Materials Project",
-                            '-'.join(list_spec_symbol),"phase diagram")
+                   logger.debug("Verified that mp-id is stable within "
+                                "Materials Project {} phase diagram".format(
+                                    '-'.join(list_spec_symbol)))
                    common_approach = True
                 elif (self._mpid in full_idlist) and not (self._mpid in stable_idlist):
                     redcomp = comp.reduced_composition
