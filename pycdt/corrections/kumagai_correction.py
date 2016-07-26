@@ -27,10 +27,6 @@ from pycdt.corrections.utils import *
 
 norm = np.linalg.norm
 
-# Define conversion_constants
-hart_to_ev = 27.2114
-ang_to_bohr = 1.8897
-
 
 def kumagai_init(structure, dieltens):
     angset = structure.lattice.get_cartesian_coords(1)
