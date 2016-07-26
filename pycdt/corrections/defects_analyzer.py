@@ -65,12 +65,12 @@ class ComputedDefect(object):
 
     @classmethod
     def from_dict(cls, d):
-        return ComputedDefect(
+        return cls(
                 ComputedStructureEntry.from_dict(d['entry']), 
                 PeriodicSite.from_dict(d['site']),
-                charge=d.get('charge',0.0),
-                charge_correction=d.get('charge_correction',0.0),
-                name=d.get('name',None))
+                charge=d.get('charge', 0.0),
+                charge_correction=d.get('charge_correction', 0.0),
+                name=d.get('name', None))
 
 
 class DefectsAnalyzer(object):
@@ -188,6 +188,12 @@ class DefectsAnalyzer(object):
         self._compute_form_en()
 
     def get_transition_levels(self):
+        """
+        Charge transition levels are computed
+        :return: Transition levels for each pair of the defects.
+        If any pair is missing, the transition level for that pair is
+        not within the band gap.
+        """
         xlim = (-0.5, self._band_gap+1.5)
         nb_steps = 1000
         x = np.arange(xlim[0], xlim[1], (xlim[1]-xlim[0])/nb_steps)
@@ -207,7 +213,6 @@ class DefectsAnalyzer(object):
                     transit_levels[dfct_name][qpair] = x[np.argmin(y_absdiff)]
         return transit_levels
 
-
     def correct_bg(self, dict_levels, vbm_correct, cbm_correct):
         """
         correct the band gap in the analyzer and make sure the levels move
@@ -221,8 +226,6 @@ class DefectsAnalyzer(object):
             {'type':type_of_defect,'q*':formal_ox_state}}
             Where type_of_defect is a string: 'vbm_like' or 'cbm_like'
         """
-
-
         self._band_gap = self._band_gap + cbm_correct + vbm_correct
         self._e_vbm = self._e_vbm - vbm_correct
         self._compute_form_en()
@@ -237,7 +240,6 @@ class DefectsAnalyzer(object):
             if dict_levels[name]['type'] == 'cbm_like':
                 z = dict_levels[name]['q*'] - self._defects[i]._charge
                 self._formation_energies[i] +=  z * cbm_correct
-
 
     def _get_form_energy(self, ef, i):
         return self._formation_energies[i] + self._defects[i]._charge*ef

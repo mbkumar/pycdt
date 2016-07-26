@@ -18,6 +18,7 @@ __date__ = "Janurary 6, 2016"
 import copy
 import abc
 import math
+import logging
 
 from monty.string import str2unicode
 from pymatgen.core.structure import PeriodicSite
@@ -336,7 +337,8 @@ class DefectChargerInsulator(DefectCharger):
 
 class DefectChargerUserCustom(DefectCharger):
     """
-    Determine oxidation states from bond valence method (unless oxidation states specified)
+    Determine oxidation states from bond valence method 
+    (unless oxidation states specified)
     Then ask user what charges they want
     """
     def __init__(self, structure, oxi_states={}):
@@ -396,15 +398,17 @@ class DefectChargerUserCustom(DefectCharger):
             tmpchgs = raw_input('What charges would you like? : ')
             chgs = [int(c) for c in tmpchgs.split()]
             if self.rangemode:
-                return list(range(chgs[0],chgs[-1]+1))
+                return list(range(chgs[0], chgs[-1]+1))
             else:
                 return list(chgs)
 
         if defect_type == 'vacancy':
             if not sitechg:
-                print (site_specie,defect_type,'charge suggestion unknown (specify oxidation states to get suggestion)')
+                print (site_specie, defect_type, 
+                       'charge suggestion unknown (specify oxidation states to get suggestion)')
             else:
-                print (site_specie,defect_type,'has charge =',-sitechg,'according to Simple Ionic Theory')
+                print (site_specie, defect_type, 'has charge =', -sitechg, 
+                       'according to Simple Ionic Theory')
         elif defect_type in ['antisite','substitution']:
             nom = sub_specie+'_on_'+site_specie
             if not sitechg or not subchg:
