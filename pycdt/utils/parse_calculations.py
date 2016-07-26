@@ -149,6 +149,7 @@ class PostProcess(object):
                                 trans_dict['substitution_specie'])
                         
                     site = trans_dict['defect_supercell_site']
+                    multiplicity = trans_dict.get('defect_multiplicity', None)
                     energy = vr.final_energy
                     struct = vr.final_structure
                     try: 
@@ -176,6 +177,7 @@ class PostProcess(object):
                     parsed_defects.append(
                             ComputedDefect( 
                                 comp_def_entry, site_in_bulk=site, 
+                                multiplicity=multiplicity,
                                 charge=chrg, name=fldr_name))
 
         else:

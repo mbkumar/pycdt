@@ -32,8 +32,8 @@ class ComputedDefect(object):
     Holds all the info concerning a defect computation: 
     composition+structure, energy, correction on energy and name
     """
-    def __init__(self, entry_defect, site_in_bulk, charge=0.0,
-                 charge_correction=0.0, name=None):
+    def __init__(self, entry_defect, site_in_bulk, multiplicity=None, 
+                 charge=0.0, charge_correction=0.0, name=None):
         """
         Args:
             entry_defect: 
@@ -48,6 +48,7 @@ class ComputedDefect(object):
 
         self.entry = entry_defect
         self.site = site_in_bulk
+        self.multiplicity = multiplicity
         self._charge = charge
         self.charge_correction = charge_correction # Can be added after initialization
         self._name = name
@@ -56,6 +57,7 @@ class ComputedDefect(object):
     def as_dict(self):
         return {'entry': self.entry.as_dict(),
                 'site': self.site.as_dict(),
+                'multiplicity': self.multiplicity,
                 'charge': self._charge,
                 'charge_correction': self.charge_correction,
                 'name': self._name,
@@ -68,6 +70,7 @@ class ComputedDefect(object):
         return cls(
                 ComputedStructureEntry.from_dict(d['entry']), 
                 PeriodicSite.from_dict(d['site']),
+                multiplicity=d.get('multiplicity', None),
                 charge=d.get('charge', 0.0),
                 charge_correction=d.get('charge_correction', 0.0),
                 name=d.get('name', None))
@@ -266,14 +269,39 @@ class DefectsAnalyzer(object):
 
     def get_defects_concentration(self, temp=300, ef=0.0):
         """
-        get the defect concentration for a temperature and Fermi level
+        Get the defect concentration for a temperature and Fermi level.
+        Note: This method has an approximation and can fail
+        [Ref: PRB 86, 144109 (2012)]
         Args:
             temp:
                 the temperature in K
             Ef:
                 the fermi level in eV (with respect to the VBM)
         Returns:
-            a list of dict of {'name': defect name, 'charge': defect charge 
+            A list of dict of {'name': defect name, 'charge': defect charge
+                               'conc': defects concentration in m-3}
+        """
+        conc=[]
+        struct = self._entry_bulk.structure
+        for i, d in enumerate(self._defects):
+            n = d.multiplicity * 1e30 / struct.volume
+            conc.append({'name': d._name, 'charge': d._charge,
+                         'conc': n*exp(
+                             -self._get_form_energy(ef, i)/(kb*temp))})
+
+        return conc
+
+    def get_defects_concentration_old(self, temp=300, ef=0.0):
+        """
+        get the defect concentration for a temperature and Fermi level
+        Written when the site multiplicity is not supplied with ComputedDefect
+        Args:
+            temp:
+                the temperature in K
+            Ef:
+                the fermi level in eV (with respect to the VBM)
+        Returns:
+            a list of dict of {'name': defect name, 'charge': defect charge
                                'conc': defects concentration in m-3}
         """
         conc=[]

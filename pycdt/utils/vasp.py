@@ -57,6 +57,7 @@ def make_vasp_defect_files(defects, path_base, user_settings={}, hse=False):
                     'defect_type': defect['name'], 
                     'defect_site': defect['unique_site'], 
                     'defect_supercell_site': defect['bulk_supercell_site'],
+                    'defect_multiplicity': defect['site_multiplicity'],
                     'charge': charge, 'supercell': s['size']}
             if 'substitution_specie' in  defect:
                 dict_transf['substitution_specie'] = defect['substitution_specie']
