@@ -25,12 +25,6 @@ from pycdt.corrections.utils import *
 
 norm = np.linalg.norm
 
-# Define conversion_constants
-hart_to_ev = 27.2114
-ang_to_bohr = 1.8897
-
-# Define any logging stuff here
-
 class QModel():
     """
     Model for the defect charge distribution.
