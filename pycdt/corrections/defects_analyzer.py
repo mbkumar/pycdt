@@ -21,11 +21,7 @@ from pymatgen.entries.computed_entries import ComputedStructureEntry
 from pymatgen.symmetry.analyzer import SpacegroupAnalyzer
 
 from pycdt.corrections.finite_size_charge_correction import ChargeCorrection
-
-#some physical constants
-kb = 8.6173324e-5
-hbar = 6.58211928e-16
-conv = sqrt((9.1*1e-31)**3)*sqrt((1.6*1e-19)**3)/((1.05*1e-34)**3)
+from pycdt.utils import *
 
 class ComputedDefect(object):
     """
