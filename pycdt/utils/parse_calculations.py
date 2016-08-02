@@ -26,7 +26,7 @@ from pymatgen.entries.computed_entries import ComputedStructureEntry
 from pymatgen.phasediagram.maker import PhaseDiagram
 from pymatgen.phasediagram.analyzer import PDAnalyzer
 
-from pycdt.corrections.defects_analyzer import ComputedDefect 
+from pycdt.core.defects_analyzer import ComputedDefect 
 
 
 class PostProcess(object):
