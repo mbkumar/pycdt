@@ -21,7 +21,7 @@ from pymatgen.entries.computed_entries import ComputedStructureEntry
 from pymatgen.symmetry.analyzer import SpacegroupAnalyzer
 
 from pycdt.corrections.finite_size_charge_correction import ChargeCorrection
-from pycdt.utils import *
+from pycdt.utils.units import *
 
 class ComputedDefect(object):
     """
