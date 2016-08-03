@@ -5,14 +5,12 @@ correction metodules
 __author__ = 'Danny Broberg, Bharat Medasani'
 __email__ = 'dbroberg@gmail.com, mbkumar@gmail.com'
 
-import sys
 import math
-import logging
 
 import numpy as np
 norm = np.linalg.norm
 
-from pycdt.utils.units import *
+from pycdt.utils.units import eV_to_k, invang_to_ev, ang_to_bohr
 
 def cleanlat(dat):
     """
@@ -44,7 +42,6 @@ def genrecip(a1, a2, a3, encut):
     gcut = eV_to_k(encut)
     imax = int(math.ceil(gcut/min(map(norm, [b1, b2, b3]))))
 
-    #recip = []
     for i in range(-imax, imax + 1):
         for j in range(-imax, imax + 1):
             for k in range(-imax, imax + 1):
@@ -52,9 +49,6 @@ def genrecip(a1, a2, a3, encut):
                 en = invang_to_ev * (((1.0/ang_to_bohr) * norm(vec))**2)
                 if (en <= encut and en != 0):
                     yield vec
-                    #recip.append(vec)
-
-    #return recip  #output is 1/bohr recip
 
 
 def generate_reciprocal_vectors_squared(a1, a2, a3, encut):
@@ -80,16 +74,14 @@ def generate_reciprocal_vectors_squared(a1, a2, a3, encut):
     gcut = eV_to_k(encut)
     imax = int(math.ceil(gcut/min(norm(b1), norm(b2), norm(b3))))
     gcut2 = gcut * gcut
-    #recip = []
+
     for i in range(-imax, imax+1):
         for j in range(-imax, imax+1):
             for k in range(-imax, imax+1):
                 vec = i*b1 + j*b2 + k*b3
                 vec2 = np.dot(vec,vec)
                 if (vec2 <= gcut2 and vec2 != 0.0):
-                    #recip.append(vec2)
                     yield vec2
-    #return recip
 
 
 def closestsites(struct_blk, struct_def, pos):
