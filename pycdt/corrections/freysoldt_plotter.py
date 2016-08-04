@@ -240,6 +240,7 @@ class FreysoldtPlot(object):
 
 
 if __name__ == '__main__':
+    pass
     #s=FreysoldtPlot('.',[0.0,0.0,0.0])
     #s.plot_vline()
 

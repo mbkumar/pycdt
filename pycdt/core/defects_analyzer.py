@@ -13,15 +13,12 @@ from collections import defaultdict
 from itertools import combinations
 
 import numpy as np
-import os
 
 from pymatgen.core.structure import PeriodicSite
-from pymatgen.io.vasp.outputs import Locpot
 from pymatgen.entries.computed_entries import ComputedStructureEntry
 from pymatgen.symmetry.analyzer import SpacegroupAnalyzer
 
-from pycdt.corrections.finite_size_charge_correction import ChargeCorrection
-from pycdt.utils import *
+from pycdt.utils.units import kb, conv, hbar
 
 class ComputedDefect(object):
     """
@@ -359,7 +356,7 @@ class DefectsAnalyzer(object):
         elec_count = -intgrl.quad(elec_den_fn, bg, bg+5)[0]
         hole_count = intgrl.quad(hole_den_fn, -5, 0.0)[0]
 
-        return el_cnt + hl_cnt
+        return elec_count + hole_count
 
     def _get_qtot(self, ef, t, m_elec, m_hole):
         return self._get_qd(ef, t) + self._get_qi(ef, t, m_elec, m_hole)
