@@ -28,8 +28,9 @@ class ComputedDefect(object):
     Holds all the info concerning a defect computation: 
     composition+structure, energy, correction on energy and name
     """
-    def __init__(self, entry_defect, site_in_bulk, multiplicity=None, 
-                 charge=0.0, charge_correction=0.0, name=None):
+    def __init__(self, entry_defect, site_in_bulk, multiplicity=None,
+                 supercell_size=[1, 1, 1], charge=0.0,
+                 charge_correction=0.0, name=None):
         """
         Args:
             entry_defect: 
@@ -45,6 +46,7 @@ class ComputedDefect(object):
         self.entry = entry_defect
         self.site = site_in_bulk
         self.multiplicity = multiplicity
+        self.supercell_size = supercell_size
         self._charge = charge
         self.charge_correction = charge_correction # Can be added after initialization
         self._name = name
@@ -280,7 +282,8 @@ class DefectsAnalyzer(object):
         conc=[]
         struct = self._entry_bulk.structure
         for i, d in enumerate(self._defects):
-            n = d.multiplicity * 1e30 / struct.volume
+            cell_multiplier = np.prod(d.supercell_size)
+            n = d.multiplicity * cell_multiplier * 1e30 / struct.volume
             conc.append({'name': d._name, 'charge': d._charge,
                          'conc': n*exp(
                              -self._get_form_energy(ef, i)/(kb*temp))})
