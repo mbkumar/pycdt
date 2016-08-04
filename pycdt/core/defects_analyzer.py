@@ -13,14 +13,11 @@ from collections import defaultdict
 from itertools import combinations
 
 import numpy as np
-import os
 
 from pymatgen.core.structure import PeriodicSite
-from pymatgen.io.vasp.outputs import Locpot
 from pymatgen.entries.computed_entries import ComputedStructureEntry
 from pymatgen.symmetry.analyzer import SpacegroupAnalyzer
 
-from pycdt.corrections.finite_size_charge_correction import ChargeCorrection
 from pycdt.utils.units import kb, conv, hbar
 
 class ComputedDefect(object):
