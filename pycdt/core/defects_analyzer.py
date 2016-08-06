@@ -205,7 +205,6 @@ class DefectsAnalyzer(object):
         for dfct_name in y:
             q_ys = y[dfct_name]
             for qpair in combinations(q_ys.keys(),2):
-                #if abs(qpair[1]-qpair[0]) == 1:
                 y_absdiff = abs(q_ys[qpair[1]] - q_ys[qpair[0]])
                 if y_absdiff.min() < 0.4: 
                     transit_levels[dfct_name][qpair] = x[np.argmin(y_absdiff)]
@@ -276,7 +275,7 @@ class DefectsAnalyzer(object):
             A list of dict of {'name': defect name, 'charge': defect charge
                                'conc': defects concentration in m-3}
         """
-        conc=[]
+        conc = []
         struct = self._entry_bulk.structure
         for i, d in enumerate(self._defects):
             cell_multiplier = np.prod(d.supercell_size)
