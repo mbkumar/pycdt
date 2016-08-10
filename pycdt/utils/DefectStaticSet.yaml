@@ -1,0 +1,10 @@
+defect:
+  LWAVE: False
+  EDIFF: 1e-5
+  ISMEAR: 0
+  SIGMA: 0.05
+  LVTOT: True
+  LVHAR: True
+  ISYM: 0
+  NPAR: 2
+bulk:
