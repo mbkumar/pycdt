@@ -21,6 +21,7 @@ import math
 import logging
 
 from monty.string import str2unicode
+from monty.serialization import dumpfn
 from pymatgen.core.structure import PeriodicSite
 from pymatgen.core.periodic_table import Element, Specie, get_el_sp
 from pymatgen.symmetry.analyzer import SpacegroupAnalyzer
@@ -707,9 +708,11 @@ class ChargedDefectsStructures(object):
             sc (Structure): supercell containing an
                 interstitial site.
         """
-
         sc = self.struct.copy()
         sc.make_supercell(sc_scale)
         sc.append(target_site.specie, target_site.frac_coords)
         
         return sc
+
+    def to(self, outfile):
+        dumpfn(self.defects, outfile)
