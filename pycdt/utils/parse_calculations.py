@@ -127,10 +127,16 @@ class PostProcess(object):
                         break
                         #raise AttributeError(error_msg)
 
+                trans_dict = loadfn(
+                            os.path.join(fldr, 'transformation.json'),
+                            cls=MontyDecoder)
+                supercell_size = trans_dict['supercell']
+
                 bulk_locpot_path = os.path.abspath(os.path.join(fldr,'LOCPOT'))
                 bulk_entry = ComputedStructureEntry(
                         bulk_struct, bulk_energy,
-                        data={'locpot_path':bulk_locpot_path, 'encut': encut})
+                        data={'locpot_path': bulk_locpot_path, 'encut': encut,
+                              'supercell_size': supercell_size})
             else:
                 chrg_fldrs = glob.glob(os.path.join(fldr,'charge*'))
                 for chrg_fldr in chrg_fldrs:
@@ -138,6 +144,7 @@ class PostProcess(object):
                             os.path.join(chrg_fldr, 'transformation.json'), 
                             cls=MontyDecoder)
                     chrg = trans_dict['charge']
+                    supercell_size = trans_dict['supercell']
                     vr, error_msg = get_vr_and_check_locpot(chrg_fldr)
                     if error_msg:
                         #print(fldr_name, 'charge- ', chrg, error_msg)
@@ -178,6 +185,7 @@ class PostProcess(object):
                             ComputedDefect( 
                                 comp_def_entry, site_in_bulk=site, 
                                 multiplicity=multiplicity,
+                                supercell_size=supercell_size,
                                 charge=chrg, name=fldr_name))
 
         else:

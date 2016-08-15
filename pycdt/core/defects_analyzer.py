@@ -13,23 +13,21 @@ from collections import defaultdict
 from itertools import combinations
 
 import numpy as np
-import os
 
 from pymatgen.core.structure import PeriodicSite
-from pymatgen.io.vasp.outputs import Locpot
 from pymatgen.entries.computed_entries import ComputedStructureEntry
 from pymatgen.symmetry.analyzer import SpacegroupAnalyzer
 
-from pycdt.corrections.finite_size_charge_correction import ChargeCorrection
-from pycdt.utils import *
+from pycdt.utils.units import kb, conv, hbar
 
 class ComputedDefect(object):
     """
     Holds all the info concerning a defect computation: 
     composition+structure, energy, correction on energy and name
     """
-    def __init__(self, entry_defect, site_in_bulk, multiplicity=None, 
-                 charge=0.0, charge_correction=0.0, name=None):
+    def __init__(self, entry_defect, site_in_bulk, multiplicity=None,
+                 supercell_size=[1, 1, 1], charge=0.0,
+                 charge_correction=0.0, name=None):
         """
         Args:
             entry_defect: 
@@ -45,6 +43,7 @@ class ComputedDefect(object):
         self.entry = entry_defect
         self.site = site_in_bulk
         self.multiplicity = multiplicity
+        self.supercell_size = supercell_size
         self._charge = charge
         self.charge_correction = charge_correction # Can be added after initialization
         self._name = name
@@ -206,7 +205,6 @@ class DefectsAnalyzer(object):
         for dfct_name in y:
             q_ys = y[dfct_name]
             for qpair in combinations(q_ys.keys(),2):
-                #if abs(qpair[1]-qpair[0]) == 1:
                 y_absdiff = abs(q_ys[qpair[1]] - q_ys[qpair[0]])
                 if y_absdiff.min() < 0.4: 
                     transit_levels[dfct_name][qpair] = x[np.argmin(y_absdiff)]
@@ -277,10 +275,11 @@ class DefectsAnalyzer(object):
             A list of dict of {'name': defect name, 'charge': defect charge
                                'conc': defects concentration in m-3}
         """
-        conc=[]
+        conc = []
         struct = self._entry_bulk.structure
         for i, d in enumerate(self._defects):
-            n = d.multiplicity * 1e30 / struct.volume
+            cell_multiplier = np.prod(d.supercell_size)
+            n = d.multiplicity * cell_multiplier * 1e30 / struct.volume
             conc.append({'name': d._name, 'charge': d._charge,
                          'conc': n*exp(
                              -self._get_form_energy(ef, i)/(kb*temp))})
@@ -356,7 +355,7 @@ class DefectsAnalyzer(object):
         elec_count = -intgrl.quad(elec_den_fn, bg, bg+5)[0]
         hole_count = intgrl.quad(hole_den_fn, -5, 0.0)[0]
 
-        return el_cnt + hl_cnt
+        return elec_count + hole_count
 
     def _get_qtot(self, ef, t, m_elec, m_hole):
         return self._get_qd(ef, t) + self._get_qi(ef, t, m_elec, m_hole)
