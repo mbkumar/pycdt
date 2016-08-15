@@ -199,8 +199,12 @@ class DefectChargerSemiconductor(DefectCharger):
             min_max_oxi_bulk_sub = [min(min(oxi_sub_set)-oxi_site,-1),
                                     max(max(oxi_sub_set)-oxi_site,1)]
             if (min_max_oxi_bulk_sub[1] - min_max_oxi_bulk_sub[0]) > 2:
-                return list(range(min_max_oxi_bulk_sub[0],
-                                  min_max_oxi_bulk_sub[1]-2)) # if range exists, less likely to be a higher charge
+                if min_max_oxi_bulk_sub[1] > 2:
+                    return list(range(min_max_oxi_bulk_sub[0],
+                                      min_max_oxi_bulk_sub[1]-2)) # if range exists, less likely to be a higher charge
+                else:
+                    return list(range(min_max_oxi_bulk_sub[0],
+                                      2)) # extend to 2 if upper range does not already include this
             else:
                 return list(range(min_max_oxi_bulk_sub[0]-1,
                                   min_max_oxi_bulk_sub[1]+2)) #likely upper bound is 0, so extend to 2
