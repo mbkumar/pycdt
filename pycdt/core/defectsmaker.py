@@ -19,6 +19,8 @@ import copy
 import abc
 import math
 import logging
+from itertools import product
+
 
 from monty.string import str2unicode
 from monty.serialization import dumpfn
@@ -192,10 +194,10 @@ class DefectChargerSemiconductor(DefectCharger):
             return list(range(self.min_max_oxi_bulk[0],
                               self.min_max_oxi_bulk[1]-1))
         elif defect_type == 'substitution':
-            oxi_sub = Element(sub_specie).oxidation_states
-            min_max_oxi_bulk_sub = [
-                        min(min(set(oxi_sub) - set(self.min_max_oxi_bulk)),0),
-                        max(max(set(oxi_sub) - set(self.min_max_oxi_bulk)),0)]
+            oxi_sub_set = Element(sub_specie).common_oxidation_states
+            oxi_site = self.oxi_states[site_specie]
+            min_max_oxi_bulk_sub = [min(min(oxi_sub_set)-oxi_site,-1),
+                                    max(max(oxi_sub_set)-oxi_site,1)]
             if (min_max_oxi_bulk_sub[1] - min_max_oxi_bulk_sub[0]) > 2:
                 return list(range(min_max_oxi_bulk_sub[0],
                                   min_max_oxi_bulk_sub[1]-2)) # if range exists, less likely to be a higher charge
