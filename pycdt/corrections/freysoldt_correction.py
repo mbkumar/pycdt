@@ -22,6 +22,7 @@ from pymatgen.io.vasp.outputs import Locpot
 from pymatgen.core.structure import Structure
 
 from pycdt.corrections.utils import *
+from pycdt.utils.units import hart_to_ev
 
 norm = np.linalg.norm
 
@@ -101,9 +102,10 @@ class FreysoldtCorrPlotter(object):
         plt.xlim(round(self.x[0]), round(self.x[-1]))
         ymin = min(min(self.v_R), min(self.dft_diff), min(self.final_shift))
         ymax = max(max(self.v_R), max(self.dft_diff), max(self.final_shift))
-        plt.ylim(-0.2+ymin, 0.2+ymax)
-        plt.xlabel('planar average along axis ' + str(1))
-        plt.ylabel('Potential')
+        # plt.ylim(-0.2+ymin, 0.2+ymax)
+        plt.ylim([-.15,.35])
+        plt.xlabel('planar average along axis ' + str(1),fontsize=35)
+        plt.ylabel('Potential',fontsize=15)
         plt.legend(loc=9)
         plt.axhline(y=0, linewidth=0.2, color='black')
         plt.title(str(title) + ' defect potential')
