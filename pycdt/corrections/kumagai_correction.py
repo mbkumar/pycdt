@@ -911,7 +911,7 @@ class KumagaiCorrection(object):
         plt.plot(r, y, color=collis[-1], marker='x', linestyle='None',
                  label='$V_{q/b}$ - $V_{pc}$')
         plt.xlabel('Distance from defect (A)',fontsize=20)
-        plt.ylabel('Potential (V)',fontsite=30)
+        plt.ylabel('Potential (V)',fontsize=30)
 
         x = np.arange(wsrad, max(forplot['EXTRA']['lengths']), 0.01)
         plt.fill_between(x, min(ylis) - 1, max(ylis) + 1, facecolor='red', 
