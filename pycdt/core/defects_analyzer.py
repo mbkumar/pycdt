@@ -57,6 +57,7 @@ class ComputedDefect(object):
         self.supercell_size = supercell_size
         self.charge = charge
         self.charge_correction = charge_correction # Can be added after initialization
+        self.other_correction = other_correction
         self.name = name
         self._full_name = self.name + "_" + str(charge)
 
@@ -66,6 +67,7 @@ class ComputedDefect(object):
                 'multiplicity': self.multiplicity,
                 'charge': self.charge,
                 'charge_correction': self.charge_correction,
+                'other_correction': self.other_correction,
                 'name': self.name,
                 'full_name': self._full_name,
                 '@module': self.__class__.__module__,
@@ -79,6 +81,7 @@ class ComputedDefect(object):
                 multiplicity=d.get('multiplicity', None),
                 charge=d.get('charge', 0.0),
                 charge_correction=d.get('charge_correction', 0.0),
+                other_correction=d.get('other_correction', 0.0),
                 name=d.get('name', None))
 
 
@@ -149,6 +152,18 @@ class DefectsAnalyzer(object):
         self._defects[i].charge_correction = correction
         self._compute_form_en()
 
+    def change_other_correction(self, i, correction):
+        """
+        Change the charge correction for defect at index i
+        Args:
+            i:
+                Index of defects
+            correction:
+                New correction to be applied for defect
+        """
+        self._defects[i].other_correction = correction
+        self._compute_form_en()
+
     def _get_all_defect_types(self):
         to_return = []
         for d in self._defects:
@@ -176,7 +191,7 @@ class DefectsAnalyzer(object):
             self._formation_energies.append(
                     d.entry.energy - self._entry_bulk.energy + \
                             sum_mus + d.charge*self._e_vbm + \
-                            d.charge_correction)
+                            d.charge_correction + d.other_correction)
 
     def correct_bg_simple(self, vbm_correct, cbm_correct):
         """
@@ -300,7 +315,7 @@ class DefectsAnalyzer(object):
         for dfct in self._defects:
             charges[dfct.name].append(dfct.charge)
 
-        occupancies = defaultdict(lambda defaultdict(int))
+        occupancies = defaultdict(lambda: defaultdict(int))
         for dfct_name in charges:
             for i, q in enumerate(sorted(charges[dfct_name], reverse=True)):
                 occupancies[dfct_name][q] = i
