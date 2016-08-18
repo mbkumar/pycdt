@@ -215,9 +215,9 @@ class DefectsAnalyzer(object):
         transit_levels = defaultdict(defaultdict)
         for dfct_name in y:
             q_ys = y[dfct_name]
-            for qpair in combinations(q_ys.keys(),2):
+            for qpair in combinations(q_ys.keys(), 2):
                 y_absdiff = abs(q_ys[qpair[1]] - q_ys[qpair[0]])
-                if y_absdiff.min() < 0.4: 
+                if y_absdiff.min() < 0.4: # Forgot why 0.4 check was added
                     transit_levels[dfct_name][qpair] = x[np.argmin(y_absdiff)]
         return transit_levels
 
@@ -281,8 +281,32 @@ class DefectsAnalyzer(object):
             ldau_transition: Transition level computed with LDA+U (or GGA+U)
             lda_transition: Transition computed with LDA (or GGA)
         """
-        diff = (ldau_transition - lda_transition) / (ldau_gap - lda_gap)
-        return  diff*(exp_gap - ldau_gap)
+        trans_correction = self.correction_ldau_transition(
+                exp_gap, ldau_gap, lda_gap, ldau_transition, lda_transition)
+        return  trans_correction * occupancy
+
+    def get_defect_occupancies(self):
+        """
+        Defect occupancies with respect to defect charges are computed
+        The assumption is that the highest charge of defect numerically
+        has zero occuoancy:
+        Ex: In Cr2O3, V_O has 0 occupancy for +2 q and 2 occupancy for 0 q.
+            V_{Cr} has 0 occupancy for 0 q and 3 occupancy for -3 q
+        Caution: Didn't checkk for semiconductor with large # of defect q's.
+        Returns: 
+            Defect occupancies as a nested dict
+        """
+        charges = defaultdict(list)
+        for dfct in self._defects:
+            charges[dfct.name].append(dfct.charge)
+
+        occupancies = defaultdict(lambda defaultdict(int))
+        for dfct_name in charges:
+            for i, q in enumerate(sorted(charges[dfct_name], reverse=True)):
+                occupancies[dfct_name][q] = i
+            occupancies[dfct_name]['0_occupancy'] = \
+                    sorted(charges[dfct_name], reverse=True)[0]
+        return occupancies
 
     def _get_form_energy(self, ef, i):
         return self._formation_energies[i] + self._defects[i].charge*ef
