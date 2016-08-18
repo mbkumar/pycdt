@@ -44,18 +44,18 @@ class ComputedDefect(object):
         self.site = site_in_bulk
         self.multiplicity = multiplicity
         self.supercell_size = supercell_size
-        self._charge = charge
+        self.charge = charge
         self.charge_correction = charge_correction # Can be added after initialization
-        self._name = name
-        self._full_name = self._name + "_" + str(charge)
+        self.name = name
+        self._full_name = self.name + "_" + str(charge)
 
     def as_dict(self):
         return {'entry': self.entry.as_dict(),
                 'site': self.site.as_dict(),
                 'multiplicity': self.multiplicity,
-                'charge': self._charge,
+                'charge': self.charge,
                 'charge_correction': self.charge_correction,
-                'name': self._name,
+                'name': self.name,
                 'full_name': self._full_name,
                 '@module': self.__class__.__module__,
                 '@class': self.__class__.__name__}
@@ -141,7 +141,7 @@ class DefectsAnalyzer(object):
     def _get_all_defect_types(self):
         to_return = []
         for d in self._defects:
-            if d._name not in to_return: to_return.append(d._name)
+            if d.name not in to_return: to_return.append(d.name)
         return to_return
 
     def _compute_form_en(self):
@@ -164,7 +164,7 @@ class DefectsAnalyzer(object):
 
             self._formation_energies.append(
                     d.entry.energy - self._entry_bulk.energy + \
-                            sum_mus + d._charge*self._e_vbm + \
+                            sum_mus + d.charge*self._e_vbm + \
                             d.charge_correction)
 
     def correct_bg_simple(self, vbm_correct, cbm_correct):
@@ -198,8 +198,8 @@ class DefectsAnalyzer(object):
  
         y = defaultdict(defaultdict)
         for i, dfct in enumerate(self._defects):
-            yval = self._formation_energies[i] + dfct._charge*x
-            y[dfct._name][dfct._charge] = yval
+            yval = self._formation_energies[i] + dfct.charge*x
+            y[dfct.name][dfct.charge] = yval
 
         transit_levels = defaultdict(defaultdict)
         for dfct_name in y:
@@ -227,19 +227,56 @@ class DefectsAnalyzer(object):
         self._e_vbm = self._e_vbm - vbm_correct
         self._compute_form_en()
         for i in range(len(self._defects)):
-            name = self._defects[i]._name
+            name = self._defects[i].name
             if not name in dict_levels:
                 continue
 
             if dict_levels[name]['type'] == 'vbm_like':
-                z = self._defects[i]._charge - dict_levels[name]['q*']
+                z = self._defects[i].charge - dict_levels[name]['q*']
                 self._formation_energies[i] += z * vbm_correct
             if dict_levels[name]['type'] == 'cbm_like':
-                z = dict_levels[name]['q*'] - self._defects[i]._charge
+                z = dict_levels[name]['q*'] - self._defects[i].charge
                 self._formation_energies[i] +=  z * cbm_correct
 
+    def correction_ldau_transition(self, exp_gap, ldau_gap, lda_gap, 
+                                   ldau_transition, lda_transition):
+        """
+        Correct the LDA+U transition level using LDA and LDA+U transition 
+        levels and bandgaps and experimental bandgap
+        Reference:
+            A. Janotti, C. G. Van de Walle, PRB 76, 165202 (2007)
+        Args:
+            exp_gap: Experimental bandgap
+            ldau_gap: Bandgap computed with LDA+U (or GGA+U)
+            lda_gap: Bandgap computed with LDA (or GGA)
+            ldau_transition: Transition level computed with LDA+U (or GGA+U)
+            lda_transition: Transition computed with LDA (or GGA)
+        """
+        diff = (ldau_transition - lda_transition) / (ldau_gap - lda_gap)
+        return  diff*(exp_gap - ldau_gap)
+
+    def correction_ldau_energy(self, occupancy, exp_gap, ldau_gap, lda_gap, 
+                               ldau_transition, lda_transition):
+        """
+        Correct the LDA+U transition level using LDA and LDA+U transition 
+        levels and bandgaps and experimental bandgap
+        Reference:
+            A. Janotti, C. G. Van de Walle, PRB 76, 165202 (2007)
+        Args:
+            occupancy: Defect level occupancy
+            exp_gap: Experimental bandgap
+            ldau_gap: Bandgap computed with LDA+U (or GGA+U)
+            lda_gap: Bandgap computed with LDA (or GGA)
+            ldau_transition: Transition level computed with LDA+U (or GGA+U)
+            lda_transition: Transition computed with LDA (or GGA)
+        """
+        diff = (ldau_transition - lda_transition) / (ldau_gap - lda_gap)
+        return  diff*(exp_gap - ldau_gap)
+
+    def get_defect_occupancies(self):
+
     def _get_form_energy(self, ef, i):
-        return self._formation_energies[i] + self._defects[i]._charge*ef
+        return self._formation_energies[i] + self._defects[i].charge*ef
 
     def get_formation_energies(self, ef=0.0):
         """
@@ -255,8 +292,8 @@ class DefectsAnalyzer(object):
         i = 0
         for i, d in enumerate(self._defects):
             energies.append({
-                'name': d._name, 
-                'charge': d._charge, 
+                'name': d.name, 
+                'charge': d.charge, 
                 'energy': self._get_form_energy(ef, i)
                 })
         return energies
@@ -280,7 +317,7 @@ class DefectsAnalyzer(object):
         for i, d in enumerate(self._defects):
             cell_multiplier = np.prod(d.supercell_size)
             n = d.multiplicity * cell_multiplier * 1e30 / struct.volume
-            conc.append({'name': d._name, 'charge': d._charge,
+            conc.append({'name': d.name, 'charge': d.charge,
                          'conc': n*exp(
                              -self._get_form_energy(ef, i)/(kb*temp))})
 
@@ -318,7 +355,7 @@ class DefectsAnalyzer(object):
                     break
             equiv_site_no = len(struct.find_equivalent_sites(target_site))
             n = equiv_site_no * 1e30 / struct.volume
-            conc.append({'name': d._name, 'charge': d._charge,
+            conc.append({'name': d.name, 'charge': d.charge,
                          'conc': n*exp(
                              -self._get_form_energy(ef, i)/(kb*temp))})
             i += 1
@@ -434,9 +471,9 @@ class DefectsAnalyzer(object):
             sum_q = 0.0
             i = 0
             for d in self._defects:
-                if d._name == n:
+                if d.name == n:
                     sum_d += exp(-self._get_form_energy(ef, i)/(kb*t))
-                    sum_q += d._charge * exp(
+                    sum_q += d.charge * exp(
                             -self._get_form_energy(ef, i)/(kb*t))
                 i += 1
             sum_tot += cd[n]*sum_q/sum_d
@@ -449,13 +486,13 @@ class DefectsAnalyzer(object):
             sum_tot = 0
             i = 0
             for d in self._defects:
-                if d._name == n:
+                if d.name == n:
                     sum_tot += exp(-self._get_form_energy(ef,i)/(kb*t))
                 i += 1
             i=0
             for d in self._defects:
-                if d._name == n:
-                    res.append({'name':d._name,'charge':d._charge,
+                if d.name == n:
+                    res.append({'name':d.name,'charge':d.charge,
                                 'conc':cd[n]*exp(-self._get_form_energy(
                                     ef,i)/(kb*t))/sum_tot})
                 i += 1
