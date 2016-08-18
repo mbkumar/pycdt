@@ -27,15 +27,26 @@ class ComputedDefect(object):
     """
     def __init__(self, entry_defect, site_in_bulk, multiplicity=None,
                  supercell_size=[1, 1, 1], charge=0.0,
-                 charge_correction=0.0, name=None):
+                 charge_correction=0.0, other_correction=0.0, name=None):
         """
         Args:
             entry_defect: 
-                An Entry object corresponding to the defect
+                An ComputedStructureEntry object corresponding to the 
+                defect supercell
+            site_in_bulk: 
+                Site of the defect in bulk supercell. Defect positions
+                are often required to perform posteriori corrections
+            multiplicity:
+                Multiplicity of defect site in a cell. Useful to 
+                evaluate defect concentrations
+            supercell_size: 
+                Size of the defect supercell in terms of unit cell
             charge: 
                 The charge of the defect
             charge_correction: 
-                Some correction to the energy due to charge
+                Correction to the energy due to charge
+            other_correction:
+                Correction to the energy due to other factors
             name: 
                 The name of the defect
         """
@@ -272,8 +283,6 @@ class DefectsAnalyzer(object):
         """
         diff = (ldau_transition - lda_transition) / (ldau_gap - lda_gap)
         return  diff*(exp_gap - ldau_gap)
-
-    def get_defect_occupancies(self):
 
     def _get_form_energy(self, ef, i):
         return self._formation_energies[i] + self._defects[i].charge*ef
