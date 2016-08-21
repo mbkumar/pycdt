@@ -71,7 +71,8 @@ class DielectricSet(MPStaticSet):
 
     def __init__(self, structure, **kwargs):
         user_incar_settings = kwargs.get('user_incar_settings', {})
-        dielectric_settings = CONFIG['dielectric'].update(user_incar_settings)
+        dielectric_settings = CONFIG['dielectric']
+        dielectric_settings.update(user_incar_settings)
         kwargs['user_incar_settings'] = dielectric_settings
 
         super(self.__class__, self).__init__(structure, lepsilon=True, **kwargs)
