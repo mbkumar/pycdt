@@ -34,14 +34,14 @@ class VaspDefectFilesTest(unittest.TestCase):
         with ScratchDir('.'):
             make_vasp_defect_files(self.defects, self.path)
             incar_loc = os.path.join(self.path, 'vac_1_Cr', 'charge_0')
-            incar = Incar.from_file(incar_loc)
+            incar = Incar.from_file(os.path.join(incar_loc, "INCAR"))
             self.assertEqual(incar, self.neutral_Cr_vac_incar)
 
     def test_charged_defect_incar(self):
         with ScratchDir('.'):
             make_vasp_defect_files(self.defects, self.path)
             incar_loc = os.path.join(self.path, 'vac_1_Cr', 'charge_-3')
-            incar = Incar.from_file(incar_loc)
+            incar = Incar.from_file(os.path.join(incar_loc, "INCAR"))
             self.assertIsNotNone(incar.pop('NELECT', None))
             self.assertEqual(incar, self.neutral_Cr_vac_incar)
 
@@ -50,7 +50,7 @@ class VaspDefectFilesTest(unittest.TestCase):
         with ScratchDir('.'):
             make_vasp_defect_files(self.defects, self.path)
             incar_loc = os.path.join(self.path, 'bulk')
-            incar = Incar.from_file(incar_loc)
+            incar = Incar.from_file(os.path.join(incar_loc, "INCAR"))
             self.assertEqual(incar, self.cr2O3_bulk_incar)
 
     def test_kpoints(self):
@@ -58,14 +58,14 @@ class VaspDefectFilesTest(unittest.TestCase):
         with ScratchDir('.'):
             make_vasp_defect_files(self.defects, self.path)
             kpoints_loc = os.path.join(self.path, 'bulk')
-            kpoints = Kpoints.from_file(kpoints_loc)
+            kpoints = Kpoints.from_file(os.path.join(kpoints_loc, 'KPOINTS'))
             self.assertEqual(kpoints, self.cr2O3_kpoints)
 
     def test_poscar(self):
         with ScratchDir('.'):
             make_vasp_defect_files(self.defects, self.path)
             poscar_loc = os.path.join(self.path, 'bulk')
-            poscar = Poscar.from_file(kpoints_loc)
+            poscar = Poscar.from_file(os.path.join(poscar_loc, 'POSCAR'))
             self.assertEqual(
                 poscar,
                 Poscar(self.defects['bulk']['supercell']['structure']))
@@ -75,7 +75,7 @@ class VaspDefectFilesTest(unittest.TestCase):
         with ScratchDir('.'):
             make_vasp_defect_files(self.defects, self.path)
             incar_loc = os.path.join(self.path, 'bulk')
-            incar = Incar.from_file(incar_loc)
+            incar = Incar.from_file(os.path.join(incar_loc, "INCAR"))
             self.assertEqual(incar, self.cr2O3_bulk_incar)
         pass
 
@@ -88,4 +88,5 @@ class VaspDielectricFilesTest(unittest.TestCase):
     def setUp(self):
         pass
 
-
+if __name__ == '__main__':
+    unittest.main()
