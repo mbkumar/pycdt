@@ -45,7 +45,7 @@ def make_vasp_defect_files(defects, path_base, user_settings={}, hse=False):
     user_incar = user_settings.pop('INCAR', {})
     user_incar_blk = user_incar.pop('bulk', {})
     user_incar_def = user_incar.pop('defects', {})
-    tmp = user_incar.pop('dielectric', {})
+    user_incar.pop('dielectric', {})
     user_kpoints = user_settings.pop('KPOINTS', {})
     user_potcar = user_settings.pop('POTCAR', {})
 
