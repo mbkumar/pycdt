@@ -35,6 +35,13 @@ class DefectRelaxSet(MPRelaxSet):
         kwargs['user_incar_settings'] = defect_settings
 
         super(self.__class__, self).__init__(structure, **kwargs)
+        self.charge = kwargs.get('charge', 0)
+
+    @property
+    def incar(self):
+        incar = super(self.__class__, self).incar
+        if self.charge:
+            incar['NELECT'] = self.nelect - self.charge
 
 
 class DefectStaticSet(MPStaticSet):
@@ -71,8 +78,6 @@ def write_additional_files(path, trans_dict=None, incar={}, kpoints=None,
     """
     Write the additional files based on user settings
     """
-    if incar and not hse:
-        incar.write_file(os.path.join(path, "INCAR"))
     if kpoints:
         kpoints.write_file(os.path.join(path, "KPOINTS"))
 
@@ -122,9 +127,11 @@ def make_vasp_defect_files(defects, path_base, user_settings={}, hse=False):
     user_incar_blk = user_incar.pop('bulk', {})
     user_incar_def = user_incar.pop('defects', {})
     user_incar.pop('dielectric', {})
+    user_incar_blk.update(user_incar)
+    user_incar_def.update(user_incar)
     user_kpoints = user_settings.pop('KPOINTS', {})
     user_potcar = user_settings.pop('POTCAR', {})
-
+    potcar_functional = user_potcar.get('functional', 'PBE')
 
     for defect in comb_defs:
         for charge in defect['charges']:
@@ -138,57 +145,35 @@ def make_vasp_defect_files(defects, path_base, user_settings={}, hse=False):
             if 'substitution_specie' in  defect:
                 dict_transf['substitution_specie'] = defect['substitution_specie']
 
-            user_incar_settings = deepcopy(user_incar)
-            user_incar_settings.update(user_incar_def)
-            potcar_functional = user_potcar.get('functional', 'PBE')
             defect_relax_set = DefectRelaxSet(
-                s['structure'], user_incar_settings=user_incar_settings,
-                potcar_functional=potcar_functional)
+                s['structure'], user_incar_settings=user_incar_def,
+                potcar_functional=potcar_functional, charge=charge)
 
             path = os.path.join(path_base, defect['name'],
                                 "charge_"+str(charge))
             defect_relax_set.write_input(path)
 
-            if charge != 0:
-                incar = defect_relax_set.incar
-                incar['NELECT'] = defect_relax_set.nelect - charge
-            elif hse:
-                incar = defect_relax_set.incar
-            else:
-                incar = {}
-
-            if user_kpoints:
-                kpoint = Kpoints.from_dict(user_kpoints)
-            else:
-                kpoint = None
+            incar = defect_relax_set.incar if hse else {}
+            kpoints = Kpoints.from_dict(user_kpoints) if user_kpoints else None
 
             write_additional_files(path, dict_transf, incar=incar,
-                                   kpoints=kpoint, hse=hse)
+                                   kpoints=kpoints, hse=hse)
 
     # Generate bulk supercell inputs
     s = bulk_sys
     dict_transf = {'defect_type': 'bulk', 'supercell': s['size']}
 
-    user_incar_settings = deepcopy(user_incar)
-    user_incar_settings.update(user_incar_blk)
     potcar_functional = user_potcar.get('functional', 'PBE')
     blk_static_set = DefectStaticSet(s['structure'],
-                                     user_incar_settings=user_incar_settings,
+                                     user_incar_settings=user_incar_blk,
                                      potcar_functional=potcar_functional)
     path = os.path.join(path_base, 'bulk')
     blk_static_set.write_input(path)
 
-    if user_kpoints:
-        kpoint = Kpoints.from_dict(user_kpoints)
-    else:
-        kpoint = None
+    incar = blk_static_set.incar if hse else {}
+    kpoints = Kpoints.from_dict(user_kpoints) if user_kpoints else None
 
-    if hse:
-        incar = blk_static_set.incar
-    else:
-        incar = {}
-
-    write_additional_files(path, dict_transf, incar=incar, kpoints=kpoint,
+    write_additional_files(path, dict_transf, incar=incar, kpoints=kpoints,
                            hse=hse)
 
 def make_vasp_defect_files_dos(defects, path_base, user_settings={}, 
@@ -359,14 +344,13 @@ def make_vasp_dielectric_files(struct, path=None, user_settings={}, hse=False):
     user_incar = user_settings.pop('INCAR', {})
     user_incar.pop('bulk', {})
     user_incar.pop('defects', {})
-    print ('user_incar', user_incar)
     user_incar_diel = user_incar.pop('dielectric', {})
     user_incar.update(user_incar_diel)
     user_kpoints = user_settings.pop('KPOINTS', {})
     grid_density = user_kpoints.get('grid_density', 1000)
     user_potcar = user_settings.pop('POTCAR', {})
     potcar_functional = user_potcar.get('functional', 'PBE')
-    dielectric_set = DielectricSet(s['structure'],
+    dielectric_set = DielectricSet(struct,
                                    user_incar_settings=user_incar,
                                    potcar_functional=potcar_functional)
 
@@ -377,8 +361,5 @@ def make_vasp_dielectric_files(struct, path=None, user_settings={}, hse=False):
     dielectric_set.write_input(path)
 
     kpoints = Kpoints.automatic_density(struct, grid_density, force_gamma=True)
-    if hse:
-        incar = dielectric_set.incar
-    else:
-        incar = {}
+    incar = dielectric_set.incar if hse else {}
     write_additional_files(path, incar=incar, kpoints=kpoints, hse=hse)
