@@ -24,6 +24,7 @@ from pymatgen.io.vasp.outputs import Locpot, Outcar
 from pymatgen.core.lattice import Lattice
 
 from pycdt.corrections.utils import *
+from pycdt.utils.units import hart_to_ev
 
 norm = np.linalg.norm
 
@@ -909,17 +910,19 @@ class KumagaiCorrection(object):
         potalign = forplot['EXTRA']['potalign']
         plt.plot(r, y, color=collis[-1], marker='x', linestyle='None',
                  label='$V_{q/b}$ - $V_{pc}$')
-        plt.xlabel('Distance from defect (A)')
-        plt.ylabel('Potential (V)')
+        plt.xlabel('Distance from defect (A)',fontsize=20)
+        plt.ylabel('Potential (V)',fontsize=30)
 
         x = np.arange(wsrad, max(forplot['EXTRA']['lengths']), 0.01)
         plt.fill_between(x, min(ylis) - 1, max(ylis) + 1, facecolor='red', 
                          alpha=0.15, label='sampling region')
         plt.axhline(y=potalign, linewidth=0.5, color='red',
                     label='pot. align. / q')
-        plt.legend(loc=8)
+        # plt.legend(loc=8)
+        plt.legend(loc=4)
         plt.axhline(y=0, linewidth=0.2, color='black')
-        plt.ylim([min(ylis) - 0.5, max(ylis) + 0.5])
+        # plt.ylim([min(ylis) - 0.5, max(ylis) + 0.5])
+        plt.ylim([-1,.25])
         plt.xlim([0, max(rlis) + 3])
 
         plt.title('%s atomic site potential plot' % title)

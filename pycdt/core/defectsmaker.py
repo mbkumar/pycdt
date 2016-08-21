@@ -19,8 +19,11 @@ import copy
 import abc
 import math
 import logging
+from itertools import product
+
 
 from monty.string import str2unicode
+from monty.serialization import dumpfn
 from pymatgen.core.structure import PeriodicSite
 from pymatgen.core.periodic_table import Element, Specie, get_el_sp
 from pymatgen.symmetry.analyzer import SpacegroupAnalyzer
@@ -191,13 +194,17 @@ class DefectChargerSemiconductor(DefectCharger):
             return list(range(self.min_max_oxi_bulk[0],
                               self.min_max_oxi_bulk[1]-1))
         elif defect_type == 'substitution':
-            oxi_sub = Element(sub_specie).oxidation_states
-            min_max_oxi_bulk_sub = [
-                        min(min(set(oxi_sub) - set(self.min_max_oxi_bulk)),0),
-                        max(max(set(oxi_sub) - set(self.min_max_oxi_bulk)),0)]
+            oxi_sub_set = Element(sub_specie).common_oxidation_states
+            oxi_site = self.oxi_states[site_specie]
+            min_max_oxi_bulk_sub = [min(min(oxi_sub_set)-oxi_site,-1),
+                                    max(max(oxi_sub_set)-oxi_site,1)]
             if (min_max_oxi_bulk_sub[1] - min_max_oxi_bulk_sub[0]) > 2:
-                return list(range(min_max_oxi_bulk_sub[0],
-                                  min_max_oxi_bulk_sub[1]-2)) # if range exists, less likely to be a higher charge
+                if min_max_oxi_bulk_sub[1] > 2:
+                    return list(range(min_max_oxi_bulk_sub[0],
+                                      min_max_oxi_bulk_sub[1]-2)) # if range exists, less likely to be a higher charge
+                else:
+                    return list(range(min_max_oxi_bulk_sub[0],
+                                      2)) # extend to 2 if upper range does not already include this
             else:
                 return list(range(min_max_oxi_bulk_sub[0]-1,
                                   min_max_oxi_bulk_sub[1]+2)) #likely upper bound is 0, so extend to 2
@@ -707,9 +714,11 @@ class ChargedDefectsStructures(object):
             sc (Structure): supercell containing an
                 interstitial site.
         """
-
         sc = self.struct.copy()
         sc.make_supercell(sc_scale)
         sc.append(target_site.specie, target_site.frac_coords)
         
         return sc
+
+    def to(self, outfile):
+        dumpfn(self.defects, outfile)
