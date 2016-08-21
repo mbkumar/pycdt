@@ -29,8 +29,9 @@ class DefectRelaxSet(MPRelaxSet):
     """
 
     def __init__(self, structure, **kwargs):
-        user_incar_settings = kwargs.get('user_incar_settings', None)
-        defect_settings = CONFIG['defect'].update(user_incar_settings)
+        user_incar_settings = kwargs.get('user_incar_settings', {})
+        defect_settings = deepcopy(CONFIG['defect'])
+        defect_settings .update(user_incar_settings)
         kwargs['user_incar_settings'] = defect_settings
 
         super(self.__class__, self).__init__(structure, **kwargs)
@@ -43,8 +44,9 @@ class DefectStaticSet(MPStaticSet):
     """
 
     def __init__(self, structure, **kwargs):
-        user_incar_settings = kwargs.get('user_incar_settings', None)
-        bulk_settings = CONFIG['bulk'].update(user_incar_settings)
+        user_incar_settings = kwargs.get('user_incar_settings', {})
+        bulk_settings = deepcopy(CONFIG['bulk'])
+        bulk_settings.update(user_incar_settings)
         kwargs['user_incar_settings'] = bulk_settings
 
         super(self.__class__, self).__init__(structure, **kwargs)
@@ -57,14 +59,14 @@ class DielectricSet(MPStaticSet):
     """
 
     def __init__(self, structure, **kwargs):
-        user_incar_settings = kwargs.get('user_incar_settings', None)
+        user_incar_settings = kwargs.get('user_incar_settings', {})
         dielectric_settings = CONFIG['dielectric'].update(user_incar_settings)
         kwargs['user_incar_settings'] = dielectric_settings
 
         super(self.__class__, self).__init__(structure, lepsilon=True, **kwargs)
 
 
-def write_additional_files(path, trans_dict=None, incar=None, kpoints=None,
+def write_additional_files(path, trans_dict=None, incar={}, kpoints=None,
                            hse=False):
     """
     Write the additional files based on user settings
@@ -153,7 +155,7 @@ def make_vasp_defect_files(defects, path_base, user_settings={}, hse=False):
             elif hse:
                 incar = defect_relax_set.incar
             else:
-                incar = None
+                incar = {}
 
             if user_kpoints:
                 kpoint = Kpoints.from_dict(user_kpoints)
@@ -184,7 +186,7 @@ def make_vasp_defect_files(defects, path_base, user_settings={}, hse=False):
     if hse:
         incar = blk_static_set.incar
     else:
-        incar = None
+        incar = {}
 
     write_additional_files(path, dict_transf, incar=incar, kpoints=kpoint,
                            hse=hse)
@@ -239,7 +241,7 @@ def make_vasp_defect_files_dos(defects, path_base, user_settings={},
                 'LVTOT': True, 'LVHAR': True, 'LORBIT': 11, 'ALGO': "Fast",
                 'ISYM': 0})
             if user_settings:
-                if 'INCAR' in user_settings.get('defects', None):
+                if 'INCAR' in user_settings.get('defects', {}):
                     incar.update(user_settings['defects']['INCAR'])
 
             comp=s['structure'].composition
@@ -311,7 +313,7 @@ def make_vasp_defect_files_dos(defects, path_base, user_settings={},
         'ISMEAR': 0, 'SIGMA': 0.05, 'LVTOT': True, 'LVHAR': True, 
         'ALGO': 'Fast', 'ISYM': 0})
     if user_settings:
-        if 'INCAR' in user_settings.get('bulk', None):
+        if 'INCAR' in user_settings.get('bulk', {}):
             incar.update(user_settings['bulk']['INCAR'])
 
     kpoint = mp_relax_set.kpoints.monkhorst_automatic()
@@ -357,6 +359,7 @@ def make_vasp_dielectric_files(struct, path=None, user_settings={}, hse=False):
     user_incar = user_settings.pop('INCAR', {})
     user_incar.pop('bulk', {})
     user_incar.pop('defects', {})
+    print ('user_incar', user_incar)
     user_incar_diel = user_incar.pop('dielectric', {})
     user_incar.update(user_incar_diel)
     user_kpoints = user_settings.pop('KPOINTS', {})
@@ -377,5 +380,5 @@ def make_vasp_dielectric_files(struct, path=None, user_settings={}, hse=False):
     if hse:
         incar = dielectric_set.incar
     else:
-        incar = None
+        incar = {}
     write_additional_files(path, incar=incar, kpoints=kpoints, hse=hse)
