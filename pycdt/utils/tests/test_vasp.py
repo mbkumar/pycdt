@@ -51,7 +51,7 @@ class VaspDefectFilesTest(unittest.TestCase):
             make_vasp_defect_files(self.defects, self.path)
             incar_loc = os.path.join(self.path, 'bulk')
             incar = Incar.from_file(os.path.join(incar_loc, "INCAR"))
-            self.assertEqual(incar, self.cr2O3_bulk_incar)
+            self.assertEqual(incar, self.cr2o3_bulk_incar)
 
     def test_kpoints(self):
         self.cr2o3_kpoints = {}
@@ -59,7 +59,7 @@ class VaspDefectFilesTest(unittest.TestCase):
             make_vasp_defect_files(self.defects, self.path)
             kpoints_loc = os.path.join(self.path, 'bulk')
             kpoints = Kpoints.from_file(os.path.join(kpoints_loc, 'KPOINTS'))
-            self.assertEqual(kpoints, self.cr2O3_kpoints)
+            self.assertEqual(kpoints, self.cr2o3_kpoints)
 
     def test_poscar(self):
         with ScratchDir('.'):
@@ -76,7 +76,7 @@ class VaspDefectFilesTest(unittest.TestCase):
             make_vasp_defect_files(self.defects, self.path)
             incar_loc = os.path.join(self.path, 'bulk')
             incar = Incar.from_file(os.path.join(incar_loc, "INCAR"))
-            self.assertEqual(incar, self.cr2O3_bulk_incar)
+            self.assertEqual(incar, self.cr2o3_bulk_incar)
         pass
 
     def test_hse_settings(self):
