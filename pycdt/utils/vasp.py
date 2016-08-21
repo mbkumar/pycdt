@@ -358,7 +358,6 @@ def make_vasp_dielectric_files(struct, path=None, user_settings={}, hse=False):
                                    user_incar_settings=user_incar,
                                    potcar_functional=potcar_functional)
 
-
     if not path:
         path_base = struct.composition.reduced_formula
         path = os.path.join(path_base, 'dielectric')
