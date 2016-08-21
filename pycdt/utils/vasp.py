@@ -29,13 +29,14 @@ class DefectRelaxSet(MPRelaxSet):
     """
 
     def __init__(self, structure, **kwargs):
-        self.charge = kwargs.pop('charge', 0)
+        charge = kwargs.pop('charge', 0)
         user_incar_settings = kwargs.get('user_incar_settings', {})
         defect_settings = deepcopy(CONFIG['defect'])
         defect_settings .update(user_incar_settings)
         kwargs['user_incar_settings'] = defect_settings
 
         super(self.__class__, self).__init__(structure, **kwargs)
+        self.charge = charge
 
     @property
     def incar(self):
