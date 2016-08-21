@@ -40,9 +40,10 @@ class DefectRelaxSet(MPRelaxSet):
 
     @property
     def incar(self):
-        incar = super(self.__class__, self).incar
+        inc = super(self.__class__, self).incar
         if self.charge:
-            incar['NELECT'] = self.nelect - self.charge
+            inc['NELECT'] = self.nelect - self.charge
+        return inc
 
 
 class DefectStaticSet(MPStaticSet):
