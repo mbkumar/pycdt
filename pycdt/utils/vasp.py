@@ -26,6 +26,8 @@ class DefectRelaxSet(MPRelaxSet):
     """
     Extension to MPRelaxSet which modifies some parameters appropriate
     for defect calculations
+    Additional Args:
+        charge: Charge of the defect structure
     """
 
     def __init__(self, structure, **kwargs):
