@@ -18,6 +18,7 @@ from monty.json import MontyDecoder
 from monty.tempfile import ScratchDir
 from monty.serialization import loadfn
 from pymatgen.io.vasp.inputs import Incar, Kpoints, Poscar
+from pymatgen.core.structure import Structure
 from pycdt.utils.vasp import make_vasp_defect_files, \
         make_vasp_dielectric_files
 
@@ -98,13 +99,36 @@ class VaspDefectFilesTest(unittest.TestCase):
         self.assertTrue(0)
 
 
-
 class VaspDielectricFilesTest(unittest.TestCase):
     def setUp(self):
-        pass
+        self.structure = Structure.from_file(os.path.join(file_loc, 
+                                                          'POSCAR_Cr2O3'))
+        self.user_settings = loadfn(os.path.join(file_loc,
+                                                 'test_vasp_settings.yaml'))
+        self.path = 'dielectric'
+        self.dielectric_min = {'LVHAR': True, 'ISYM': 0, 'LPEAD': True,
+                'LEPSILON': True,  'ISPIN': 2, 'IBRION': 8}
+        self.keys = ['EDIFF']
 
-    def test0(self):
-        self.assertTrue(0)
+    def test_dielectric_files(self):
+        with ScratchDir('.'):
+            make_vasp_dielectric_files(self.structure, self.path)
+            incar = Incar.from_file(os.path.join(self.path, "INCAR"))
+            print incar
+            self.assertTrue(
+                    self.dielectric_min.viewitems() <= incar.items())
+            self.assertTrue(set(self.keys).issubset(incar))
+
+    def test_user_modified_dielectric_files(self):
+        with ScratchDir('.'):
+            make_vasp_dielectric_files(self.structure, self.path, 
+                                       user_settings=self.user_settings)
+            incar = Incar.from_file(os.path.join(self.path, "INCAR"))
+            self.assertTrue(
+                    self.dielectric_min.viewitems() <= incar.items())
+            self.assertTrue(set(self.keys).issubset(incar))
+            self.assertEqual(incar['EDIFF'], 5e-7)
+            self.assertEqual(incar['ENCUT'], 620)
 
 if __name__ == '__main__':
     unittest.main()
