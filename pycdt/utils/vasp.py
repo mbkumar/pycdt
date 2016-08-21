@@ -12,11 +12,87 @@ import os
 from copy import deepcopy
 
 from monty.serialization import loadfn, dumpfn
-from monty.json import MontyDecoder, MontyEncoder
+from monty.json import MontyEncoder
 
-from pymatgen.io.vasp.inputs import Kpoints, Potcar
-from pymatgen.io.vasp.sets import MPRelaxSet
+from pymatgen.io.vasp.inputs import Kpoints
+from pymatgen.io.vasp.sets import MPRelaxSet, MPStaticSet
 
+
+MODULE_DIR = os.path.dirname(os.path.abspath(__file__))
+CONFIG = loadfn(os.path.join(MODULE_DIR, "DefectSet.yaml"))
+
+
+class DefectRelaxSet(MPRelaxSet):
+    """
+    Extension to MPRelaxSet which modifies some parameters appropriate
+    for defect calculations
+    """
+
+    def __init__(self, structure, **kwargs):
+        user_incar_settings = kwargs.get('user_incar_settings', {})
+        defect_settings = deepcopy(CONFIG['defect'])
+        defect_settings .update(user_incar_settings)
+        kwargs['user_incar_settings'] = defect_settings
+
+        super(self.__class__, self).__init__(structure, **kwargs)
+
+
+class DefectStaticSet(MPStaticSet):
+    """
+    Extension to MPStaticSet which modifies some parameters appropriate
+    for bulk supercell calculation
+    """
+
+    def __init__(self, structure, **kwargs):
+        user_incar_settings = kwargs.get('user_incar_settings', {})
+        bulk_settings = deepcopy(CONFIG['bulk'])
+        bulk_settings.update(user_incar_settings)
+        kwargs['user_incar_settings'] = bulk_settings
+
+        super(self.__class__, self).__init__(structure, **kwargs)
+
+
+class DielectricSet(MPStaticSet):
+    """
+    Extension to MPStaticSet which modifies some parameters appropriate
+    for bulk supercell calculation
+    """
+
+    def __init__(self, structure, **kwargs):
+        user_incar_settings = kwargs.get('user_incar_settings', {})
+        dielectric_settings = CONFIG['dielectric'].update(user_incar_settings)
+        kwargs['user_incar_settings'] = dielectric_settings
+
+        super(self.__class__, self).__init__(structure, lepsilon=True, **kwargs)
+
+
+def write_additional_files(path, trans_dict=None, incar={}, kpoints=None,
+                           hse=False):
+    """
+    Write the additional files based on user settings
+    """
+    if incar and not hse:
+        incar.write_file(os.path.join(path, "INCAR"))
+    if kpoints:
+        kpoints.write_file(os.path.join(path, "KPOINTS"))
+
+    if trans_dict:
+        dumpfn(trans_dict, os.path.join(path,'transformation.json'),
+               cls=MontyEncoder)
+
+    if hse:
+        if not incar:
+            raise ValueError("Incar settings need to passed to write incar")
+
+        incar.update({"LWAVE": True})
+        incar.write_file(os.path.join(path, "INCAR.gga"))
+        incar.update({
+            'LHFCALC': True, "ALGO": "All", "HFSCREEN": 0.2,
+            "PRECFOCK": "Fast", 'NKRED': 2})
+        incar.write_file(os.path.join(path, "INCAR.hse1"))
+        del incar['PRECFOCK']
+        del incar['NKRED']
+        incar.write_file(os.path.join(path, "INCAR.hse2"))
 
 
 def make_vasp_defect_files(defects, path_base, user_settings={}, hse=False):
@@ -62,95 +138,58 @@ def make_vasp_defect_files(defects, path_base, user_settings={}, hse=False):
             if 'substitution_specie' in  defect:
                 dict_transf['substitution_specie'] = defect['substitution_specie']
 
-            mp_relax_set = MPRelaxSet(s['structure'])
-            incar = mp_relax_set.incar
-            incar.update({
-                'IBRION': 2, 'ISIF': 2, 'ISPIN': 2, 'LWAVE':False, 
-                'EDIFF': 1e-6, 'EDIFFG': -1e-2, 'ISMEAR': 0, 'SIGMA': 0.05,
-                'LVTOT': True, 'LVHAR': True, 'LORBIT': 11, 'ALGO': "Fast",
-                'ISYM':0})
-            incar.update(user_incar)
-            incar.update(user_incar_def)
+            user_incar_settings = deepcopy(user_incar)
+            user_incar_settings.update(user_incar_def)
+            potcar_functional = user_potcar.get('functional', 'PBE')
+            defect_relax_set = DefectRelaxSet(
+                s['structure'], user_incar_settings=user_incar_settings,
+                potcar_functional=potcar_functional)
 
-            comp = s['structure'].composition
-            sum_elec = 0
-            elts = set()
-            for p in mp_relax_set.potcar:
-                if p.element not in elts:
-                    sum_elec += comp.as_dict()[p.element]*p.nelectrons
-                    elts.add(p.element)
+            path = os.path.join(path_base, defect['name'],
+                                "charge_"+str(charge))
+            defect_relax_set.write_input(path)
+
             if charge != 0:
-                incar['NELECT'] = sum_elec - charge
+                incar = defect_relax_set.incar
+                incar['NELECT'] = defect_relax_set.nelect - charge
+            elif hse:
+                incar = defect_relax_set.incar
+            else:
+                incar = {}
 
             if user_kpoints:
                 kpoint = Kpoints.from_dict(user_kpoints)
             else:
-                kpoint = mp_relax_set.kpoints.monkhorst_automatic()
+                kpoint = None
 
-            path=os.path.join(path_base,defect['name'],"charge_"+str(charge))
-            try:
-                os.makedirs(path)
-            except:
-                pass
-            incar.write_file(os.path.join(path,"INCAR"))
-            kpoint.write_file(os.path.join(path,"KPOINTS"))
-            mp_relax_set.poscar.write_file(os.path.join(path,"POSCAR"))
-            mp_relax_set.potcar.write_file(os.path.join(path,"POTCAR"))
-
-            dumpfn(dict_transf, os.path.join(path,'transformation.json'),
-                   cls=MontyEncoder)
-            if hse:
-                incar.update({"LWAVE": True})
-                incar.write_file(os.path.join(path,"INCAR.gga"))
-                incar.update({
-                    'LHFCALC': True, "ALGO": "All", "HFSCREEN": 0.2, 
-                    "PRECFOCK": "Fast", 'NKRED': 2})
-                incar.write_file(os.path.join(path,"INCAR.hse1"))
-                del incar['PRECFOCK']
-                del incar['NKRED']
-                incar.write_file(os.path.join(path,"INCAR.hse2"))
+            write_additional_files(path, dict_transf, incar=incar,
+                                   kpoints=kpoint, hse=hse)
 
     # Generate bulk supercell inputs
     s = bulk_sys
     dict_transf = {'defect_type': 'bulk', 'supercell': s['size']}
 
-    mp_relax_set = MPRelaxSet(s['structure'])
-    incar = mp_relax_set.incar
+    user_incar_settings = deepcopy(user_incar)
+    user_incar_settings.update(user_incar_blk)
+    potcar_functional = user_potcar.get('functional', 'PBE')
+    blk_static_set = DefectStaticSet(s['structure'],
+                                     user_incar_settings=user_incar_settings,
+                                     potcar_functional=potcar_functional)
+    path = os.path.join(path_base, 'bulk')
+    blk_static_set.write_input(path)
 
-    incar.update({
-        'IBRION': -1, "NSW": 0, 'ISPIN': 2, 'LWAVE': False, 'EDIFF': 1e-5,
-        'ISMEAR': 0, 'SIGMA': 0.05, 'LVTOT': True, 'LVHAR': True, 
-        'ALGO': 'Fast', 'ISYM': 0})
-    incar.update(user_incar)
-    incar.update(user_incar_blk)
     if user_kpoints:
         kpoint = Kpoints.from_dict(user_kpoints)
     else:
-        kpoint = mp_relax_set.kpoints.monkhorst_automatic()
+        kpoint = None
 
-    path = os.path.join(path_base,'bulk')
-    try:
-        os.makedirs(path)
-    except:
-        pass
-
-    kpoint.write_file(os.path.join(path,"KPOINTS"))
-    mp_relax_set.poscar.write_file(os.path.join(path,"POSCAR"))
-    mp_relax_set.potcar.write_file(os.path.join(path,"POTCAR"))
-    dumpfn(dict_transf, os.path.join(path,'transformation.json'),
-           cls=MontyEncoder)
     if hse:
-        incar.update({"LWAVE": True})
-        incar.write_file(os.path.join(path,"INCAR.gga"))
-        incar.update({
-            'LHFCALC': True, "ALGO": "All", "HFSCREEN": 0.2, #"AEXX": 0.45, 
-            "PRECFOCK": "Fast", 'NKRED': 2})
-        incar.write_file(os.path.join(path,"INCAR.hse1"))
-        del incar['PRECFOCK']
-        del incar['NKRED']
-        incar.write_file(os.path.join(path,"INCAR.hse2"))
+        incar = blk_static_set.incar
     else:
-        incar.write_file(os.path.join(path,"INCAR"))
+        incar = {}
+
+    write_additional_files(path, dict_transf, incar=incar, kpoints=kpoint,
+                           hse=hse)
 
 def make_vasp_defect_files_dos(defects, path_base, user_settings={}, 
                            hse=False, dos_limits=(-1,7)):
@@ -202,7 +241,7 @@ def make_vasp_defect_files_dos(defects, path_base, user_settings={},
                 'LVTOT': True, 'LVHAR': True, 'LORBIT': 11, 'ALGO': "Fast",
                 'ISYM': 0})
             if user_settings:
-                if 'INCAR' in user_settings.get('defects', None):
+                if 'INCAR' in user_settings.get('defects', {}):
                     incar.update(user_settings['defects']['INCAR'])
 
             comp=s['structure'].composition
@@ -274,7 +313,7 @@ def make_vasp_defect_files_dos(defects, path_base, user_settings={},
         'ISMEAR': 0, 'SIGMA': 0.05, 'LVTOT': True, 'LVHAR': True, 
         'ALGO': 'Fast', 'ISYM': 0})
     if user_settings:
-        if 'INCAR' in user_settings.get('bulk', None):
+        if 'INCAR' in user_settings.get('bulk', {}):
             incar.update(user_settings['bulk']['INCAR'])
 
     kpoint = mp_relax_set.kpoints.monkhorst_automatic()
@@ -301,8 +340,7 @@ def make_vasp_defect_files_dos(defects, path_base, user_settings={},
     dumpfn(dict_transf, os.path.join(path,'transformation.json'),
            cls=MontyEncoder)
 
-def make_vasp_dielectric_files(struct, path=None, user_settings={}, 
-        hse=False):
+def make_vasp_dielectric_files(struct, path=None, user_settings={}, hse=False):
     """
     Generates VASP files for dielectric constant computations
     Args:
@@ -317,35 +355,30 @@ def make_vasp_dielectric_files(struct, path=None, user_settings={},
     """
 
     # Generate vasp inputs for dielectric constant
-    mp_relax_set = MPRelaxSet(struct)
-    incar = mp_relax_set.incar
-
-    incar.update({
-        'ISPIN': 1, 'LWAVE': False, 'EDIFF': 1e-5,
-        'ISMEAR': -5, 'ALGO': 'Fast', 'ISIF': 2})
-    incar.update({'IBRION': 8, 'LEPSILON': True, 'LPEAD': True})
     user_settings = deepcopy(user_settings)
     user_incar = user_settings.pop('INCAR', {})
     user_incar.pop('bulk', {})
     user_incar.pop('defects', {})
+    print ('user_incar', user_incar)
     user_incar_diel = user_incar.pop('dielectric', {})
-    incar.update(user_incar)
-    incar.update(user_incar_diel)
-    if 'NSW' in incar:
-        del incar['NSW']
-    if hse == True:
-        incar.update({
-            'LHFCALC': True, "ALGO": "All", "HFSCREEN": 0.2,
-            "PRECFOCK": "Fast", 'NKRED': 2})#, "AEXX": 0.45})
+    user_incar.update(user_incar_diel)
+    user_kpoints = user_settings.pop('KPOINTS', {})
+    grid_density = user_kpoints.get('grid_density', 1000)
+    user_potcar = user_settings.pop('POTCAR', {})
+    potcar_functional = user_potcar.get('functional', 'PBE')
+    dielectric_set = DielectricSet(s['structure'],
+                                   user_incar_settings=user_incar,
+                                   potcar_functional=potcar_functional)
 
-    kpoints = mp_relax_set.kpoints.automatic_density(struct, 1000,
-                                                     force_gamma=True)
 
     if not path:
         path_base = struct.composition.reduced_formula
         path = os.path.join(path_base, 'dielectric')
-    os.makedirs(path)
-    incar.write_file(os.path.join(path, "INCAR"))
-    kpoints.write_file(os.path.join(path, "KPOINTS"))
-    mp_relax_set.poscar.write_file(os.path.join(path, "POSCAR"))
-    mp_relax_set.potcar.write_file(os.path.join(path, "POTCAR"))
+    dielectric_set.write_input(path)
+
+    kpoints = Kpoints.automatic_density(struct, grid_density, force_gamma=True)
+    if hse:
+        incar = dielectric_set.incar
+    else:
+        incar = {}
+    write_additional_files(path, incar=incar, kpoints=kpoints, hse=hse)
