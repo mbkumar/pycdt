@@ -24,17 +24,22 @@ class LDAUCorrectionTest(unittest.TestCase):
 
 
     def test_transition_correction_with_identical_levels(self):
-        print (self.corrector(0, 0))
-        print (self.corrector(0.1, 0.1))
+        self.assertAlmostEqual(
+            0, self.corrector.get_transition_correction(0, 0))
+        self.assertAlmostEqual(
+            0, self.corrector.get_transition_correction(0.1, 0.1))
 
     def test_transition_correction_with_greater_lda_transition(self):
-        print (self.corrector(0.1, 0.2))
+        self.assertAlmostEqual(
+            -0.1, self.corrector.get_transition_correction(0.1, 0.2))
 
     def test_transition_correction_with_greater_ldau_transition(self):
-        print (self.corrector(0.2, 0.1))
+        self.assertAlmostEqual(
+            0,1, self.corrector.get_transition_correction(0.2, 0.1))
 
     def test_transition_correction_with_lda_transition_greater_than_bg(self):
-        print (self.corrector(0.4, 1.5))
+        self.assertAlmostEqual(
+            -1.1, self.corrector.get_transition_correction(0.4, 1.5))
 
 
 if __name__ == '__main__':
