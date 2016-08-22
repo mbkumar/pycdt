@@ -53,9 +53,9 @@ class DefectPlotter(object):
             for x_step in x:
                 min = 10000
                 for i, dfct in enumerate(self._analyzer._defects):
-                    if dfct._name == t:
+                    if dfct.name == t:
                         val = self._analyzer._formation_energies[i] + \
-                                dfct._charge*x_step
+                                dfct.charge*x_step
                         if val < min:
                             min = val
                 y_tmp.append(min)
@@ -74,7 +74,7 @@ class DefectPlotter(object):
             legends = []
             for name in types:
                 for dfct in self._analyzer._defects:
-                    if name == dfct._name:
+                    if name == dfct.name:
                         sub_str = '_{'+dfct.site.species_string+'}$'
                         if 'vac' in name:
                             base = '$Vac'

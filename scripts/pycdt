@@ -260,8 +260,8 @@ def compute_formation_energies(args):
     if os.path.isfile(corrections_file_name):
         correction_data = loadfn(corrections_file_name)  
         for parsed_defect in defects:
-            name_def = parsed_defect._name
-            q = parsed_defect._charge
+            name_def = parsed_defect.name
+            q = parsed_defect.charge
             for entry in correction_data[name_def]:
                 if q == entry['charge']:
                     correction = entry['charge_correction']
