@@ -264,42 +264,6 @@ class DefectsAnalyzer(object):
                 z = dict_levels[name]['q*'] - self._defects[i].charge
                 self._formation_energies[i] +=  z * cbm_correct
 
-    def correction_ldau_transition(self, exp_gap, ldau_gap, lda_gap, 
-                                   ldau_transition, lda_transition):
-        """
-        Correct the LDA+U transition level using LDA and LDA+U transition 
-        levels and bandgaps and experimental bandgap
-        Reference:
-            A. Janotti, C. G. Van de Walle, PRB 76, 165202 (2007)
-        Args:
-            exp_gap: Experimental bandgap
-            ldau_gap: Bandgap computed with LDA+U (or GGA+U)
-            lda_gap: Bandgap computed with LDA (or GGA)
-            ldau_transition: Transition level computed with LDA+U (or GGA+U)
-            lda_transition: Transition computed with LDA (or GGA)
-        """
-        diff = (ldau_transition - lda_transition) / (ldau_gap - lda_gap)
-        return  diff*(exp_gap - ldau_gap)
-
-    def correction_ldau_energy(self, occupancy, exp_gap, ldau_gap, lda_gap, 
-                               ldau_transition, lda_transition):
-        """
-        Correct the LDA+U transition level using LDA and LDA+U transition 
-        levels and bandgaps and experimental bandgap
-        Reference:
-            A. Janotti, C. G. Van de Walle, PRB 76, 165202 (2007)
-        Args:
-            occupancy: Defect level occupancy
-            exp_gap: Experimental bandgap
-            ldau_gap: Bandgap computed with LDA+U (or GGA+U)
-            lda_gap: Bandgap computed with LDA (or GGA)
-            ldau_transition: Transition level computed with LDA+U (or GGA+U)
-            lda_transition: Transition computed with LDA (or GGA)
-        """
-        trans_correction = self.correction_ldau_transition(
-                exp_gap, ldau_gap, lda_gap, ldau_transition, lda_transition)
-        return  trans_correction * occupancy
-
     def get_defect_occupancies(self):
         """
         Defect occupancies with respect to defect charges are computed
