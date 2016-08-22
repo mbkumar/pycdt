@@ -1,0 +1,41 @@
+# coding: utf-8
+
+from __future__ import division
+
+__author__ = "Bharat Medasani"
+__copyright__ = "Copyright 2014, The Materials Project"
+__version__ = "1.0"
+__maintainer__ = "Bharat Medasani"
+__email__ = "mbkumar@gmail.com"
+__status__ = "Development"
+__date__ = "Aug 22, 2016"
+
+import unittest
+import os
+
+from pycdt.corrections.ldau_correction import *
+
+test_file_loc = os.path.join('..', '..', '..', 'test_files')
+
+class LDAUCorrectionTest(unittest.TestCase):
+    def setUp(self):
+        exp_gap, ggau_gap, gga_gap = (3, 2, 1)
+        self.corrector = LDAUCorrection(exp_gap, ggau_gap, gga_gap)
+
+
+    def test_transition_correction_with_identical_levels(self):
+        print (self.corrector(0, 0))
+        print (self.corrector(0.1, 0.1))
+
+    def test_transition_correction_with_greater_lda_transition(self):
+        print (self.corrector(0.1, 0.2))
+
+    def test_transition_correction_with_greater_ldau_transition(self):
+        print (self.corrector(0.2, 0.1))
+
+    def test_transition_correction_with_lda_transition_greater_than_bg(self):
+        print (self.corrector(0.4, 1.5))
+
+
+if __name__ == '__main__':
+    unittest.main()
