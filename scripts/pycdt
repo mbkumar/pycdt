@@ -206,13 +206,13 @@ def compute_corrections(args):
     blklpt = Locpot.from_file(bulk.data['locpot_path']) 
     if correction_method == 'freysoldt':
         for defect in defects:
-            print ('defect_name: ', defect._full_name)
+            print ('defect_name: ', defect.full_name)
             print ('-----------------------------------------\n\n')
             correction, blklpt = get_correction_freysoldt(
-                    defect, blklpt, epsilon, title=defect._full_name)
+                    defect, blklpt, epsilon, title=defect.full_name)
             defect.charge_correction = correction
-            corrections[defect._name].append({
-                'charge_correction': correction, 'charge':defect._charge})
+            corrections[defect.name].append({
+                'charge_correction': correction, 'charge':defect.charge})
     else:    
         locpot_path_blk = bulk.data['locpot_path']
         path_blk = os.path.split(locpot_path_blk)[0]
@@ -220,14 +220,14 @@ def compute_corrections(args):
         kumagai_init = KumagaiBulkInit(blklpt.structure, blklpt.dim, epsilon,
                                        encut, tolerance=0.0001)
         for defect in defects:
-            print ('defect_name: ', defect._full_name)
+            print ('defect_name: ', defect.full_name)
             print ('-----------------------------------------\n\n')
             correction = get_correction_kumagai(
                     defect, path_blk, kumagai_init, bulk_locpot=blklpt,
-                    title=defect._full_name)
+                    title=defect.full_name)
             defect.charge_correction = correction
-            corrections[defect._name].append({
-                    'charge_correction': correction, 'charge': defect._charge})
+            corrections[defect.name].append({
+                    'charge_correction': correction, 'charge': defect.charge})
 
     dumpfn(corrections, corrections_file_name, cls=MontyEncoder, indent=2)
 

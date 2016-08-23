@@ -59,7 +59,7 @@ class ComputedDefect(object):
         self.charge_correction = charge_correction # Can be added after initialization
         self.other_correction = other_correction
         self.name = name
-        self._full_name = self.name + "_" + str(charge)
+        self.full_name = self.name + "_" + str(charge)
 
     def as_dict(self):
         return {'entry': self.entry.as_dict(),
@@ -69,7 +69,7 @@ class ComputedDefect(object):
                 'charge_correction': self.charge_correction,
                 'other_correction': self.other_correction,
                 'name': self.name,
-                'full_name': self._full_name,
+                'full_name': self.full_name,
                 '@module': self.__class__.__module__,
                 '@class': self.__class__.__name__}
 
