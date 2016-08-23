@@ -199,17 +199,17 @@ def compute_corrections(args):
     corrections = defaultdict(list)
 
     formula = bulk.composition.reduced_formula
-    initialize_logging(filename=formula+'_correction.log')
+    initialize_logging(filename=formula+'_correction.log')f
 
     #loading locpot object now is useful for both corrections
     print ('loading bulk locpot for corrections')
     blklpt = Locpot.from_file(bulk.data['locpot_path']) 
     if correction_method == 'freysoldt':
         for defect in defects:
-            print ('defect_name: ', defect._full_name)
+            print ('defect_name: ', defect.full_name)
             print ('-----------------------------------------\n\n')
             correction, blklpt = get_correction_freysoldt(
-                    defect, blklpt, epsilon, title=defect._full_name)
+                    defect, blklpt, epsilon, title=defect.full_name)
             defect.charge_correction = correction
             corrections[defect.name].append({
                 'charge_correction': correction, 'charge':defect.charge})
@@ -220,11 +220,11 @@ def compute_corrections(args):
         kumagai_init = KumagaiBulkInit(blklpt.structure, blklpt.dim, epsilon,
                                        encut, tolerance=0.0001)
         for defect in defects:
-            print ('defect_name: ', defect._full_name)
+            print ('defect_name: ', defect.full_name)
             print ('-----------------------------------------\n\n')
             correction = get_correction_kumagai(
                     defect, path_blk, kumagai_init, bulk_locpot=blklpt,
-                    title=defect._full_name)
+                    title=defect.full_name)
             defect.charge_correction = correction
             corrections[defect.name].append({
                     'charge_correction': correction, 'charge': defect.charge})
