@@ -16,7 +16,7 @@ from pymatgen.io.vasp.outputs import Locpot
 from pymatgen.entries.computed_entries import ComputedStructureEntry
 
 from pycdt.corrections.finite_size_charge_correction import *
-from pycdt.corrections.defects_analyzer import ComputedDefect
+from pycdt.core.defects_analyzer import ComputedDefect
 
 #Paths to locpots we are testing on
 bl_path = os.path.join('..', '..', '..', 'test_files', 'bLOCPOT.gz')
