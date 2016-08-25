@@ -48,7 +48,7 @@ class DefectPlotter(object):
         x = [min_lim+step*i for i in range(nb_steps)]
         x = np.arange(xlim[0], xlim[1], (xlim[1]-xlim[0])/nb_steps)
         y = {}
-        trans_leve_pt = {}
+        trans_level_pt = {}
         for t in self._analyzer._get_all_defect_types():
             y_tmp = []
             trans_level = []
@@ -67,7 +67,7 @@ class DefectPlotter(object):
                         trans_level.append((x_step, min))
                 prev_min_q = cur_min_q
                 y_tmp.append(min)
-            print ('plotter trans', t, trans_level)
+            trans_level_pt[t] =  trans_level
             y[t] = y_tmp
 
         y_vals = np.array(y.values())
@@ -79,7 +79,7 @@ class DefectPlotter(object):
         plt.clf()
         import matplotlib.cm as cm
         colors=cm.Dark2(np.linspace(0, 1, len(y)))
-        for c,cnt in zip(y,range(len(y))):
+        for cnt, c in enumerate(y):
             plt.plot(x, y[c], linewidth=3, color=colors[cnt])
         plt.plot([min_lim, max_lim], [0, 0], 'k-')
 
@@ -109,6 +109,12 @@ class DefectPlotter(object):
             # of defects exist....
             plt.legend(get_legends(y.keys()), fontsize=1.8*width, ncol=3,
                        loc='lower center', bbox_to_anchor=(.5,-.6))
+        for cnt, c in enumerate(y):
+        #for c in y:
+           # plt.plot(x, y[c], next(linecycler), linewidth=6, color=colors[cnt])
+            x_trans = [pt[0] for pt in trans_level_pt[c]]
+            y_trans = [pt[1] for pt in trans_level_pt[c]]
+            plt.plot(x_trans, y_trans,  marker='*', color=colors[cnt], markersize=12, fillstyle='full')
         plt.axvline(x=0.0, linestyle='--', color='k', linewidth=3)
         plt.axvline(x=self._analyzer._band_gap, linestyle='--', color='k',
                     linewidth=3)
