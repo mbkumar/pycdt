@@ -48,8 +48,11 @@ class DefectPlotter(object):
         x = [min_lim+step*i for i in range(nb_steps)]
         x = np.arange(xlim[0], xlim[1], (xlim[1]-xlim[0])/nb_steps)
         y = {}
+        trans_leve_pt = {}
         for t in self._analyzer._get_all_defect_types():
             y_tmp = []
+            trans_level = []
+            prev_min_q, cur_min_q = None, None
             for x_step in x:
                 min = 10000
                 for i, dfct in enumerate(self._analyzer._defects):
@@ -58,8 +61,18 @@ class DefectPlotter(object):
                                 dfct.charge*x_step
                         if val < min:
                             min = val
+                            cur_min_q = dfct.charge
+                if prev_min_q is not None:
+                    if cur_min_q != prev_min_q:
+                        trans_level.append((x_step, min))
+                prev_min_q = cur_min_q
                 y_tmp.append(min)
+            print ('plotter trans', t, trans_level)
             y[t] = y_tmp
+
+        y_vals = np.array(y.values())
+        y_min = y_vals.min()
+        y_max = y_vals.max()
 
         width, height = 12, 8
         import matplotlib.pyplot as plt
@@ -101,6 +114,8 @@ class DefectPlotter(object):
                     linewidth=3)
         if ylim is not None:
             plt.ylim(ylim)
+        else:
+            plt.ylim((y_min-0.1, y_max+0.1))
         plt.xlabel("Fermi energy (eV)", size=2*width)
         plt.ylabel("Defect Formation Energy (eV)", size=2*width)
         return plt
