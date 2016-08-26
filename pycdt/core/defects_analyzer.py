@@ -127,10 +127,10 @@ class DefectsAnalyzer(object):
                 entry_bulk, d['e_vbm'], 
                 {el: d['mu_elts'][el] for el in d['mu_elts']}, d['band_gap'])
         for ddict in d['defects']:
-            analyzer.add_defect(ComputedDefect.from_dict(ddict))
+            analyzer.add_computed_defect(ComputedDefect.from_dict(ddict))
         return analyzer
 
-    def add_parsed_defect(self, defect):
+    def add_computed_defect(self, defect):
         """
         add a parsed defect to the analyzer
         Args:

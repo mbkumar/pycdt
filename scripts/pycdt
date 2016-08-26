@@ -259,14 +259,14 @@ def compute_formation_energies(args):
 
     if os.path.isfile(corrections_file_name):
         correction_data = loadfn(corrections_file_name)  
-        for parsed_defect in defects:
-            name_def = parsed_defect.name
-            q = parsed_defect.charge
+        for computed_defect in defects:
+            name_def = computed_defect.name
+            q = computed_defect.charge
             for entry in correction_data[name_def]:
                 if q == entry['charge']:
                     correction = entry['charge_correction']
                     break
-            parsed_defect.charge_correction = correction
+            computed_defect.charge_correction = correction
     elif corrections_file_name == "corrections.json":  # Default filename
         pass # Don't bother, the user is not worried about corrections
     else:
@@ -285,7 +285,7 @@ def compute_formation_energies(args):
     for region, mu in mu_range.items():
         da = DefectsAnalyzer(blk_entry, vbm, mu, bandgap)
         for defect in defects:
-            da.add_parsed_defect(defect)
+            da.add_computed_defect(defect)
 
         if region == mu_range.keys()[0]:
             da_trans = da.get_transition_levels()
