@@ -402,6 +402,8 @@ def read_ES_avg(location_outcar):
 
 def read_ES_avg_fromlocpot(locpot):
     """
+    TODO: smarter radii based on ENAUG to reproduce the core
+
     Reads Electrostatic potential at each atomic
     site from Locpot Pymatgen object
     """
