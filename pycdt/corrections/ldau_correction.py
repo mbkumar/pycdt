@@ -54,8 +54,8 @@ class LDAUCorrection(object):
             ldau_transition: Transition level computed with LDA+U (or GGA+U)
             lda_transition: Transition computed with LDA (or GGA)
         """
-        trans_correction = self.correction_transition(ldau_transition,
-                                                      lda_transition)
+        trans_correction = self.get_transition_correction(ldau_transition,
+                                                          lda_transition)
         return  trans_correction * occupancy
 
 

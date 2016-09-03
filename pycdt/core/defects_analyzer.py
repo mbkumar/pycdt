@@ -65,6 +65,7 @@ class ComputedDefect(object):
         return {'entry': self.entry.as_dict(),
                 'site': self.site.as_dict(),
                 'multiplicity': self.multiplicity,
+                'supercell_size': self.supercell_size,
                 'charge': self.charge,
                 'charge_correction': self.charge_correction,
                 'other_correction': self.other_correction,
@@ -79,6 +80,7 @@ class ComputedDefect(object):
                 ComputedStructureEntry.from_dict(d['entry']), 
                 PeriodicSite.from_dict(d['site']),
                 multiplicity=d.get('multiplicity', None),
+                supercell_size=d.get('supercell_size', [1,1,1]),
                 charge=d.get('charge', 0.0),
                 charge_correction=d.get('charge_correction', 0.0),
                 other_correction=d.get('other_correction', 0.0),
@@ -127,10 +129,10 @@ class DefectsAnalyzer(object):
                 entry_bulk, d['e_vbm'], 
                 {el: d['mu_elts'][el] for el in d['mu_elts']}, d['band_gap'])
         for ddict in d['defects']:
-            analyzer.add_defect(ComputedDefect.from_dict(ddict))
+            analyzer.add_computed_defect(ComputedDefect.from_dict(ddict))
         return analyzer
 
-    def add_parsed_defect(self, defect):
+    def add_computed_defect(self, defect):
         """
         add a parsed defect to the analyzer
         Args:
