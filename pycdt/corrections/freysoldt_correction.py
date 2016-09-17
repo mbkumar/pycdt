@@ -34,7 +34,7 @@ class QModel():
     q_model(r) = q [x exp(-r/gamma) + (1-x) exp(-r^2/beta^2)]
             without normalization constants
     By default, gaussian distribution with 1 Bohr width is assumed.
-    If defect charge is more delocalized, exponential tail is needed.
+    If defect charge is more delocalized, exponential tail is suggested.
     """
     def __init__(self, beta=1.0, expnorm=0.0, gamma=1.0):
         """
@@ -62,8 +62,8 @@ class QModel():
         Returns:
             Charge density at the reciprocal vector magnitude
         """
-        return self.x/np.sqrt(1+self.gamma2*g2) + \
-               (1-self.x)*np.exp(-0.25*self.beta2*g2)
+        return (self.x / np.sqrt(1+self.gamma2*g2)
+                + (1-self.x) * np.exp(-0.25*self.beta2*g2))
 
     def rho_rec_limit0(self):
         """
@@ -82,7 +82,7 @@ class FreysoldtCorrPlotter(object):
         self.final_shift = final_shift
         self.check = check
 
-    def plot(self,title='default'):
+    def plot(self, title='default'):
         """
         """
 
@@ -103,16 +103,16 @@ class FreysoldtCorrPlotter(object):
         ymin = min(min(self.v_R), min(self.dft_diff), min(self.final_shift))
         ymax = max(max(self.v_R), max(self.dft_diff), max(self.final_shift))
         plt.ylim(-0.2+ymin, 0.2+ymax)
-        plt.xlabel('distance along axis ' + str(1)+' ($\AA$)',fontsize=20)
-        plt.ylabel('Potential (V)',fontsize=20)
+        plt.xlabel('distance along axis ' + str(1) + ' ($\AA$)', fontsize=20)
+        plt.ylabel('Potential (V)', fontsize=20)
         plt.legend(loc=9)
         plt.axhline(y=0, linewidth=0.2, color='black')
         plt.title(str(title) + ' defect potential')
         plt.xlim(0, max(self.x))
 
-        plt.savefig(str(title)+'FreyplnravgPlot.pdf')
+        plt.savefig(str(title) + 'FreyplnravgPlot.pdf')
 
-    def to_datafile(self,file_name='FreyAxisData'):
+    def to_datafile(self, file_name='FreyAxisData'):
 
         np.savez(file_name, x=self.x, v_R=self.v_R, 
                  dft_diff=self.dft_diff, #defavg-pureavg,
@@ -125,7 +125,7 @@ class FreysoldtCorrPlotter(object):
         Takes data file called 'name' and does plotting.
         Good for later plotting of locpot data after running run_correction()
         """
-        with open(file_name,'r') as f:
+        with open(file_name) as f:
             plotvals = np.load(f)
 
             x = plotvals['x']
@@ -140,23 +140,31 @@ class FreysoldtCorrPlotter(object):
 
 class FreysoldtCorrection(object):
     def __init__(self, axis, dielectricconst, pure_locpot_path,
-            defect_locpot_path, q, energy_cutoff=520,
-            madetol=0.0001, q_model=None):
+                 defect_locpot_path, q, energy_cutoff=520,
+                 madetol=0.0001, q_model=None):
         """
         Args:
-            axis: axis to do Freysoldt averaging over (zero-defined). Has no effect on
-                 Kumagai correction, so better move to Freysoldt potalign
-            dielectric_tensor: Macroscopic dielectric tensor 
-                 Include ionic also if defect is relaxed, othewise ion clamped.
-                 Can be a matrix array or scalar.
-            pure_locpot_path: Bulk Locpot file path OR locpot object
-            defect_locpot_path: Defect Locpot file path OR locpot object
-            q: Charge associated with the defect (not of the homogen. background). Typically integer
-            energy_cutoff: Energy for plane wave cutoff (in eV).
-                 If not given, Materials Project default 520 eV is used.
-            madetol: Tolerance for convergence of energy terms in eV (double or float)
-            q_model (QModel object): User defined charge for correction.
-                 If not given, highly localized charge is assumed.
+            axis:
+                axis to do Freysoldt averaging over (zero-defined).
+            dielectric_tensor:
+                Macroscopic dielectric tensor. Include ionic also if
+                defect is relaxed, otherwise use ion clamped.
+                Can be a matrix array or scalar.
+            pure_locpot_path:
+                Bulk Locpot file path or locpot object
+            defect_locpot_path:
+                Defect Locpot file path or locpot object
+            q (int or float):
+                Charge associated with the defect (not of the homogeneous
+                background). Typically integer
+            energy_cutoff:
+                Energy for plane wave cutoff (in eV).
+                If not given, Materials Project default 520 eV is used.
+            madetol (float):
+                Tolerance for convergence of energy terms (in eV)
+            q_model (QModel object):
+                User defined charge for correction.
+                If not given, highly localized charge is assumed.
         """
         self._axis = axis
         if isinstance(dielectricconst, int) or \
@@ -170,7 +178,7 @@ class FreysoldtCorrection(object):
         self._q = q
         self._encut = energy_cutoff
         self._pos = None #code will determine positions of defect in bulk cell
-        self._defpos = None #code will determine defect position in defect cell (after relaxation)
+        self._defpos = None #code will determine defect position in defect cell
         if not q_model:
             self._q_model = QModel()
 
@@ -187,7 +195,7 @@ class FreysoldtCorrection(object):
         logger = logging.getLogger(__name__)
         logger.info('This is Freysoldt Correction.')
         if not self._q:
-            if partflag=='AllSplit':
+            if partflag == 'AllSplit':
                 return [0.0,0.0,0.0]
             else:
                 return 0.0
@@ -197,36 +205,36 @@ class FreysoldtCorrection(object):
             self._purelocpot = Locpot.from_file(self._purelocpot)
 
         logger.debug('\nRun PC energy')
-        if partflag!='potalign':
+        if partflag != 'potalign':
             energy_pc = self.pc()
             logger.debug('PC calc done, correction = %f', round(energy_pc, 4))
             logger.debug('Now run potenttial alignment script')
 
-        if partflag!='pc':
+        if partflag != 'pc':
             if not type(self._deflocpot) is Locpot:
                 logger.debug('Load defect locpot')
                 self._deflocpot = Locpot.from_file(self._deflocpot)
             potalign = self.potalign(title=title)
 
         logger.info('\n\nFreysoldt Correction details:')
-        if partflag!='potalign':
+        if partflag != 'potalign':
             logger.info('PCenergy (E_lat) = %f', round(energy_pc, 5))
-        if partflag!='pc':
+        if partflag != 'pc':
             logger.info('potential alignment (-q*delta V) = %f',
                          round(potalign, 5))
         if partflag in ['All','AllSplit']:
             logger.info('TOTAL Freysoldt correction = %f',
                          round(energy_pc + potalign, 5))
 
-        if partflag=='pc':
+        if partflag == 'pc':
             return round(energy_pc, 5)
-        elif partflag=='potalign':
+        elif partflag == 'potalign':
             return round(potalign, 5)
-        elif partflag=='All':
+        elif partflag == 'All':
             return round(energy_pc + potalign, 5)
         else:
             return map(lambda x: round(x, 5), 
-                       [energy_pc, potalign, energy_pc+potalign])
+                       [energy_pc, potalign, energy_pc + potalign])
 
     def pc(self, struct=None):
         """
@@ -255,8 +263,8 @@ class FreysoldtCorrection(object):
         vol = np.dot(a1, np.cross(a2, a3))  #vol in bohr^3
 
         #compute isolated energy
-        step = 0.0001
-        encut1 = 20.  #converge to some smaller encut first [eV]
+        step = 1e-4
+        encut1 = 20  #converge to some smaller encut first [eV]
         flag = 0
         converge = []
         while (flag != 1):
@@ -267,7 +275,7 @@ class FreysoldtCorrection(object):
                 #simpson integration
                 eiso += 4*(self._q_model.rho_rec(g*g) ** 2)
                 eiso += 2*(self._q_model.rho_rec((g+step) ** 2) ** 2)
-                g += 2. * step
+                g += 2 * step
             eiso -= self._q_model.rho_rec(gcut ** 2) ** 2
             eiso *= (self._q ** 2) * step / (3 * round(np.pi, 6))
             converge.append(eiso)
@@ -284,7 +292,7 @@ class FreysoldtCorrection(object):
                       round(eiso, 5), encut1-20)
 
         #compute periodic energy;
-        encut1 = 20.  #converge to some smaller encut
+        encut1 = 20  #converge to some smaller encut
         flag = 0
         converge = []
         while flag != 1:
@@ -306,18 +314,18 @@ class FreysoldtCorrection(object):
         eper = converge[-1]
 
         logger.info('Eperiodic : %f hartree, converged at encut %d eV',
-                     round(eper, 5), encut1 - 20)
+                     round(eper, 5), encut1-20)
         logger.info('difference (periodic-iso) is %f hartree',
-                     round(eper-eiso, 6))
+                     round(eper - eiso, 6))
         logger.info( 'difference in (eV) is %f',
                      round((eper-eiso) * hart_to_ev, 4))
 
-        PCfreycorr = round((eiso-eper)/self._dielectricconst*hart_to_ev, 6)
+        PCfreycorr = round((eiso-eper) / self._dielectricconst * hart_to_ev, 6)
         logger.info('Defect Correction without alignment %f (eV): ', PCfreycorr)
 
         return PCfreycorr
 
-    def potalign(self, title=None,  widthsample=1., axis=None):
+    def potalign(self, title=None, widthsample=1.0, axis=None):
         """
         For performing planar averaging potential alignment
 
@@ -392,9 +400,9 @@ class FreysoldtCorrection(object):
 
         if axbulkval:
             for i in range(len(x)):
-                if axbulkval<x[i]:
+                if axbulkval < x[i]:
                     break
-            rollind = len(x)-i
+            rollind = len(x) - i
             pureavg = np.roll(pureavg,rollind)
             defavg = np.roll(defavg,rollind)
 
@@ -408,20 +416,20 @@ class FreysoldtCorrection(object):
         v_G = np.empty(len(x), np.dtype('c16'))
         epsilon = self._dielectricconst
         # q needs to be that of the back ground
-        v_G[0] = 4*np.pi * -self._q /epsilon * self._q_model.rho_rec_limit0()
+        v_G[0] = 4*np.pi * -self._q / epsilon * self._q_model.rho_rec_limit0()
         for i in range(1,nx):
             if (2*i < nx):
                 g = i * dg
             else:
                 g = (i-nx) * dg
-            g2 = g*g
+            g2 = g * g
             v_G[i] = 4*np.pi/(epsilon*g2) * -self._q * self._q_model.rho_rec(g2)
         if not (nx % 2):
             v_G[nx/2] = 0
         v_R = np.fft.fft(v_G)
         v_R_imag = np.imag(v_R)
-        v_R /= (latt.volume*ang_to_bohr**3)
-        v_R = np.real(v_R)* hart_to_ev
+        v_R /= (latt.volume * ang_to_bohr**3)
+        v_R = np.real(v_R) * hart_to_ev
 
         max_imag_vr = v_R_imag.max()
         if abs(max_imag_vr) > self._madetol:
@@ -430,16 +438,16 @@ class FreysoldtCorrection(object):
 
         #now get correction and do plots
         short = (defavg - pureavg - v_R)
-        checkdis = int((widthsample / 2) / (x[1]-x[0]))
+        checkdis = int((widthsample/2) / (x[1]-x[0]))
         mid = len(short) / 2
 
-        tmppot = [short[i] for i in range(mid - checkdis, mid + checkdis)]
+        tmppot = [short[i] for i in range(mid-checkdis, mid+checkdis)]
         logger.debug('shifted defect position on axis (%s) to origin',
                       repr(axbulkval))
         logger.debug('means sampling region is (%f,%f)',
                       x[mid-checkdis], x[mid+checkdis])
 
-        C = -1 * np.mean(tmppot)
+        C = -np.mean(tmppot)
         logger.debug('C = %f', C)
         final_shift = [short[j] + C for j in range(len(v_R))]
         v_R = [elmnt - C for elmnt in v_R]
@@ -460,6 +468,6 @@ class FreysoldtCorrection(object):
                 plotter.to_datafile(fname)
 
 
-        return -float(self._q)*C  #pot align energy correction (eV), add to energy output of PCfrey
+        return (-self._q * C)  #pot align energy correction (eV)
 
 

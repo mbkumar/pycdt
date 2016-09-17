@@ -38,18 +38,17 @@ def kumagai_init(structure, dieltens):
     elif len(dieltens.shape) == 1:
         dieltens = np.diagflat(dieltens)
 
-    logging.getLogger(__name__).debug('Lattice constants (in Angs): ' + \
-                                      str(cleanlat(angset)))
+    logging.getLogger(__name__).debug('Lattice constants (in Angs): '
+                                      + str(cleanlat(angset)))
     [a1, a2, a3] = ang_to_bohr * angset  # convert to bohr
     bohrset = [a1, a2, a3]
     vol = np.dot(a1, np.cross(a2, a3))
 
-    logging.getLogger(__name__).debug('Lattice constants (in Bohr): ' + \
-                                      str(cleanlat([a1, a2, a3])))
+    logging.getLogger(__name__).debug('Lattice constants (in Bohr): '
+                                      + str(cleanlat([a1, a2, a3])))
     determ = np.linalg.det(dieltens)
     invdiel = np.linalg.inv(dieltens)
-    logging.getLogger(__name__).debug('inv dielectric tensor: ' + \
-                                      str(invdiel))
+    logging.getLogger(__name__).debug('inv dielectric tensor: ' + str(invdiel))
 
     return angset, bohrset, vol, determ, invdiel
 
@@ -68,18 +67,18 @@ def real_sum(a1, a2, a3, r, q, dieltens, gamma, tolerance):
     while N < Nmaxlength:  
         r_sum = 0.0
         if norm(r):
-            for i in range(-N, N + 1):
-                for j in range(-N, N + 1):
-                    for k in range(-N, N + 1):
+            for i in range(-N, N+1):
+                for j in range(-N, N+1):
+                    for k in range(-N, N+1):
                         r_vec = i*a1 + j*a2 + k*a3 - r
                         loc_res = np.dot(r_vec, np.dot(invdiel, r_vec))
                         nmr = math.erfc(gamma * np.sqrt(loc_res))
                         dmr = np.sqrt(determ * loc_res)
                         r_sum += nmr / dmr  
         else:
-            for i in range(-N, N + 1):
-                for j in range(-N, N + 1):
-                    for k in range(-N, N + 1):
+            for i in range(-N, N+1):
+                for j in range(-N, N+1):
+                    for k in range(-N, N+1):
                         if i == j == k == 0:
                             continue
                         else:
@@ -96,7 +95,7 @@ def real_sum(a1, a2, a3, r, q, dieltens, gamma, tolerance):
                 'tolerance of {} for gamma {}'.format(Nmaxlength-1, gamma))
             return
         elif len(r_sums) > 3:
-            if abs(abs(r_sums[-1][1])-abs(r_sums[-2][1])) < tolerance:
+            if abs(abs(r_sums[-1][1]) - abs(r_sums[-2][1])) < tolerance:
                 r_sum = r_sums[-1][1]
                 logging.debug("gamma is {}".format(gamma))
                 logging.getLogger(__name__).debug(
@@ -184,7 +183,7 @@ def anisotropic_pc_energy(structure, g_sum, dieltens, q, gamma, tolerance):
     logger.debug('self interaction part: {}'.format(selfint * hart_to_ev))
     logger.debug('surface term: {}'.format(surfterm * hart_to_ev))
 
-    pc_energy = -q*0.5*hart_to_ev*(r_part + g_part - selfint - surfterm)
+    pc_energy = -(q*0.5*hart_to_ev) * (r_part + g_part - selfint - surfterm)
     logging.debug('Final PC Energy term: {} eV'.format(pc_energy))
 
     return pc_energy
@@ -194,10 +193,15 @@ def getgridind(structure, dim, r, gridavg=0.0):
     """
     Computes the index of a point, r, in the locpot grid
     Args:
-        structure: Pymatgen structure object
-        dim: dimension of FFT grid (NGXF dimension list in VASP)
-        r: Relative co-ordinates with respect to abc lattice vectors
-        gridavg: If you want to do atomic site averaging, set gridavg to the radius of the atom at r
+        structure:
+            Pymatgen structure object
+        dim:
+            dimension of FFT grid (NGXF dimension list in VASP)
+        r:
+            Relative co-ordinates with respect to abc lattice vectors
+        gridavg:
+            If you want to do atomic site averaging, set gridavg to
+            the radius of the atom at r
     Returns:
         [i,j,k]: Indices as list
     TODO: Once final, remove the getgridind inside disttrans function
@@ -234,7 +238,7 @@ def getgridind(structure, dim, r, gridavg=0.0):
             dxvals.append(dx)
 
     if gridavg:
-        grdindfull=[]
+        grdindfull = []
         for i in range(-radvals[0], radvals[0]+1):
             for j in range(-radvals[1], radvals[1]+1):
                 for k in range(-radvals[2], radvals[2]+1):
@@ -335,10 +339,12 @@ def disttrans(struct, defstruct, dim):
             logger.warning('Overwriting information.')
 
         grid_sites[blkindex] = {
-                'dist': defdist,'cart': dcart_coord,
+                'dist': defdist,
+                'cart': dcart_coord,
                 'cart_reldef': cart_reldef,
                 'siteobj': [i.coords, i.frac_coords, i.species_string],
-                'bulk_site_index': blkindex, 'def_site_index': defindex}
+                'bulk_site_index': blkindex,
+                'def_site_index': defindex}
 
     return grid_sites
 
@@ -385,7 +391,8 @@ def read_ES_avg(location_outcar):
         ngxf_dims = list(map(int, ngxlineout[3:8:2]))
 
         rad_line = out_dat[start_line+1].split()
-        radii = list(map(float, rad_line[5:])) #would be better to do this as dictionary but no structure available
+        radii = list(map(float, rad_line[5:]))
+        #Above would be better to do as dictionary but no structure available
 
         ES_data = {'sampling_radii': radii, 'ngxf_dims': ngxf_dims}
         pot = []
@@ -406,7 +413,8 @@ def read_ES_avg_fromlocpot(locpot):
     site from Locpot Pymatgen object
     """
     structure = locpot.structure
-    radii = {specie: 1.0 for specie in set(structure.species)} #this needs to be smarter (related to ENAUG?)
+    radii = {specie: 1.0 for specie in set(structure.species)}
+    # The above needs to be smarter (related to ENAUG?)
 
     ES_data = {'sampling_radii': radii, 'ngxf_dims': locpot.dim}
     pot = []
@@ -525,7 +533,7 @@ class KumagaiBulkInit(object):
         logger = logging.getLogger(__name__)
         #start with gamma s.t. gamma*L=5 (some paper said this is optimal)
         #optimizing gamma for the reciprocal sum to improve convergence 
-        gamma = 5./(vol ** (1/3.))
+        gamma = 5.0/(vol ** (1/3.0))
         optimal_gamma_found = False
 
         while not optimal_gamma_found:
@@ -554,17 +562,17 @@ class KumagaiBulkInit(object):
         """
         logger = logging.getLogger(__name__)
         logger.debug('Reciprocal summation in Madeling potential')
-        over_atob = 1.0/ang_to_bohr
-        atob3=ang_to_bohr**3
+        over_atob = 1.0 / ang_to_bohr
+        atob3 = ang_to_bohr ** 3
 
         latt = self.structure.lattice
-        vol = latt.volume*atob3 # in Bohr^3
+        vol = latt.volume * atob3 # in Bohr^3
 
         reci_latt = latt.reciprocal_lattice
         [b1, b2, b3] = reci_latt.get_cartesian_coords(1)
-        b1 = np.array(b1)*over_atob # In 1/Bohr
-        b2 = np.array(b2)*over_atob
-        b3 = np.array(b3)*over_atob
+        b1 = np.array(b1) * over_atob # In 1/Bohr
+        b2 = np.array(b2) * over_atob
+        b3 = np.array(b3) * over_atob
 
         nx, ny, nz = self.dim
         logging.debug('nx: %d, ny: %d, nz: %d', nx, ny, nz)
@@ -588,7 +596,7 @@ class KumagaiBulkInit(object):
                     if i == j == k == 0:
                         continue
                     else:
-                        g_array[i,j,k] = math.exp(-g_eps_g/gamm2)/g_eps_g
+                        g_array[i,j,k] = math.exp(-g_eps_g/gamm2) / g_eps_g
 
         r_array = np.fft.fftn(g_array)
         over_vol = 4*np.pi/vol # Multiply with q later
@@ -763,8 +771,9 @@ class KumagaiCorrection(object):
         potinddict = disttrans(self.structure, self.defstructure, self.dim) 
 
         minlat = min(norm(a1), norm(a2), norm(a3))
-        lat_perc_diffs = [100 * abs(norm(a1) - norm(lat))/minlat for lat in [a2,a3]]
-        lat_perc_diffs.append(100 * abs(norm(a2) - norm(a3))/minlat)
+        lat_perc_diffs = [100 * abs(norm(a1) - norm(lat)) / minlat for lat \
+                          in [a2, a3]]
+        lat_perc_diffs.append(100 * abs(norm(a2) - norm(a3)) / minlat)
         if not all(i < 45 for i in lat_perc_diffs):
             logger.warning('Detected that cell was not very cubic.')
             logger.warning('Sampling atoms outside wigner-seitz cell may '\
