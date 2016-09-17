@@ -135,7 +135,7 @@ class DefectsAnalyzer(object):
         add a parsed defect to the analyzer
         Args:
             defect:
-                a Defect object
+                a ComputedDefect object
         """
         self._defects.append(defect)
         self._compute_form_en()
@@ -266,12 +266,12 @@ class DefectsAnalyzer(object):
 
     def get_defect_occupancies(self):
         """
-        Defect occupancies with respect to defect charges are computed
+        Defect occupancies with respect to defect chargest.
         The assumption is that the highest charge of defect numerically
-        has zero occuoancy:
+        has zero occupancy:
         Ex: In Cr2O3, V_O has 0 occupancy for +2 q and 2 occupancy for 0 q.
             V_{Cr} has 0 occupancy for 0 q and 3 occupancy for -3 q
-        Caution: Didn't checkk for semiconductor with large # of defect q's.
+        Caution: Didn't check for semiconductor with large # of defect q's.
         Returns: 
             Defect occupancies as a nested dict
         """
