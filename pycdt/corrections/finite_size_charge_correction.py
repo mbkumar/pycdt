@@ -43,7 +43,7 @@ def get_correction_freysoldt(defect, bulk_entry, epsilon, title = None):
         locpot_blk = None
         locpot_path_blk = bulk_entry.data['locpot_path']
     locpot_path_def = defect.entry.data['locpot_path']
-    charge = defect._charge
+    charge = defect.charge
     #frac_coords = defect.site.frac_coords  #maybe should be using this
     encut = defect.entry.data['encut']
     if not charge:
@@ -89,7 +89,7 @@ def get_correction_kumagai(defect, path_blk, bulk_init, bulk_locpot=None,
     then set KumagaiBulk=
     """
     epsilon = bulk_init.epsilon
-    charge = defect._charge
+    charge = defect.charge
     encut = defect.entry.data['encut']
 
     outcar_path_blk = os.path.join(path_blk,'OUTCAR')
