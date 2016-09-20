@@ -53,13 +53,21 @@ class ComputedDefectTest(unittest.TestCase):
 
 class DefectsAnalyzerTest(unittest.TestCase):
     def setUp(self):
-        pass
+        blk_entry_file = os.path.join(file_loc, 'Cr2O3_bulk_entry.json')
+        blk_entry = loadfn(blk_entry_file, cls=MontyDecoder)
+        e_vbm = 0.5
+        mu_elts = {'Cr': -10, 'O': -5}
+        bandgap = 3.0
+        self.da = DefectsAnalyzer(blk_entry, e_vbm, mu_elts, bandgap)
 
-    def test_from_dict(self):
-        pass
-
-    def test_as_dict(self):
-        pass
+    def test_as_from_dict(self):
+        d = self.da.as_dict()
+        da = DefectsAnalyzer.from_dict(d)
+        self.assertIsInstance(da, DefectsAnalyzer)
+        with ScratchDir('.'):
+            dumpfn(self.da, 'tmp.json', cls=MontyEncoder)
+            da = loadfn('tmp.json', cls=MontyDecoder)
+            self.assertIsInstance(da, DefectsAnalyzer)
 
     def test_add_parsed_defect(self):
         pass

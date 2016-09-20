@@ -154,6 +154,10 @@ class PostProcess(object):
                     if 'substitution_specie' in trans_dict:
                         self._substitution_species.add(
                                 trans_dict['substitution_specie'])
+                    elif 'inter' in trans_dict['defect_type']:
+                        #added because extrinsic interstitials don't have 'substitution_specie' character...
+                        self._substitution_species.add(
+                                trans_dict['defect_site'].specie.symbol)
                         
                     site = trans_dict['defect_supercell_site']
                     multiplicity = trans_dict.get('defect_multiplicity', None)
