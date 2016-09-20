@@ -465,7 +465,6 @@ class PostProcess(object):
             #function for splitting off bulk and sub species names
             blk = []
             sub_spcs = []
-            print face_list
             for face in face_list:
                 if sub_el:
                     if sub_el in face:
