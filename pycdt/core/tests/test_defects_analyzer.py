@@ -51,7 +51,6 @@ class ComputedDefectTest(unittest.TestCase):
             self.assertIsInstance(comp_def, ComputedDefect)
 
 
-
 class DefectsAnalyzerTest(unittest.TestCase):
     def setUp(self):
         pass
