@@ -444,18 +444,83 @@ class PostProcess(object):
 
             return chem_lims
 
-        #want to include all sub species within the chemical potential description
+        # #uncomment if you want to include all sub species within the chemical potential description
+        # #NOTE: this takes a very long time if lots of substitutions are being used...
+        # chem_lims = {}
+        # for sub_el in self._substitution_species:
+        #     if sub_el in bulk_species_symbol:
+        #         continue
+        #     else:
+        #         from pymatgen.core import Element
+        #         bulk_species.append(Element(sub_el))
+        #         bulk_species_symbol.append(sub_el)
+        #
+        # chem_lims = get_chempots_from_entries(structure, bulk_species_symbol, bulk_composition)
+        # return chem_lims
+
+        finchem_lims = {}
+        numblk = len(bulk_species_symbol)
+
+        def diff_bulk_sub_phases(face_list, sub_el = None):
+            #function for splitting off bulk and sub species names
+            blk = []
+            sub_spcs = []
+            for face in face_list:
+                if sub_el:
+                    if sub_el in face:
+                        sub_spcs.append(face)
+                    else:
+                        blk.append(face)
+                else:
+                    blk.append(face)
+            blk.sort()
+            sub_spcs.sort()
+            blknom=''
+            subnom=''
+            for nom in blk:
+                blknom+=nom+'-'
+            blknom=blknom[:-1]
+            for nom in sub_spcs:
+                subnom+=nom+'-'
+            subnom=subnom[:-1]
+            return blk, blknom, subnom
+
+        #initialize chemical potentials for native species
+        chem_lims = get_chempots_from_entries(structure, bulk_species_symbol, bulk_composition)
+        for key in chem_lims.keys():
+            face_list = key.split('-')
+            blk, blknom, subnom = diff_bulk_sub_phases(face_list)
+            finchem_lims[blknom]={}
+            finchem_lims[blknom]=chem_lims[key]
+
+        #now consider adding single elements to extend the phase diagram, adding new additions to chemical potentials
+        #       ONLY for the cases where the phases in equilibria are those from the bulk phase diagram
+        #       This is essentially the assumption that the majority of the elements in the total composition will be
+        #           from the native species present rather than the sub species (a good approximation)
         for sub_el in self._substitution_species:
+            sub_species_symbol = bulk_species_symbol[:]
             if sub_el in bulk_species_symbol:
                 continue
             else:
-                from pymatgen.core import Element
-                bulk_species.append(Element(sub_el))
-                bulk_species_symbol.append(sub_el)
+                sub_species_symbol.append(sub_el)
+            chem_lims = get_chempots_from_entries(structure, sub_species_symbol, bulk_composition)
+            for key in chem_lims.keys():
+                face_list = key.split('-')
+                blk, blknom, subnom = diff_bulk_sub_phases(face_list)
+                if len(blk)+1 == numblk: #if one less than number of bulk species then can be grouped with rest of structures
+                    if blknom not in finchem_lims.keys():
+                        finchem_lims[blknom]={}
+                        finchem_lims[blknom]=chem_lims[key]
+                    elif 'name-append' not in finchem_lims[blknom].keys():
+                        finchem_lims[blknom]['name-append'] = subnom
+                    else:
+                        finchem_lims[blknom][sub_el]=chem_lims[key][sub_el]
+                        finchem_lims[blknom]['name-append']+= '-'+subnom
+                else:
+                    #if chem pots determined by two sub-specie dominated phases, skip the chemical_potential description!
+                    continue
 
-        chem_lims = get_chempots_from_entries(structure, bulk_species_symbol, bulk_composition)
-
-        return chem_lims
+        return finchem_lims
 
     def parse_dielectric_calculation(self):
         """
