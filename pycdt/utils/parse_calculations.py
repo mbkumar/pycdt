@@ -510,15 +510,15 @@ class PostProcess(object):
             chem_lims = get_chempots_from_entries(structure, sub_species_symbol, bulk_composition)
             for key in chem_lims.keys():
                 face_list = key.split('-')
-                blk, blknom, subnom = diff_bulk_sub_phases(face_list)
+                blk, blknom, subnom = diff_bulk_sub_phases(face_list, sub_el = sub_el)
                 if len(blk)+1 == numblk: #if one less than number of bulk species then can be grouped with rest of structures
                     if blknom not in finchem_lims.keys():
-                        finchem_lims[blknom]={}
                         finchem_lims[blknom]=chem_lims[key]
-                    elif 'name-append' not in finchem_lims[blknom].keys():
-                        finchem_lims[blknom]['name-append'] = subnom
                     else:
                         finchem_lims[blknom][sub_el]=chem_lims[key][sub_el]
+                    if 'name-append' not in finchem_lims[blknom].keys():
+                        finchem_lims[blknom]['name-append'] = subnom
+                    else:
                         finchem_lims[blknom]['name-append']+= '-'+subnom
                 else:
                     #if chem pots determined by two sub-specie dominated phases, skip the chemical_potential description!
@@ -565,7 +565,7 @@ class PostProcess(object):
             1) ability for substitutional atomic chempots
             2) incorporated charge corrections for defects
         """
-        output = self.parse_defect_calculations()    
+        output = self.parse_defect_calculations()
         output['epsilon'] = self.parse_dielectric_calculation()
         output['mu_range'] = self.get_chempot_limits()
         vbm,gap = self.get_vbm_bandgap()
