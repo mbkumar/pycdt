@@ -41,11 +41,7 @@ class DefectPlotter(object):
         """
         if xlim is None:
             xlim = (-0.5, self._analyzer._band_gap+1.5)
-        max_lim = xlim[1]
-        min_lim = xlim[0]
         nb_steps = 10000
-        step = (max_lim-min_lim) / nb_steps
-        x = [min_lim+step*i for i in range(nb_steps)]
         x = np.arange(xlim[0], xlim[1], (xlim[1]-xlim[0])/nb_steps)
         y = {}
         trans_level_pt = {}
@@ -81,7 +77,7 @@ class DefectPlotter(object):
         colors=cm.Dark2(np.linspace(0, 1, len(y)))
         for cnt, c in enumerate(y):
             plt.plot(x, y[c], linewidth=3, color=colors[cnt])
-        plt.plot([min_lim, max_lim], [0, 0], 'k-')
+        plt.plot([xlim[0], xlim[1]], [0, 0], 'k-')
 
         def get_legends(types):
             legends = []
