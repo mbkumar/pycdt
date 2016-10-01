@@ -3,7 +3,6 @@
 from __future__ import division
 
 __author__ = "Bharat Medasani"
-__copyright__ = "Copyright 2014, The Materials Project"
 __version__ = "0.8"
 __maintainer__ = "Bharat Medasani"
 __email__ = "mbkumar@gmail.com"

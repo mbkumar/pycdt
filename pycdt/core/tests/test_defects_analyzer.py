@@ -55,10 +55,17 @@ class DefectsAnalyzerTest(unittest.TestCase):
     def setUp(self):
         blk_entry_file = os.path.join(file_loc, 'Cr2O3_bulk_entry.json')
         blk_entry = loadfn(blk_entry_file, cls=MontyDecoder)
+        blk_entry.energy = -100
         e_vbm = 0.5
         mu_elts = {'Cr': -10, 'O': -5}
         bandgap = 3.0
         self.da = DefectsAnalyzer(blk_entry, e_vbm, mu_elts, bandgap)
+
+        d1_entry_file = os.path.join(file_loc, 'Cr2O3_def1_entry.json')
+        d1_entry = loadfn(d1_entry_file, cls=MontyDecoder)
+        d1_entry.energy = -99
+        mult = 6
+        sc_size = 12
 
     def test_as_from_dict(self):
         d = self.da.as_dict()
@@ -84,6 +91,7 @@ class DefectsAnalyzerTest(unittest.TestCase):
     def test_get_transition_levels(self):
         pass
 
+    @unittest.skip
     def test_correct_bg(self):
         pass
 

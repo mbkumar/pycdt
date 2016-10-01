@@ -1,7 +1,6 @@
 # coding: utf-8
 """
-Parses the vasprun.xml files generated during VASP defect calculations
-in conformation with DefectsAnalyzer written by Geoffroy.
+Parses the computed data from VASP defect calculations.
 """
 #from __future__ import unicode_literals
 from __future__ import division
@@ -49,7 +48,7 @@ class PostProcess(object):
 
     def parse_defect_calculations(self):
         """
-        Parses the defect calculations as ComputedStructureEntries/ComputedDefects.
+        Parses the defect calculations as ComputedDefects.
         Charge correction is missing in the first run.
         """
         logger = logging.getLogger(__name__)
@@ -75,8 +74,8 @@ class PostProcess(object):
                 return (None, error_msg)
 
             if not vr.converged:
-                logger.warning("Vasp calculation at {} not converged".format(
-                    fldr))
+                logger.warning(
+                    "Vasp calculation at {} not converged".format(fldr))
                 error_msg = ": Failure, Vasp calculation not converged."
                 return (None, error_msg) # Further processing is not useful
 
@@ -132,10 +131,11 @@ class PostProcess(object):
                             cls=MontyDecoder)
                 supercell_size = trans_dict['supercell']
 
-                bulk_locpot_path = os.path.abspath(os.path.join(fldr,'LOCPOT'))
+                bulk_locpot_path = os.path.abspath(os.path.join(fldr, 'LOCPOT'))
                 bulk_entry = ComputedStructureEntry(
                         bulk_struct, bulk_energy,
-                        data={'locpot_path': bulk_locpot_path, 'encut': encut,
+                        data={'locpot_path': bulk_locpot_path,
+                              'encut': encut,
                               'supercell_size': supercell_size})
             else:
                 chrg_fldrs = glob.glob(os.path.join(fldr,'charge*'))
@@ -147,15 +147,14 @@ class PostProcess(object):
                     supercell_size = trans_dict['supercell']
                     vr, error_msg = get_vr_and_check_locpot(chrg_fldr)
                     if error_msg:
-                        #print(fldr_name, 'charge- ', chrg, error_msg)
                         logger.warning("Parsing the rest of the calculations")
-                        #print("But parsing of the rest of the calculations")
                         continue
                     if 'substitution_specie' in trans_dict:
                         self._substitution_species.add(
                                 trans_dict['substitution_specie'])
                     elif 'inter' in trans_dict['defect_type']:
-                        #added because extrinsic interstitials don't have 'substitution_specie' character...
+                        #added because extrinsic interstitials don't have
+                        # 'substitution_specie' character...
                         self._substitution_species.add(
                                 trans_dict['defect_site'].specie.symbol)
                         
@@ -172,9 +171,6 @@ class PostProcess(object):
                                            "in {}".format(fldr_name))
                             logger.warning("Parsing the rest of the "
                                            "calculations")
-                            #print(fldr_name, 'Not able to determine ENCUT')
-                            #print(error_msg)
-                            #print("But parsing the rest of the calculations")
                             continue
 
                     locpot_path = os.path.abspath(
@@ -185,12 +181,11 @@ class PostProcess(object):
                                 trans_dict['substitution_specie']
                     comp_def_entry = ComputedStructureEntry(
                             struct, energy, data=comp_data)
-                    parsed_defects.append(
-                            ComputedDefect( 
-                                comp_def_entry, site_in_bulk=site, 
-                                multiplicity=multiplicity,
-                                supercell_size=supercell_size,
-                                charge=chrg, name=fldr_name))
+                    parsed_defects.append(ComputedDefect(
+                            comp_def_entry, site_in_bulk=site,
+                            multiplicity=multiplicity,
+                            supercell_size=supercell_size,
+                            charge=chrg, name=fldr_name))
 
         else:
             parsed_defects_data = {}
@@ -238,23 +233,28 @@ class PostProcess(object):
         return (vbm, bandgap)
 
     def get_chempot_limits(self, structure=None):
+        # TODO 1: get rid of MPRester pulling of structure. When you run
+        #    this your structure should already be known It is an
+        #    unneccssary complication for people who have structures
+        #    that are not in the MP data base...
+        # TODO 2: allow for dependent elements to be used (i.e.
+        #    PDA.get_chempot_range_stability_phase(target_comp, open_elt))
+        #    (1 and 2 are related - since we want to allow for an option
+        #    where we have the dependent chem pot limits)
+        # TODO 3: (when no mp-id present but composition is found) do
+        #    structure check to see if input structure is identical to
+        #    structure with identical composition in MP database
+
         """
-        TODO 1: get rid of MPRester pulling of structure. When you run this your structure should already be known
-            It is an unneccssary complication for people who have structures that are not in the MP data base...
-        TODO 2: allow for dependent elements to be used (i.e. PDA.get_chempot_range_stability_phase(target_comp, open_elt))
-            (1 and 2 are related - since we want to allow for an option where we have the dependent chem pot limits)
-        TODO 3: (when no mp-id present but composition is found) do structure check to see if input structure is
-             identical to structure with identical composition in MP database
-
         Returns atomic chempots from mpid or structure input
-
-        accounts for all different defect phases
+        Accounts for all different defect phases
         """
         logger = logging.getLogger(__name__)
         if not structure:
             if not self._mpid:
-                    bulkvr = Vasprun(os.path.join(self._root_fldr,"bulk","vasprun.xml"))
-                    structure = bulkvr.final_structure
+                bulkvr = Vasprun(os.path.join(
+                    self._root_fldr, "bulk", "vasprun.xml"))
+                structure = bulkvr.final_structure
             elif not self._mapi_key:
                 with MPRester() as mp:
                     structure = mp.get_structure_by_material_id(self._mpid)
@@ -270,20 +270,32 @@ class PostProcess(object):
         bulk_species_symbol = [s.symbol for s in bulk_species]
         bulk_composition = structure.composition
 
-        def get_chempots_from_entries(structure, list_spec_symbol, comp, exceptions=[]):
+        def get_chempots_from_entries(structure, list_spec_symbol, comp,
+                                      exceptions=[]):
             """
-            outline for how to retrieve atomic chempots from Materials Project (MP) entries in a phase diagram (PD) object:
-              1) check stability of computed entry w.r.t phase diagram generated from MP
-              2) If stable then: a) if mp-id given and is in the stable entry list, proceed normally
-                                 b) if mp-id not given, print 'congrats' and tell user about manual submission page on MP
-                                    website, then manually insert the new object into the PD and generate chempots
-                                        (note at this point there is no gurantee that the structure is actually unique,
-                                          could be computational error making energy slightly lower than MP values)
-              3) If not-stable then: a) check to see if composition exists among the structures in stable list of PD
-                                     b) if a stable and identical composition exists in PD then
-                                            print warning but continue as if it was stable (chem pots will depend on the stable phase)
-                                     c) if no stable and identical composition exists in PD, then
-                                            print warning and find facets that the composition is included in
+            Outline for how to retrieve atomic chempots from Materials
+            Project (MP) entries in a phase diagram (PD) object:
+              1) check stability of computed entry w.r.t phase diagram
+                    generated from MP
+              2) If stable then:
+                 a) if mp-id given and is in the stable entry list,
+                    proceed normally
+                 b) if mp-id not given, print 'congrats' and tell user
+                    about manual submission page on MP website, then
+                    manually insert the new object into the PD and
+                    generate chempots (note at this point there is no
+                    gurantee that the structure is actually unique,
+                    could be computational error making energy slightly
+                    lower than MP values)
+              3) If not-stable then:
+                 a) check to see if composition exists among the structures
+                    in stable list of PD
+                 b) if a stable and identical composition exists in PD
+                    then print warning but continue as if it was stable
+                    (chem pots will depend on the stable phase)
+                 c) if no stable and identical composition exists in PD,
+                    then print warning and find facets that the composition
+                    is included in
             """
             if not self._mapi_key:
                 with MPRester() as mp:
@@ -302,21 +314,22 @@ class PostProcess(object):
             full_idlist = [i.entry_id for i in pd.qhull_entries]
             stable_idlist = [i.entry_id for i in pd.stable_entries]
 
-            if self._mpid:
-                if (self._mpid in full_idlist) and (self._mpid in stable_idlist):
+            mpid = self._mpid
+            if mpid:
+                if (mpid in full_idlist) and (mpid in stable_idlist):
                    logger.debug("Verified that mp-id is stable within "
                                 "Materials Project {} phase diagram".format(
                                     '-'.join(list_spec_symbol)))
                    common_approach = True
-                elif (self._mpid in full_idlist) and not (self._mpid in stable_idlist):
+                elif (mpid in full_idlist) and not (mpid in stable_idlist):
                     redcomp = comp.reduced_composition
                     common_approach = False
                     for i in pd.stable_entries:
-                        if i.composition.reduced_composition==redcomp:
+                        if i.composition.reduced_composition == redcomp:
                             logger.warning(
                                 "Input mp-id {} is unstable. Stable "
                                 "composition mp-id found to be {}".format(
-                                    self._mpid, i.entry_id))
+                                    mpid, i.entry_id))
                             logger.warning(
                                 "Proceeding with atomic chemical potentials "
                                 "with respect to stable phase.")
@@ -324,7 +337,7 @@ class PostProcess(object):
                     if not common_approach:
                         logger.warning(
                             "Input mp-id {} is unstable. No stable structure "
-                            "with same composition exists".format(self._mpid))
+                            "with same composition exists".format(mpid))
                         logger.warning(
                             "Proceeding with atomic chemical potentials "
                             "according to composition position within phase "
@@ -333,7 +346,7 @@ class PostProcess(object):
                     logger.warning(
                         "Specified mp-id {} could not find it in MP phase "
                         "diagram. Reverting to assumption that mp-id is not "
-                        "known.".format(self._mpid))
+                        "known.".format(mpid))
                     self._mpid = None
                     bulkvr = Vasprun(os.path.join(self._root_fldr, "bulk",
                                                   "vasprun.xml"))
@@ -345,22 +358,23 @@ class PostProcess(object):
                     bulkvr = Vasprun(os.path.join(self._root_fldr, "bulk",
                                                   "vasprun.xml"))
                     ce = bulkvr.get_computed_entry()
-                decomp_en = round(PDA.get_decomp_and_e_above_hull(
-                            ce, allow_negative=True)[1],4)
+                decomp_en = round(
+                    PDA.get_decomp_and_e_above_hull(ce, allow_negative=True)[1],
+                    4)
                 redcomp = comp.reduced_composition
                 stable_composition_exists = False
                 for i in pd.stable_entries:
-                    if i.composition.reduced_composition==redcomp:
+                    if i.composition.reduced_composition == redcomp:
                         stable_composition_exists = True
 
-                if (decomp_en <= 0.) and stable_composition_exists:
+                if (decomp_en <= 0) and stable_composition_exists:
                     #then stable and can proceed as normal
                     logger.debug(
                         "Bulk Computed Entry found to be stable with respect "
                         "to MP Phase Diagram. No mp-id specified, but found "
                         "stable MP composition to exist.")
                     common_approach = True
-                elif (decomp_en <= 0.) and not stable_composition_exists:
+                elif (decomp_en <= 0) and not stable_composition_exists:
                     logger.info(
                         "Bulk Computed Entry found to be stable with respect "
                         "to MP Phase Diagram.\nHowever, no stable entry with "
@@ -394,31 +408,36 @@ class PostProcess(object):
             if common_approach:
                 for facet in pd.facets:
                     fincomp = comp.reduced_composition
-                    eltsinfac=[pd.qhull_entries[j].composition.reduced_composition for j in facet]
+                    eltsinfac = [
+                        pd.qhull_entries[j].composition.reduced_composition \
+                        for j in facet]
                     if fincomp in eltsinfac:
                         chempots = PDA.get_facet_chempots(facet)
-                        if len(eltsinfac)!=1:
+                        if len(eltsinfac) != 1:
                             eltsinfac.remove(fincomp)
-                        limnom=''
+                        limnom = ''
                         for sys in eltsinfac:
-                            limnom+=str(sys.reduced_formula)+'-'
-                        limnom=limnom[:-1]
-                        if len(eltsinfac)==1:
-                            limnom+='_rich'
-                        print(limnom,chempots)
-                        chemdict = {el.symbol:chempots[el] for el in pd.elements}
-                        chem_lims[limnom]=chemdict
+                            limnom += str(sys.reduced_formula) + '-'
+                        limnom = limnom[:-1]
+                        if len(eltsinfac) == 1:
+                            limnom += '_rich'
+                        print(limnom, chempots)
+                        chemdict = {
+                            el.symbol: chempots[el] for el in pd.elements}
+                        chem_lims[limnom] = chemdict
             else:
                 #this uses basic form of creation of facets from
                 # initialization of phase diagram object
                 from scipy.spatial import ConvexHull
                 tmpnew_qdata = list(pd.qhull_data)
                 del tmpnew_qdata[-1]
-                new_qdata = [[val[i] for i in range(len(val)-1)] for val in tmpnew_qdata]
+                new_qdata = [[val[i] for i in range(len(val)-1)] \
+                             for val in tmpnew_qdata]
 
                 tmp_elts = [e for e in pd.elements]
                 del tmp_elts[0]
-                unstable_qdata_elt = [comp.get_atomic_fraction(el) for el in tmp_elts]
+                unstable_qdata_elt = [
+                    comp.get_atomic_fraction(el) for el in tmp_elts]
                 new_qdata.append(unstable_qdata_elt)
 
                 #take facets of composition space and see if the new
@@ -426,7 +445,8 @@ class PostProcess(object):
                 facets = []
                 for facet in pd.facets:
                     tmp_facet = [new_qdata[e] for e in facet]
-                    prev_vol = ConvexHull(tmp_facet, qhull_options="QJ i").volume
+                    prev_vol = ConvexHull(
+                        tmp_facet, qhull_options="QJ i").volume
                     tmp_facet.append(new_qdata[-1])
                     new_vol = ConvexHull(tmp_facet, qhull_options="QJ i").volume
                     if abs(prev_vol-new_vol) < 0.0001:
@@ -435,16 +455,18 @@ class PostProcess(object):
                 #now get chemical potentials
                 for facet in facets:
                     chempots = PDA.get_facet_chempots(facet)
-                    eltsinfac=[pd.qhull_entries[j].composition.reduced_composition for j in facet]
-                    limnom=''
+                    eltsinfac = [
+                        pd.qhull_entries[j].composition.reduced_composition \
+                        for j in facet]
+                    limnom = ''
                     for sys in eltsinfac:
-                        limnom+=str(sys.reduced_formula)+'-'
-                    limnom=limnom[:-1]
-                    if len(eltsinfac)==1:
-                        limnom+='_rich'
-                    print(limnom,chempots)
-                    chemdict = {el.symbol:chempots[el] for el in pd.elements}
-                    chem_lims[limnom]=chemdict
+                        limnom += str(sys.reduced_formula) + '-'
+                    limnom = limnom[:-1]
+                    if len(eltsinfac) == 1:
+                        limnom += '_rich'
+                    print(limnom, chempots)
+                    chemdict = {el.symbol: chempots[el] for el in pd.elements}
+                    chem_lims[limnom] = chemdict
 
             return chem_lims
 
@@ -479,49 +501,57 @@ class PostProcess(object):
                     blk.append(face)
             blk.sort()
             sub_spcs.sort()
-            blknom=''
-            subnom=''
+            blknom = ''
+            subnom = ''
             for nom in blk:
-                blknom+=nom+'-'
-            blknom=blknom[:-1]
+                blknom += nom + '-'
+            blknom = blknom[:-1]
             for nom in sub_spcs:
-                subnom+=nom+'-'
-            subnom=subnom[:-1]
+                subnom += nom+'-'
+            subnom = subnom[:-1]
             return blk, blknom, subnom
 
         #initialize chemical potentials for native species
-        chem_lims = get_chempots_from_entries(structure, bulk_species_symbol, bulk_composition)
+        chem_lims = get_chempots_from_entries(structure, bulk_species_symbol,
+                                              bulk_composition)
         for key in chem_lims.keys():
             face_list = key.split('-')
             blk, blknom, subnom = diff_bulk_sub_phases(face_list)
-            finchem_lims[blknom]={}
-            finchem_lims[blknom]=chem_lims[key]
+            finchem_lims[blknom] = {}
+            finchem_lims[blknom] = chem_lims[key]
 
-        #now consider adding single elements to extend the phase diagram, adding new additions to chemical potentials
-        #       ONLY for the cases where the phases in equilibria are those from the bulk phase diagram
-        #       This is essentially the assumption that the majority of the elements in the total composition will be
-        #           from the native species present rather than the sub species (a good approximation)
+        # Now consider adding single elements to extend the phase diagram,
+        # adding new additions to chemical potentials ONLY for the cases
+        # where the phases in equilibria are those from the bulk phase
+        # diagram. This is essentially the assumption that the majority of
+        # the elements in the total composition will be from the native
+        # species present rather than the sub species (a good approximation)
         for sub_el in self._substitution_species:
             sub_species_symbol = bulk_species_symbol[:]
             if sub_el in bulk_species_symbol:
                 continue
             else:
                 sub_species_symbol.append(sub_el)
-            chem_lims = get_chempots_from_entries(structure, sub_species_symbol, bulk_composition)
+            chem_lims = get_chempots_from_entries(
+                structure, sub_species_symbol, bulk_composition)
             for key in chem_lims.keys():
                 face_list = key.split('-')
-                blk, blknom, subnom = diff_bulk_sub_phases(face_list, sub_el = sub_el)
-                if len(blk)+1 == numblk: #if one less than number of bulk species then can be grouped with rest of structures
+                blk, blknom, subnom = diff_bulk_sub_phases(face_list,
+                                                           sub_el=sub_el)
+                # if one less than number of bulk species then can be
+                # grouped with rest of structures
+                if len(blk)+1 == numblk:
                     if blknom not in finchem_lims.keys():
-                        finchem_lims[blknom]=chem_lims[key]
+                        finchem_lims[blknom] = chem_lims[key]
                     else:
-                        finchem_lims[blknom][sub_el]=chem_lims[key][sub_el]
+                        finchem_lims[blknom][sub_el] = chem_lims[key][sub_el]
                     if 'name-append' not in finchem_lims[blknom].keys():
                         finchem_lims[blknom]['name-append'] = subnom
                     else:
-                        finchem_lims[blknom]['name-append']+= '-'+subnom
+                        finchem_lims[blknom]['name-append'] += '-' + subnom
                 else:
-                    #if chem pots determined by two sub-specie dominated phases, skip the chemical_potential description!
+                    # if chem pots determined by two sub-specie dominated
+                    # phases, skip the chemical_potential description!
                     continue
 
         return finchem_lims
