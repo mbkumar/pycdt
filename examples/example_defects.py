@@ -2,8 +2,8 @@ __author__ = 'geoffroy'
 
 from pymatgen.core.structure import Structure
 from pymatgen.core.periodic_table import Element
-from pycdcd.core.defectsmaker import ChargedDefectsStructures
-from pycdcd.utils.vasp import make_vasp_defect_files, \
+from pycdt.core.defectsmaker import ChargedDefectsStructures
+from pycdt.utils.vasp import make_vasp_defect_files, \
         make_vasp_dielectric_files
 import json
 
