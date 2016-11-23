@@ -13,13 +13,79 @@ from copy import deepcopy
 
 from monty.serialization import loadfn, dumpfn
 from monty.json import MontyEncoder
+from monty.os.path import zpath
 
 from pymatgen.io.vasp.inputs import Kpoints
 from pymatgen.io.vasp.sets import MPRelaxSet, MPStaticSet
+from pymatgen.io.vasp.inputs import PotcarSingle, Potcar, get_potcar_dir
 
 
 MODULE_DIR = os.path.dirname(os.path.abspath(__file__))
 CONFIG = loadfn(os.path.join(MODULE_DIR, "DefectSet.yaml"))
+
+class PotcarSingleMod(PotcarSingle):
+
+    def __init__(self, *args, **kwargs):
+        super(PotcarSingle, self).__init__(*argds, **kwargs)
+
+    @staticmethod
+    def from_symbol_and_functional(symbol, functional="PBE"):
+        funcdir = PotcarSingle.functional_dir[functional]
+
+        if not os.path.isdir(os.path.join(get_potcar_dir(), funcdir)):
+            functional_dir = {"LDA_US": "pot",
+                              "PW91_US": "pot_GGA", 
+                              "LDA": "potpaw", 
+                              "PW91": "potpaw_GGA", 
+                              "LDA_52": "potpaw_LDA.52",
+                              "PBE": "potpaw_PBE", 
+                              "PBE_52": "potpaw_PBE.52"}
+            funcdir = functional_dir[functional]
+
+
+        d = get_potcar_dir()
+        if d is None:
+            raise ValueError("No POTCAR directory found. Please set "
+                             "the VASP_PSP_DIR environment variable")
+        paths_to_try = [os.path.join(d, funcdir, "POTCAR.{}".format(symbol)),
+                        os.path.join(d, funcdir, symbol, "POTCAR")]
+        for p in paths_to_try:
+            p = os.path.expanduser(p)
+            p = zpath(p)
+            if os.path.exists(p):
+                return PotcarSingle.from_file(p)
+        raise IOError("You do not have the right POTCAR with functional " +
+                      "{} and label {} in your VASP_PSP_DIR".format(functional,
+                                                                    symbol))
+
+
+class PotcarMod(Potcar):
+
+    def __init__(self, **kwargs):
+        Potcar.__init__(self, **kwargs)
+
+    def set_symbols(self, symbols, functional=Potcar.DEFAULT_FUNCTIONAL,
+                    sym_potcar_map=None):
+        """
+        Initialize the POTCAR from a set of symbols. Currently, the POTCARs can
+        be fetched from a location specified in the environment variable
+        VASP_PSP_DIR or in a pymatgen.cfg or specified explicitly in a map.
+
+        Args:
+            symbols ([str]): A list of element symbols
+            functional (str): The functional to use from the config file
+            sym_potcar_map (dict): A map of symbol:raw POTCAR string. If
+                sym_potcar_map is specified, POTCARs will be generated from
+                the given map data rather than the config file location.
+        """
+        del self[:]
+        if sym_potcar_map:
+            for el in symbols:
+                self.append(PotcarSingle(sym_potcar_map[el]))
+        else:
+            for el in symbols:
+                p = PotcarSingleMod.from_symbol_and_functional(el, functional)
+                self.append(p)
 
 
 class DefectRelaxSet(MPRelaxSet):
@@ -47,6 +113,13 @@ class DefectRelaxSet(MPRelaxSet):
             inc['NELECT'] = self.nelect - self.charge
         return inc
 
+    @property
+    def potcar(self):
+        """
+        Potcar object.
+        """
+        return PotcarMod(symbols=self.potcar_symbols, functional=self.potcar_functional)
+
 
 class DefectStaticSet(MPStaticSet):
     """
@@ -62,6 +135,13 @@ class DefectStaticSet(MPStaticSet):
 
         super(self.__class__, self).__init__(structure, **kwargs)
 
+    @property
+    def potcar(self):
+        """
+        Potcar object.
+        """
+        return PotcarMod(symbols=self.potcar_symbols, functional=self.potcar_functional)
+
 
 class DielectricSet(MPStaticSet):
     """
@@ -76,6 +156,14 @@ class DielectricSet(MPStaticSet):
         kwargs['user_incar_settings'] = dielectric_settings
 
         super(self.__class__, self).__init__(structure, lepsilon=True, **kwargs)
+
+    @property
+    def potcar(self):
+        """
+        Potcar object.
+        """
+        return PotcarMod(symbols=self.potcar_symbols, 
+                         functional=self.potcar_functional)
 
 
 def write_additional_files(path, trans_dict=None, incar={}, kpoints=None,
@@ -180,6 +268,7 @@ def make_vasp_defect_files(defects, path_base, user_settings={}, hse=False):
 
     write_additional_files(path, dict_transf, incar=incar, kpoints=kpoints,
                            hse=hse)
+
 
 def make_vasp_defect_files_dos(defects, path_base, user_settings={}, 
                            hse=False, dos_limits=(-1,7)):
@@ -329,6 +418,7 @@ def make_vasp_defect_files_dos(defects, path_base, user_settings={},
     mp_relax_set.potcar.write_file(os.path.join(path,"POTCAR"))
     dumpfn(dict_transf, os.path.join(path,'transformation.json'),
            cls=MontyEncoder)
+
 
 def make_vasp_dielectric_files(struct, path=None, user_settings={}, hse=False):
     """
