@@ -2,7 +2,7 @@
 PyCDT
 =====
 
-Python Charge Defects Tool (PyCDT) is a python packaged aimed at making 
+Python Charge Defects Toolkit (PyCDT) is a python packaged aimed at making 
 charged defects modeling simpler, high throughput ready, and also accessible 
 to researchers who don't have the required background. At present it can do 
 simple defect thermodynamic calculations and error corrections for periodic
@@ -24,7 +24,7 @@ If not available already, use the following steps.
 
 #. Download the pycdt source code using the command::
 
-    git clone https://github.com/mbkumar/pycdt.git
+    git clone https://bitbucket.org/mbkumar/pycdt.git
 
 Installation
 ------------
@@ -48,6 +48,11 @@ add PYCDT_INSTALL_DIR to PATH and PYTHONPATH variables by the following commands
     
     export PATH=$PATH:PYCDT_INSTALL_DIR
     export PYTHONPATH=$PYTHONPATH:PYCDT_INSTALL_DIR
+
+#. (Optional) Set the VASP pseudopotential directory in .pmgrc.yaml as follows::
+
+     VASP_PSP_DIR: <location of vasp pseudopotential top directory>
+
 
 
 Examples

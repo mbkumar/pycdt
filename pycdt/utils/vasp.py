@@ -299,8 +299,8 @@ def make_vasp_defect_files_dos(defects, path_base, user_settings={},
             [defects[key] for key in defects if key != 'bulk'])
 
     for defect in comb_defs:
-        print type(defect)
-        print defect['charges']
+        print (type(defect))
+        print (defect['charges'])
         for charge in defect['charges']:
             s = defect['supercell']
             dict_transf = {
