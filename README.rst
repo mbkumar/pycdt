@@ -49,11 +49,11 @@ Installation
     export PATH=$PATH:PYCDT_INSTALL_DIR
     export PYTHONPATH=$PYTHONPATH:PYCDT_INSTALL_DIR
 
-4. (Optional) Set the VASP pseudopotential directory in $HOME/.pmgrc.yaml as follows::
+4. (If not set) Set the VASP pseudopotential directory in $HOME/.pmgrc.yaml as follows::
 
      VASP_PSP_DIR: <Location of vasp pseudopotential top directory>
 
-5. (Optional) Set the Materials Project API key in $HOME/.pmgrc.yaml as follows::
+5. (If not set) Set the Materials Project API key in $HOME/.pmgrc.yaml as follows::
 
      MAPI_KEY: <Your mapi key obtained from www.materialsproject.org>
 
