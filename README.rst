@@ -36,15 +36,15 @@ Installation
 
     python setup.py install
 
-The command tries to obtain the required packages and their dependencies and install them automatically.
-Access to root may be needed if ``virtualenv`` is not used.
+    The command tries to obtain the required packages and their dependencies and install them automatically.
+    Access to root may be needed if ``virtualenv`` is not used.
 
 #. The package can be installed at non-standard locations using the command::
 
     python setup.py install --prefix PYCDT_INSTALL_DIR
 
-where PYCDT_INSTALL_DIR is your choice of directory. In UNIX/Linux environments,
-add PYCDT_INSTALL_DIR to PATH and PYTHONPATH variables by the following commands::
+    where PYCDT_INSTALL_DIR is your choice of directory. In UNIX/Linux environments,
+    add PYCDT_INSTALL_DIR to PATH and PYTHONPATH variables by the following commands::
     
     export PATH=$PATH:PYCDT_INSTALL_DIR
     export PYTHONPATH=$PYTHONPATH:PYCDT_INSTALL_DIR
