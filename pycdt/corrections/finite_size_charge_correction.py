@@ -26,7 +26,7 @@ __email__ = 'dbroberg@gmail.com, mbkumar@gmail.com'
 import os
 import numpy as np
 from pymatgen.io.vasp.outputs import Locpot
-from kumagai_correction import KumagaiBulkInit, KumagaiCorrection
+from pycdt.corrections.kumagai_correction import KumagaiBulkInit, KumagaiCorrection
 
 def get_correction_freysoldt(defect, bulk_entry, epsilon, title = None):
     """
