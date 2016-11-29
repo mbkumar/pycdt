@@ -121,6 +121,26 @@ class DefectRelaxSet(MPRelaxSet):
         """
         return PotcarMod(symbols=self.potcar_symbols, functional=self.potcar_functional)
 
+    @property
+    def all_input(self):
+        """
+        Returns all input files as a dict of {filename: vasp object}
+
+        Returns:
+            dict of {filename: object}, e.g., {'INCAR': Incar object, ...}
+        """
+        try:
+            return MPRelaxSet.all_input(self)
+        except:
+            kpoints = self.kpoints
+            incar = self.incar
+            if np.product(kpoints.kpts) < 4 and incar.get("ISMEAR", 0) == -5:
+                incar["ISMEAR"] = 0
+
+            return {'INCAR': incar,
+                    'KPOINTS': kpoints,
+                    'POSCAR': self.poscar}
+
 
 class DefectStaticSet(MPStaticSet):
     """
@@ -300,8 +320,8 @@ def make_vasp_defect_files_dos(defects, path_base, user_settings={},
             [defects[key] for key in defects if key != 'bulk'])
 
     for defect in comb_defs:
-        print type(defect)
-        print defect['charges']
+        print (type(defect))
+        print (defect['charges'])
         for charge in defect['charges']:
             s = defect['supercell']
             dict_transf = {

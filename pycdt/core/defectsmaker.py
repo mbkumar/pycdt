@@ -252,7 +252,7 @@ class DefectChargerInsulator(DefectCharger):
             strip_key = ''.join([s for s in key if s.isalpha()])
             self.oxi_states[str2unicode(strip_key)] = val
 
-        print ('self.oxistes', self.oxi_states)
+        #print ('self.oxistes', self.oxi_states)
 
         self.min_max_oxi = {}
         for s in struct_species:
@@ -265,7 +265,7 @@ class DefectChargerInsulator(DefectCharger):
             max_oxi = max(el.common_oxidation_states)
             min_oxi = min(el.common_oxidation_states)
             self.min_max_oxi[str2unicode(el.symbol)] = (min_oxi,max_oxi)
-        print ('self.min_max_oxi', self.min_max_oxi)
+        #print ('self.min_max_oxi', self.min_max_oxi)
         
     def get_charges(self, defect_type, site_specie=None, sub_specie=None):
         """
@@ -282,7 +282,7 @@ class DefectChargerInsulator(DefectCharger):
         if defect_type == 'vacancy':
             vac_symbol = get_el_sp(site_specie).symbol
             vac_oxi_state = self.oxi_states[str2unicode(vac_symbol)]
-            print ('vac_oxi_state', vac_oxi_state)
+            #print ('vac_oxi_state', vac_oxi_state)
             if vac_oxi_state < 0:
                 min_oxi = max(vac_oxi_state, self.min_max_oxi[vac_symbol][0])
                 max_oxi = 0
@@ -334,7 +334,7 @@ class DefectChargerInsulator(DefectCharger):
                         return [min_oxi_sub - vac_oxi_state]
         
         elif defect_type == 'interstitial':
-            print ('inter_symbol=', site_specie)
+            #print ('inter_symbol=', site_specie)
             site_specie = get_el_sp(site_specie)
             min_oxi = min(min(site_specie.common_oxidation_states), 0)
             max_oxi = max(max(site_specie.common_oxidation_states), 0)
