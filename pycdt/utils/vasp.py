@@ -11,6 +11,7 @@ __date__ = "November 4, 2012"
 import os
 from copy import deepcopy
 
+import numpy as np
 from monty.serialization import loadfn, dumpfn
 from monty.json import MontyEncoder
 from monty.os.path import zpath
@@ -162,6 +163,26 @@ class DefectStaticSet(MPStaticSet):
         """
         return PotcarMod(symbols=self.potcar_symbols, functional=self.potcar_functional)
 
+    @property
+    def all_input(self):
+        """
+        Returns all input files as a dict of {filename: vasp object}
+
+        Returns:
+            dict of {filename: object}, e.g., {'INCAR': Incar object, ...}
+        """
+        try:
+            return MPStaticSet.all_input(self)
+        except:
+            kpoints = self.kpoints
+            incar = self.incar
+            if np.product(kpoints.kpts) < 4 and incar.get("ISMEAR", 0) == -5:
+                incar["ISMEAR"] = 0
+
+            return {'INCAR': incar,
+                    'KPOINTS': kpoints,
+                    'POSCAR': self.poscar}
+
 
 class DielectricSet(MPStaticSet):
     """
@@ -184,6 +205,26 @@ class DielectricSet(MPStaticSet):
         """
         return PotcarMod(symbols=self.potcar_symbols, 
                          functional=self.potcar_functional)
+
+    @property
+    def all_input(self):
+        """
+        Returns all input files as a dict of {filename: vasp object}
+
+        Returns:
+            dict of {filename: object}, e.g., {'INCAR': Incar object, ...}
+        """
+        try:
+            return MPStaticSet.all_input(self)
+        except:
+            kpoints = self.kpoints
+            incar = self.incar
+            if np.product(kpoints.kpts) < 4 and incar.get("ISMEAR", 0) == -5:
+                incar["ISMEAR"] = 0
+
+            return {'INCAR': incar,
+                    'KPOINTS': kpoints,
+                    'POSCAR': self.poscar}
 
 
 def write_additional_files(path, trans_dict=None, incar={}, kpoints=None,
