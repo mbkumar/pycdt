@@ -132,7 +132,7 @@ class DefectRelaxSet(MPRelaxSet):
             dict of {filename: object}, e.g., {'INCAR': Incar object, ...}
         """
         try:
-            return MPRelaxSet.all_input(self)
+            return super(DefectRelaxSet, self).all_input
         except:
             kpoints = self.kpoints
             incar = self.incar
@@ -174,7 +174,7 @@ class DefectStaticSet(MPStaticSet):
             dict of {filename: object}, e.g., {'INCAR': Incar object, ...}
         """
         try:
-            return MPStaticSet.all_input(self)
+            return super(DefectStaticSet, self).all_input
         except:
             kpoints = self.kpoints
             incar = self.incar
@@ -217,7 +217,7 @@ class DielectricSet(MPStaticSet):
             dict of {filename: object}, e.g., {'INCAR': Incar object, ...}
         """
         try:
-            return MPStaticSet.all_input(self)
+            return super(DielectricSet, self).all_input
         except:
             kpoints = self.kpoints
             incar = self.incar
