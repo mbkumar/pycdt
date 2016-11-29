@@ -29,12 +29,9 @@ from pymatgen.core.periodic_table import Element, Specie, get_el_sp
 from pymatgen.symmetry.analyzer import SpacegroupAnalyzer
 from pymatgen.analysis.defects.point_defects import Vacancy, \
         ValenceIonicRadiusEvaluator as VIRE
-try:
-    from pymatgen.analysis.defects.alt_interstitial_class import \
-            StructureMotifInterstitial
-    gen_inter = True
-except:
-    gen_inter = False
+from pymatgen.analysis.defects.point_defects import \
+        StructureMotifInterstitial
+
 
 def get_optimized_sc_scale(inp_struct, final_site_no):
 
@@ -632,7 +629,7 @@ class ChargedDefectsStructures(object):
                         self.struct.composition.elements]
             if len(inter_elems) == 0:
                 raise RuntimeError("empty element list for interstitials")
-            if not intersites and gen_inter:
+            if not intersites:
                 intersites = []
                 smi = StructureMotifInterstitial(self.struct, inter_elems[0],
                                                  dl=0.2)
