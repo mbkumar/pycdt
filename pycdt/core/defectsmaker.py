@@ -65,7 +65,7 @@ def get_optimized_sc_scale(inp_struct, final_site_no):
                             if  distance < min_dist and distance>0.00001:
                                 min_dist = distance
                 min_dist = round(min_dist, 3)
-                if dictio.has_key(min_dist):
+                if min_dist in dictio:
                     if dictio[min_dist]['num_sites'] > struct.num_sites:
                         dictio[min_dist]['num_sites'] = struct.num_sites
                         dictio[min_dist]['supercell'] = [k1,k2,k3]
