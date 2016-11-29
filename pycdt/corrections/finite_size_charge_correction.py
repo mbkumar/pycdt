@@ -47,7 +47,7 @@ def get_correction_freysoldt(defect, bulk_entry, epsilon, title = None):
     #frac_coords = defect.site.frac_coords  #maybe should be using this
     encut = defect.entry.data['encut']
     if not charge:
-        print 'charge is zero so charge correction is zero'
+        print('charge is zero so charge correction is zero')
         return (0.,bulk_entry)
 
     #if either locpot is already loaded then load pure_locpot= or defect_locpot=
@@ -111,7 +111,7 @@ def get_correction_kumagai(defect, path_blk, bulk_init, bulk_locpot=None,
                 bulk_locpot=bulk_locpot, defect_locpot=locpot_path_def)
 
     kumval = s.correction(title=title, partflag='All')
-    print '\n Kumagai Correction value is ', kumval
+    print('\n Kumagai Correction value is ', kumval)
     return kumval
 
 
@@ -147,12 +147,12 @@ class ChargeCorrection(object):
             self._dieltens = np.array(dielectric_tensor)
             self._dielectricconst = np.mean(np.diag(self._dieltens))
         if 'LOCPOT' not in pure_locpot_path:
-            print 'pure LOCPOT not in path. appending it to path.'
+            print('pure LOCPOT not in path. appending it to path.')
             self._path_purelocpot = os.path.join(os.path.abspath(pure_locpot_path),'LOCPOT')
         else:
             self._path_purelocpot = os.path.abspath(pure_locpot_path)
         if 'LOCPOT' not in defect_locpot_path:
-            print 'defect LOCPOT not in path. appending it to path.'
+            print('defect LOCPOT not in path. appending it to path.')
             self._path_deflocpot = os.path.join(os.path.abspath(defect_locpot_path),'LOCPOT')
         else:
             self._path_deflocpot = os.path.abspath(defect_locpot_path)
@@ -203,7 +203,7 @@ class ChargeCorrection(object):
         elif partflag=='potalign':
             nomtype='potential alignment correction'
         else:
-            print partflag,' is incorrect potalign type. Must be "All","AllSplit", "pc", or "potalign".'
+            print(partflag,' is incorrect potalign type. Must be "All","AllSplit", "pc", or "potalign".')
             return
 
         #if havent loaded locpots objects or positions of defect then save these for later
@@ -215,7 +215,7 @@ class ChargeCorrection(object):
         if self._pos is None: #want them in fractional coords
             self._pos = self._purelocpot.structure.lattice.get_fractional_coords(s._pos)
 
-        print '\n Final Freysoldt',nomtype,'value is ',freyval
+        print('\n Final Freysoldt',nomtype,'value is ',freyval)
 
         return freyval
 
@@ -263,7 +263,7 @@ class ChargeCorrection(object):
             nomtype='potential alignment correction'
             kumval=s.correction(title=title,partflag=partflag)
 
-        print '\n Final Kumagai',nomtype,'value is ',kumval
+        print('\n Final Kumagai',nomtype,'value is ',kumval)
 
         return kumval
 
@@ -300,7 +300,7 @@ class ChargeCorrection(object):
 
         sxvals=s.run_correction(print_pot_flag=print_pot_flag, partflag=partflag)
 
-        print '\n Final Sxdefectalign ',nomtype,' correction value is ',sxvals
+        print('\n Final Sxdefectalign ',nomtype,' correction value is ',sxvals)
 
         return sxvals
 
