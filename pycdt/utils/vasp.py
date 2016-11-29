@@ -10,6 +10,7 @@ __date__ = "November 4, 2012"
 
 import os
 from copy import deepcopy
+import numpy as np # xxx
 
 from monty.serialization import loadfn, dumpfn
 from monty.json import MontyEncoder
