@@ -10,6 +10,7 @@ __date__ = "November 4, 2012"
 
 import os
 from copy import deepcopy
+import functools
 import numpy as np # xxx
 
 import numpy as np
@@ -274,7 +275,7 @@ def make_vasp_defect_files(defects, path_base, user_settings={}, hse=False):
             hse run or not
     """
     bulk_sys = defects['bulk']['supercell']
-    comb_defs = reduce(lambda x,y: x+y, [
+    comb_defs = functools.reduce(lambda x,y: x+y, [
         defects[key] for key in defects if key != 'bulk'])
 
     # User setting dicts
