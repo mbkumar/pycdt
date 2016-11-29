@@ -15,9 +15,10 @@ from monty.serialization import loadfn, dumpfn
 from monty.json import MontyEncoder
 from monty.os.path import zpath
 
+from pymatgen import SETTINGS
 from pymatgen.io.vasp.inputs import Kpoints
 from pymatgen.io.vasp.sets import MPRelaxSet, MPStaticSet
-from pymatgen.io.vasp.inputs import PotcarSingle, Potcar, get_potcar_dir
+from pymatgen.io.vasp.inputs import PotcarSingle, Potcar
 
 
 MODULE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -32,7 +33,8 @@ class PotcarSingleMod(PotcarSingle):
     def from_symbol_and_functional(symbol, functional="PBE"):
         funcdir = PotcarSingle.functional_dir[functional]
 
-        if not os.path.isdir(os.path.join(get_potcar_dir(), funcdir)):
+        if not os.path.isdir(os.path.join(
+                SETTINGS.get("VASP_PSP_DIR"), funcdir)):
             functional_dir = {"LDA_US": "pot",
                               "PW91_US": "pot_GGA", 
                               "LDA": "potpaw", 
@@ -42,8 +44,7 @@ class PotcarSingleMod(PotcarSingle):
                               "PBE_52": "potpaw_PBE.52"}
             funcdir = functional_dir[functional]
 
-
-        d = get_potcar_dir()
+        d = SETTINGS.get("VASP_PSP_DIR")
         if d is None:
             raise ValueError("No POTCAR directory found. Please set "
                              "the VASP_PSP_DIR environment variable")
