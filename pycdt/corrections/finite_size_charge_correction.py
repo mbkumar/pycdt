@@ -189,7 +189,7 @@ class ChargeCorrection(object):
                'AllSplit' for individual parts split up (form [PC,potterm,full])
         """
 
-        from freysoldt_correction import FreysoldtCorrection
+        from pycdt.corrections.freysoldt_correction import FreysoldtCorrection
 
         s=FreysoldtCorrection(axis, self._dielectricconst, self._purelocpot,
             self._deflocpot, self._q, energy_cutoff=self._encut, 
