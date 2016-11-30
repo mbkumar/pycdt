@@ -579,13 +579,13 @@ class KumagaiBulkInit(object):
         nx, ny, nz = self.dim
         logging.debug('nx: %d, ny: %d, nz: %d', nx, ny, nz)
         ind1 = np.arange(nx)
-        for i in range(nx/2, nx):
+        for i in range(int(nx/2), nx):
             ind1[i] = i - nx
         ind2 = np.arange(ny)
-        for i in range(ny/2, ny):
+        for i in range(int(ny/2), ny):
             ind2[i] = i - ny
         ind3 = np.arange(nz)
-        for i in range(nz/2, nz):
+        for i in range(int(nz/2), nz):
             ind3[i] = i - nz
 
         g_array = np.zeros(self.dim, np.dtype('c16'))
@@ -889,7 +889,7 @@ class KumagaiCorrection(object):
         ylis = []
         rlis = []
         for i in range(len(forplot.keys())):
-            inkey = forplot.keys()[i]
+            inkey = list(forplot.keys())[i]
             if inkey == 'EXTRA':
                 continue
             for k in forplot[inkey]['r']:
