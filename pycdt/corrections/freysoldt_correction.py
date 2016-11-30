@@ -425,7 +425,7 @@ class FreysoldtCorrection(object):
             g2 = g * g
             v_G[i] = 4*np.pi/(epsilon*g2) * -self._q * self._q_model.rho_rec(g2)
         if not (nx % 2):
-            v_G[nx/2] = 0
+            v_G[nx//2] = 0
         v_R = np.fft.fft(v_G)
         v_R_imag = np.imag(v_R)
         v_R /= (latt.volume * ang_to_bohr**3)
