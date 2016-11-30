@@ -66,9 +66,8 @@ class DefectPlotter(object):
             trans_level_pt[t] =  trans_level
             y[t] = y_tmp
 
-        y_vals = np.array(y.values())
-        y_min = y_vals.min()
-        y_max = y_vals.max()
+        y_min = np.min(np.min(list(y.values())))
+        y_max = np.max(np.max(list(y.values())))
 
         width, height = 12, 8
         import matplotlib.pyplot as plt

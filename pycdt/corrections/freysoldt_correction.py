@@ -439,7 +439,7 @@ class FreysoldtCorrection(object):
         #now get correction and do plots
         short = (defavg - pureavg - v_R)
         checkdis = int((widthsample/2) / (x[1]-x[0]))
-        mid = len(short) / 2
+        mid = int(len(short) / 2)
 
         tmppot = [short[i] for i in range(mid-checkdis, mid+checkdis)]
         logger.debug('shifted defect position on axis (%s) to origin',
