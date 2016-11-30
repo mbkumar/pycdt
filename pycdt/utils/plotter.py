@@ -66,9 +66,8 @@ class DefectPlotter(object):
             trans_level_pt[t] =  trans_level
             y[t] = y_tmp
 
-        y_vals = np.array(y.values())
-        y_min = y_vals.min()
-        y_max = y_vals.max()
+        y_min = np.min(np.min(list(y.values())))
+        y_max = np.max(np.max(list(y.values())))
 
         width, height = 12, 8
         import matplotlib.pyplot as plt
@@ -119,10 +118,7 @@ class DefectPlotter(object):
         if ylim is not None:
             plt.ylim(ylim)
         else:
-            try: #this python3 wrapper, due to lists causing problems here
-                plt.ylim(np.array(list(y_min)[0]).min()-0.1, np.array(list(y_max)[0]).max()+0.1)
-            except: #non-python 3 version
-                plt.ylim((y_min-0.1, y_max+0.1))
+            plt.ylim((y_min-0.1, y_max+0.1))
         plt.xlabel("Fermi energy (eV)", size=2*width)
         plt.ylabel("Defect Formation Energy (eV)", size=2*width)
         return plt
