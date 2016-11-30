@@ -119,7 +119,10 @@ class DefectPlotter(object):
         if ylim is not None:
             plt.ylim(ylim)
         else:
-            plt.ylim((y_min-0.1, y_max+0.1))
+            try: #this python3 wrapper, due to lists causing problems here
+                plt.ylim(np.array(list(y_min)[0]).min()-0.1, np.array(list(y_max)[0]).max()+0.1)
+            except: #non-python 3 version
+                plt.ylim((y_min-0.1, y_max+0.1))
         plt.xlabel("Fermi energy (eV)", size=2*width)
         plt.ylabel("Defect Formation Energy (eV)", size=2*width)
         return plt
