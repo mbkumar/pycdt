@@ -22,8 +22,6 @@ from pymatgen.matproj.rest import MPRester
 from pymatgen.io.vasp.outputs import Vasprun
 from pymatgen.io.vasp.inputs import Potcar
 from pymatgen.entries.computed_entries import ComputedStructureEntry
-# from pymatgen.phasediagram.maker import PhaseDiagram
-# from pymatgen.phasediagram.analyzer import PDAnalyzer
 
 from pycdt.core.defects_analyzer import ComputedDefect 
 from pycdt.utils.chemical_potentials import ChemPotAnalyzer

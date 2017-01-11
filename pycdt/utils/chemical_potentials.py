@@ -1,10 +1,7 @@
 # coding: utf-8
 """
-A class for performing analysis of chemical potentials with the grand canonical approach
-    First class is for using materials Project data
-    Second class if for setting up chemical potential data for other calculation approaches
+A class for performing analysis of chemical potentials with the grand canonical linear programming approach
 """
-#from __future__ import unicode_literals
 from __future__ import division
 
 __author__ = "Bharat Medasani, Nils Zimmermann, Danny Broberg"
@@ -15,19 +12,12 @@ __email__ = 'mbkumar@gmail.com'
 __date__  = "Sep 14, 2014"
 
 import os
-import glob
 import logging
 
-# from monty.serialization import loadfn, dumpfn
-# from monty.json import MontyEncoder, MontyDecoder
 from pymatgen.matproj.rest import MPRester
 from pymatgen.io.vasp.outputs import Vasprun
-# from pymatgen.io.vasp.inputs import Potcar
-# from pymatgen.entries.computed_entries import ComputedStructureEntry
 from pymatgen.phasediagram.maker import PhaseDiagram
 from pymatgen.phasediagram.analyzer import PDAnalyzer
-
-from pycdt.core.defects_analyzer import ComputedDefect
 
 
 class ChemPotAnalyzer(object):
