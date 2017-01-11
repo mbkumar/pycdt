@@ -457,3 +457,27 @@ class ChemPotAnalyzer(object):
             subnom += nom+'-'
         subnom = subnom[:-1]
         return blk, blknom, subnom
+
+    def analyze_chempots_from_composition(self):
+        #a simple method for getting GGA-PBE chemical potentials JUST from the composition information
+        #Note: this only works if the composition already exists in the MP database
+        if not self.entries:
+            self.round_up_entries()
+
+        logger = logging.getLogger(__name__)
+        #retrieve the most stable mp-id with the given composition
+        lowest_energy_mpid = None
+        lowest_energy = 1000.
+        for i in self.entries['bulk_derived']:
+            if (i.composition.reduced_composition == self.redcomp) and (i.energy_per_atom < lowest_energy):
+                lowest_energy_mpid = i.entry_id
+                lowest_energy = i.energy_per_atom
+
+        if  not lowest_energy_mpid:
+            msg = "Not able to find an mpid for composition of interest. Cannot generate chempots without a computed entry."
+            logger.warning(msg)
+            raise ValueError(msg)
+        else:
+            chempots = self.analyze_GGA_chempots(mpid = lowest_energy_mpid)
+
+        return chempots
