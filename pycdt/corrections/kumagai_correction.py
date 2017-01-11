@@ -398,6 +398,25 @@ def read_ES_avg(location_outcar):
         pot = []
         for line_num in range(start_line+3, end_line):
             line = out_dat[line_num].split()
+            #TO BHARAT: Outcar can sometimes produces lines that get read in here like:
+            #['16-105.4492', '17-105.4453', '18-105.4643', '19-105.4629', '20-105.4482']
+            #so I added this stupid hack to get around when the numbers were together in Outcar...
+            badflag=0
+            for entry in line:
+                if ('-' in entry) and (entry[0]!='-'):
+                    badflag=1
+            if badflag:
+                line = []
+                for inval in out_dat[line_num].split():
+                    if (len(inval.split('-'))!=1) and inval[0]!='-':
+                        # print 'rewriting',inval
+                        [x,y] = inval.split('-')
+                        line.append(x)
+                        line.append('-'+y)
+                    else:
+                        line.append(inval)
+                # print 'made ',line
+            ############
             avg_es = map(float, line[1::2])
             pot += avg_es
         ES_data.update({'potential': pot})

@@ -85,7 +85,8 @@ class FreysoldtCorrPlotter(object):
     def plot(self, title='default'):
         """
         """
-
+        import matplotlib
+        matplotlib.use('Agg')
         import matplotlib.pyplot as plt
 
         plt.figure()
