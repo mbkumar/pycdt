@@ -234,29 +234,17 @@ class PostProcess(object):
 
         return (vbm, bandgap)
 
-    def get_chempot_limits(self, bulkcomposition=None, chem_pot_details=dict()):
-        # TODO 1: get rid of MPRester pulling of structure. When you run
-        #    this your structure should already be known It is an
-        #    unneccssary complication for people who have structures
-        #    that are not in the MP data base...
-        # TODO 2: allow for dependent elements to be used (i.e.
-        #    PDA.get_chempot_range_stability_phase(target_comp, open_elt))
-        #    (1 and 2 are related - since we want to allow for an option
-        #    where we have the dependent chem pot limits)
-        # TODO 3: (when no mp-id present but composition is found) do
-        #    structure check to see if input structure is identical to
-        #    structure with identical composition in MP database
-
+    def get_chempot_limits(self, bulk_composition=None, chem_pot_details=dict()):
         """
-        Returns atomic chempots from mpid or structure input
-        Accounts for all different defect phases
+        Returns atomic chempots from bulk_composition based on data in the materials project database
+            this is abstractly handled in the ChemPotAnalyzer so as to make beyond PBE-GGA easier to extend to
 
-        chem_pot_details(dict): Is dictionary from a previous query to MP database for chemical potentials
-                not neccessary, but makes query faster because of less calls to MP database...
-                typically exists in defect_data['
+        chem_pot_details(dict): Is a dict from a previous query to MP database for chemical potentials
+                It is not neccessary, but makes query faster because of less calls to MP database...
+                typically will exist in defect_data.json
         """
         logger = logging.getLogger(__name__)
-        if not structure:
+        if not bulk_composition:
             if not self._mpid:
                 bulkvr = Vasprun(os.path.join(
                     self._root_fldr, "bulk", "vasprun.xml"))
@@ -271,16 +259,22 @@ class PostProcess(object):
                 msg = "Could not fetch structure for atomic chempots!"
                 logger.warning(msg)
                 raise ValueError(msg)
+            else:
+                bulk_composition = structure.composition
 
-        # bulk_species_symbol = [s.symbol for s in structure.types_of_specie]
-        bulk_composition = structure.composition
+        if self._chem_pot_details:
+            cpa = ChemPotAnalyzer.from_chem_data(self._chem_pot_details)
+        elif chem_pot_details:
+            cpa = ChemPotAnalyzer.from_chem_data(self._chem_pot_details)
+        else:
+            cpa = ChemPotAnalyzer(bulk_composition, subs_species=self._substitution_species,
+                              mapi_key=self._mapi_key)
 
-        cpa = ChemPotAnalyzer(chemical_data=self._chem_pot_details, mpid=self._mpid,
-                              mapi_key=self._mapi_key, subs_species=self._substitution_species)
-        #note that substitution_species set is something that needs to be pre-loaded
-        # (as it is parse_defect_calculations) or inside defect_data input
+        #note that _substitution_species set is something that needs to be pre-loaded
+        # (as it is in the parse_defect_calculations attribute)
 
-        chem_lims = cpa.get_vasp_chempots(bulk_composition=bulk_composition)
+        chem_lims = cpa.analyze_GGA_chempots(root_fldr=self._root_fldr,
+                                mpid=self._mpid)
 
         self._chem_pot_details = cpa._chemical_data
 
@@ -328,7 +322,7 @@ class PostProcess(object):
         output = self.parse_defect_calculations()
         output['epsilon'] = self.parse_dielectric_calculation()
         output['mu_range'] = self.get_chempot_limits()
-        output['chem_pot_details'] = self._chem_pot_details #this is loaded within get_chempot_limits
+        # output['chem_pot_details'] = self._chem_pot_details #this is entry data from MP query..could print for reducing future queries
         vbm,gap = self.get_vbm_bandgap()
         output['vbm'] = vbm
         output['gap'] = gap
