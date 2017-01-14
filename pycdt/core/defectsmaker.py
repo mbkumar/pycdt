@@ -493,7 +493,7 @@ class ChargedDefectsStructures(object):
         self.cellmax = cellmax
         self.substitutions = {}
         self.struct_type = struct_type
-        for key,val in substitutions.items():
+        for key, val in substitutions.items():
             self.substitutions[str2unicode(key)] = val
 
         spa = SpacegroupAnalyzer(structure, symprec=1e-2)
