@@ -92,12 +92,8 @@ def generate_input(args):
 
     # get primitive unit cell
     if mp_id:
-        if not mapi_key:
-            with MPRester() as mp:
-                prim_struct = mp.get_structure_by_material_id(mp_id)
-        else:
-            with MPRester(mapi_key) as mp:
-                prim_struct = mp.get_structure_by_material_id(mp_id)
+        with MPRester(api_key=mapi_key) as mp:
+            prim_struct = mp.get_structure_by_material_id(mp_id)
 
         # transform to conventional unit cell
         conv_struct = SpacegroupAnalyzer( 
