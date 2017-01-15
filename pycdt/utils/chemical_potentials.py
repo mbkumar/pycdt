@@ -22,7 +22,7 @@ from pymatgen.phasediagram.analyzer import PDAnalyzer
 
 
 class ChemPotAnalyzer(object):
-    def __init__(self, bulk_composition, subs_species=set(), mapi_key=None):
+    def __init__(self, bulk_composition, subs_species=set(), entries={}):
         """
         TODO: could have bulk entry object as input for faster parsing?
 
@@ -56,51 +56,52 @@ class ChemPotAnalyzer(object):
             if sub not in self.bulk_species_symbol:
                 sub_species_symbol.append(sub)
                 self.sub_species_symsets[sub] = sub_species_symbol
-        self.mapi_key = mapi_key
-        self.entries = dict()
-        self._chemical_data = {'bulk_composition': self.bulk_composition,
-                               'sub_species_symsets': self.sub_species_symsets,
-                               'bulk_species_symbol': self.bulk_species_symbol,
-                               'entries': self.entries}
+        self.entries = entries
         self.bulk_ce = None  # could be improved by having direct loading...
 
     @staticmethod
-    def from_chem_data(chemical_data, mapi_key=None):
+    def from_dict(cls, d):
         """
-        For setting up with previous chemical_data (reduces need for querying)
+        Create a ChemPotAnalyzer from a dictionary.
+        Useful for setting up with previous chemical_data and reduces
+        need for querying
 
         Args:
-            chemical_data (dict): Data from a previous query to Materials
-                Project for chemical potentials. Good for speeding up
-                chemical potential approach and reducing number of queries
-                to MP database
-            mapi_key (str): Materials API key to access database
-                (if not in ~/.pmgrc.yaml already)
+            d:  python dict
         """
-        # for setting up with a previous chemical_data set
-        # (makes querying faster)
-        subs = set([elt for elt in chemical_data['sub_species_symsets'].keys()])
-        cpa = ChemPotAnalyzer(chemical_data['bulk_composition'], subs,
-                              mapi_key=mapi_key)
-        cpa.entries = chemical_data['entries']
-        cpa._chemical_data['entries'] = chemical_data['entries']
+        subs = set([elt for elt in d['sub_species_symsets'].keys()])
+        cpa = ChemPotAnalyzer(d['bulk_composition'], sub_species=subs,
+                              entries=d['entries'])
+
         return cpa
 
-    def round_up_entries(self):
+    def as_dict(self):
+        """""
+        Json-serialization dict representation of the ChemPotAnalyzer.
+        """
+        d = {"@module": self.__class__.__module__,
+             "@class": self.__class__.__name__,
+             'bulk_composition': self.bulk_composition,
+             'sub_species_symsets': self.sub_species_symsets,
+             'bulk_species_symbol': self.bulk_species_symbol,
+             'entries': self.entries}
+
+        return d
+
+    def get_mp_entries(self, mpid=None, mapi_key=None):
         """
         This queries MP database for computed entries according to
         input bulk and sub elements of interest
         """
         logger = logging.getLogger(__name__)
         # first do bulk_entries_set
-        if not self.mapi_key:
-            with MPRester() as mp:
-                self.entries['bulk_derived'] = mp.get_entries_in_chemsys(
-                    self.bulk_species_symbol)
-        else:
-            with MPRester(self.mapi_key) as mp:
-                self.entries['bulk_dervied'] = mp.get_entries_in_chemsys(
-                    self.bulk_species_symbol)
+        with MPRester(api_key=mapi_key) as mp:
+            self.entries['bulk_derived'] = mp.get_entries_in_chemsys(
+                self.bulk_species_symbol)
+
+            if mpid:
+                self.bulk_ce = mp.get_entry_by_material_id(mpid)
+
         if not self.entries:
             msg = "Could not fetch bulk entries for atomic chempots!" \
                   "MPRester query error."
@@ -113,14 +114,8 @@ class ChemPotAnalyzer(object):
                           self.entries['bulk_derived']]
         for sub_el, sub_species_symbol in self.sub_species_symsets.items():
             # sub_entry_set = None
-            if not self.mapi_key:
-                with MPRester() as mp:
-                    sub_entry_set = mp.get_entries_in_chemsys(
-                        sub_species_symbol)
-            else:
-                with MPRester(self.mapi_key) as mp:
-                    sub_entry_set = mp.get_entries_in_chemsys(
-                        sub_species_symbol)
+            with MPRester(api_key=mapi_key) as mp:
+                sub_entry_set = mp.get_entries_in_chemsys(sub_species_symbol)
             if not sub_entry_set:
                 msg = "Could not fetch sub entries for {} atomic chempots! " \
                       "Encountered MPRester query error".format(sub_el)
@@ -134,12 +129,10 @@ class ChemPotAnalyzer(object):
             # All entries apart from the bulk entry set
             self.entries['subs_set'][sub_el] = fin_sub_entry_set
 
-        self._chemical_data['entries'] = self.entries
-
         return
 
     def analyze_GGA_chempots(self, bulk_computed_entry=None, root_fldr=None,
-                             mpid=None, full_sub_approach=False):
+                             mpid=None, mapi_key=None, full_sub_approach=False):
         """
         For calculating GGA-PBE atomic chemical potentials by using
             Materials Project pre-computed data
@@ -199,7 +192,7 @@ class ChemPotAnalyzer(object):
             full_sub_approach to True.
         """
         if not self.entries:
-            self.round_up_entries()
+            self.get_mp_entries(mapi_key=mapi_key)
 
         logger = logging.getLogger(__name__)
         # first get the computed entry
@@ -213,12 +206,8 @@ class ChemPotAnalyzer(object):
                                               "vasprun.xml"))
                 self.bulk_ce = bulkvr.get_computed_entry()
         elif mpid:
-                if self.mapi_key:
-                    with MPRester(self.mapi_key) as mp:
-                        self.bulk_ce = mp.get_entry_by_material_id(mpid)
-                else:
-                    with MPRester() as mp:
-                        self.bulk_ce = mp.get_entry_by_material_id(mpid)
+            with MPRester(api_key=mapi_key) as mp:
+                self.bulk_ce = mp.get_entry_by_material_id(mpid)
         else:
             msg = "No able to load computed entry. Cannot parse chemical " \
                   "potentials for job."
@@ -229,7 +218,7 @@ class ChemPotAnalyzer(object):
         # based on phase diagram
         entry_list = self.entries['bulk_derived']
         pd = PhaseDiagram(entry_list)
-        PDA = PDAnalyzer(pd)
+        pda = PDAnalyzer(pd)
         full_idlist = [i.entry_id for i in pd.qhull_entries]
         stable_idlist = [i.entry_id for i in pd.stable_entries]
 
@@ -237,7 +226,7 @@ class ChemPotAnalyzer(object):
             if (mpid in full_idlist) and (mpid in stable_idlist):
                 logger.debug("Verified that mp-id is stable within Materials "
                              "Project {} phase diagram".format('-'.join(
-                                self._chemical_data['bulk_species_symbol'])))
+                                self.bulk_species_symbol)))
                 common_approach = True
             elif (mpid in full_idlist) and not (mpid in stable_idlist):
                 common_approach = False
@@ -267,7 +256,7 @@ class ChemPotAnalyzer(object):
                 mpid = None
 
         if not mpid:
-            decomp_en = round(PDA.get_decomp_and_e_above_hull(
+            decomp_en = round(pda.get_decomp_and_e_above_hull(
                                     self.bulk_ce, allow_negative=True)[1],
                               4)
             stable_composition_exists = False
@@ -447,19 +436,14 @@ class ChemPotAnalyzer(object):
 
         return chem_lims
 
-    def get_entries_from_symbols(self, list_spec_symbol):
+    def get_entries_from_symbols(self, list_spec_symbol, mapi_key=None):
         """
         Gets entries list from MP database based on entries of list_spec_symbol
         """
         logger = logging.getLogger(__name__)
-        if not self.mapi_key:
-            with MPRester() as mp:
-                self.entries = mp.get_entries_in_chemsys(list_spec_symbol)
-                self.recent_list_specs = list_spec_symbol
-        else:
-            with MPRester(self.mapi_key) as mp:
-                self.entries = mp.get_entries_in_chemsys(list_spec_symbol)
-                self.recent_list_specs = list_spec_symbol
+        with MPRester(api_key=mapi_key) as mp:
+            self.entries = mp.get_entries_in_chemsys(list_spec_symbol)
+            self.recent_list_specs = list_spec_symbol
         if  not self.entries:
             msg = "Could not fetch entries for atomic chempots! " \
                   "MPRester query error."
@@ -494,12 +478,12 @@ class ChemPotAnalyzer(object):
         subnom = subnom[:-1]
         return blk, blknom, subnom
 
-    def analyze_chempots_from_composition(self):
+    def analyze_chempots_from_composition(self, mapi_key=None):
         # A simple method for getting GGA-PBE chemical potentials JUST
         # from the composition information (Note: this only works if the
         # composition already exists in the MP database)
         if not self.entries:
-            self.round_up_entries()
+            self.get_mp_entries(mapi_key=mapi_key)
 
         logger = logging.getLogger(__name__)
         # retrieve the most stable mp-id with the given composition
@@ -517,6 +501,7 @@ class ChemPotAnalyzer(object):
             logger.warning(msg)
             raise ValueError(msg)
         else:
-            chempots = self.analyze_GGA_chempots(mpid=lowest_energy_mpid)
+            chempots = self.analyze_GGA_chempots(mpid=lowest_energy_mpid,
+                                                 mapi_key=mapi_key)
 
         return chempots
