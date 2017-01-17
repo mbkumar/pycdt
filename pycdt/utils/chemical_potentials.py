@@ -158,7 +158,9 @@ class ChemPotAnalyzer(object):
         For calculating GGA-PBE atomic chemical potentials by using
             Materials Project pre-computed data
 
-        Args for input (only need one of them, given in order of preference):
+        Args for input :
+            (Among bulk_computed_entry, root_flr and mpid, only one of them is
+            required)
             bulk_computed_entry: Pymatgen ComputedStructureEntry object for
                 bulk supercell
             root_fldr: base folder for defects set, ends up loading
@@ -167,10 +169,11 @@ class ChemPotAnalyzer(object):
                 loaded as Vasprun object of bulk for even faster parsing)
             mpid (str): Materials Project ID of bulk structure;
                 format "mp-X", where X is an integer;
-        Additional possible arg (described below)
+            mapi_key (str): Materials API key to access database
+                (if not in ~/.pmgrc.yaml already)
             full_sub_approach: generate chemical potentials by looking at
-            full phase diagram (setting to True is really NOT recommended
-            if subs_species set has more than one element in it...)
+                full phase diagram (setting to True is really NOT recommended
+                if subs_species set has more than one element in it...)
 
         Outline for how this code retrieves atomic chempots from Materials
         Project (MP) entries in a phase diagram (PD) object:
@@ -182,10 +185,10 @@ class ChemPotAnalyzer(object):
              ii) if mp-id not given, prints message to user about possibility
                 for manual submission page on MP website, then
                 manually inserts the computed object into the local PD.
-                generate chempots from this PD (note at this point there is no
-                gurantee that the structure is actually unique, as it
-                could be a computational error in the DFT energy which is
-                slightly lower than MP calculated values)
+                Generate chempots from this PD (note at this point there 
+                is no gurantee that the structure is actually unique, as 
+                it could be a computational error in the DFT energy which 
+                is slightly lower than MP calculated values)
           3) If not-stable with respect to phase diagram, then:
              i) check to see if composition exists among the structures
                 in the stable list of the PD
