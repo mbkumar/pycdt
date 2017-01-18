@@ -35,7 +35,7 @@ class ChemPotAnalyzer(object):
         needed for computing chemical potentials
     """
 
-    def __init__(self, bulk_composition, subs_species=set(), entries={}):
+    def __init__(self, bulk_composition, sub_species=set(), entries={}):
         """
         TODO: could have bulk entry object as input for faster parsing?
 
@@ -50,13 +50,8 @@ class ChemPotAnalyzer(object):
         """
         self.bulk_composition = bulk_composition
         self.bulk_species_symbol = [s.symbol for s in bulk_composition.elements]
-        self.sub_species_symsets = {}
+        self.subs_species = subs_species
         self.redcomp = bulk_composition.reduced_composition
-        for sub in subs_species:
-            sub_species_symbol = self.bulk_species_symbol[:]
-            if sub not in self.bulk_species_symbol:
-                sub_species_symbol.append(sub)
-                self.sub_species_symsets[sub] = sub_species_symbol
         self.entries = entries
         self.bulk_ce = None  # could be improved by having direct loading...
 
@@ -70,10 +65,9 @@ class ChemPotAnalyzer(object):
         Args:
             d:  python dict
         """
-        subs = set(d['sub_species_symsets'].keys())
-        cpa = ChemPotAnalyzer(d['bulk_composition'], sub_species=subs,
+        cpa = ChemPotAnalyzer(d['bulk_composition'],
+                              sub_species=d['sub_species'],
                               entries=d['entries'])
-
         return cpa
 
     def as_dict(self):
@@ -83,7 +77,7 @@ class ChemPotAnalyzer(object):
         d = {"@module": self.__class__.__module__,
              "@class": self.__class__.__name__,
              'bulk_composition': self.bulk_composition,
-             'sub_species_symsets': self.sub_species_symsets,
+             'sub_species': self.sub_species,
              'bulk_species_symbol': self.bulk_species_symbol,
              'entries': self.entries}
 
@@ -100,7 +94,7 @@ class ChemPotAnalyzer(object):
                 (if not in ~/.pmgrc.yaml already)
         """
         logger = logging.getLogger(__name__)
-        # first do bulk_entries_set
+
         with MPRester(api_key=mapi_key) as mp:
             self.entries['bulk_derived'] = mp.get_entries_in_chemsys(
                 self.bulk_species_symbol)
@@ -118,10 +112,10 @@ class ChemPotAnalyzer(object):
         self.entries['subs_set'] = dict()
         bulk_entry_set = [entry.entry_id for entry in
                           self.entries['bulk_derived']]
-        for sub_el, sub_species_symbol in self.sub_species_symsets.items():
-            # sub_entry_set = None
+        for sub_el in self.sub_species:
+            els = self.bulk_species_symbol + [sub_el]
             with MPRester(api_key=mapi_key) as mp:
-                sub_entry_set = mp.get_entries_in_chemsys(sub_species_symbol)
+                sub_entry_set = mp.get_entries_in_chemsys(els)
             if not sub_entry_set:
                 msg = "Could not fetch sub entries for {} atomic chempots! " \
                       "Encountered MPRester query error".format(sub_el)
