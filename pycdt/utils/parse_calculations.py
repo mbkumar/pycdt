@@ -24,7 +24,7 @@ from pymatgen.io.vasp.inputs import Potcar
 from pymatgen.entries.computed_entries import ComputedStructureEntry
 
 from pycdt.core.defects_analyzer import ComputedDefect 
-from pycdt.utils.chemical_potentials import ChemPotAnalyzer
+from pycdt.core.chemical_potentials import ChemPotAnalyzer
 
 class PostProcess(object):
     def __init__(self, root_fldr, mpid=None, mapi_key=None):
