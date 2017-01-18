@@ -50,7 +50,7 @@ class ChemPotAnalyzer(object):
         """
         self.bulk_composition = bulk_composition
         self.bulk_species_symbol = [s.symbol for s in bulk_composition.elements]
-        self.subs_species = subs_species
+        self.sub_species = sub_species
         self.redcomp = bulk_composition.reduced_composition
         self.entries = entries
         self.bulk_ce = None  # could be improved by having direct loading...
@@ -349,7 +349,7 @@ class ChemPotAnalyzer(object):
             # diagram. This is essentially the assumption that the majority of
             # the elements in the total composition will be from the native
             # species present rather than the sub species (a good approximation)
-            for sub_el in self.sub_species_symsets:
+            for sub_el in self.sub_species:
                 sub_specie_entries = entry_list[:]
                 for entry in self.entries['subs_set'][sub_el]:
                     sub_specie_entries.append(entry)
