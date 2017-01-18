@@ -22,20 +22,22 @@ from pymatgen.phasediagram.analyzer import PDAnalyzer
 
 
 class ChemPotAnalyzer(object):
+    """
+    Post processing for atomic chemical potentials used in defect
+    calculations. (note this could be MP associated OR associated with 
+    other inputs calculated by user?)
+
+    Makes use of Materials Project pre-computed data to generate
+    needed information for chem pots
+        1) If using GGA-PBE vasp then can give numerical values for
+        chem pots in different growth conditions
+        2) If not using GGA-PBE Vasp then can give all needed structures 
+        needed for computing chemical potentials
+    """
+
     def __init__(self, bulk_composition, subs_species=set(), entries={}):
         """
         TODO: could have bulk entry object as input for faster parsing?
-
-        Post processing for atomic chemical potentials used in defect
-        calculations. (note this could be MP associated OR associated
-        with other inputs calculated by user?)
-
-        Makes use of Materials Project pre-computed data to generate
-        needed information for chem pots
-            1) If using GGA-PBE vasp then can give numerical values for
-            chem pots in different growth conditions
-            2) If not using GGA-PBE Vasp then can give all needed
-            structures needed for computing chemical potentials
 
         Args:
             bulk_composition : Composition of bulk as a pymatgen Composition
@@ -44,8 +46,7 @@ class ChemPotAnalyzer(object):
                 database
             subs_species : set of elemental species that are extrinsic to
                 structure defaults to No substitutions needed.
-            mapi_key (str): Materials API key to access database
-                (if not in ~/.pmgrc.yaml already)
+            entries: pymatgen ComputedEntry objects to build phase diagram
         """
         self.bulk_composition = bulk_composition
         self.bulk_species_symbol = [s.symbol for s in bulk_composition.elements]
@@ -92,6 +93,11 @@ class ChemPotAnalyzer(object):
         """
         This queries MP database for computed entries according to
         input bulk and sub elements of interest
+
+        Args:
+            mpid (str): Structure id of the system in the MP databse.
+            mapi_key (str): Materials API key to access database
+                (if not in ~/.pmgrc.yaml already)
         """
         logger = logging.getLogger(__name__)
         # first do bulk_entries_set
@@ -131,13 +137,30 @@ class ChemPotAnalyzer(object):
 
         return
 
+    def get_mp_entries_from_symbols(self, list_spec_symbol, mapi_key=None):
+        """
+        Gets entries list from MP database based on entries of list_spec_symbol
+        """
+        logger = logging.getLogger(__name__)
+        with MPRester(api_key=mapi_key) as mp:
+            self.entries = mp.get_entries_in_chemsys(list_spec_symbol)
+            self.recent_list_specs = list_spec_symbol
+        if not self.entries:
+            msg = "Could not fetch entries for atomic chempots! " \
+                  "MPRester query error."
+            logger.warning(msg)
+            raise ValueError(msg)
+        return
+
     def analyze_GGA_chempots(self, bulk_computed_entry=None, root_fldr=None,
                              mpid=None, mapi_key=None, full_sub_approach=False):
         """
         For calculating GGA-PBE atomic chemical potentials by using
             Materials Project pre-computed data
 
-        Args for input (only need one of them, given in order of preference):
+        Args for input :
+            (Among bulk_computed_entry, root_flr and mpid, only one of them is
+            required)
             bulk_computed_entry: Pymatgen ComputedStructureEntry object for
                 bulk supercell
             root_fldr: base folder for defects set, ends up loading
@@ -146,10 +169,11 @@ class ChemPotAnalyzer(object):
                 loaded as Vasprun object of bulk for even faster parsing)
             mpid (str): Materials Project ID of bulk structure;
                 format "mp-X", where X is an integer;
-        Additional possible arg (described below)
+            mapi_key (str): Materials API key to access database
+                (if not in ~/.pmgrc.yaml already)
             full_sub_approach: generate chemical potentials by looking at
-            full phase diagram (setting to True is really NOT recommended
-            if subs_species set has more than one element in it...)
+                full phase diagram (setting to True is really NOT recommended
+                if subs_species set has more than one element in it...)
 
         Outline for how this code retrieves atomic chempots from Materials
         Project (MP) entries in a phase diagram (PD) object:
@@ -161,10 +185,10 @@ class ChemPotAnalyzer(object):
              ii) if mp-id not given, prints message to user about possibility
                 for manual submission page on MP website, then
                 manually inserts the computed object into the local PD.
-                generate chempots from this PD (note at this point there is no
-                gurantee that the structure is actually unique, as it
-                could be a computational error in the DFT energy which is
-                slightly lower than MP calculated values)
+                Generate chempots from this PD (note at this point there 
+                is no gurantee that the structure is actually unique, as 
+                it could be a computational error in the DFT energy which 
+                is slightly lower than MP calculated values)
           3) If not-stable with respect to phase diagram, then:
              i) check to see if composition exists among the structures
                 in the stable list of the PD
@@ -357,8 +381,8 @@ class ChemPotAnalyzer(object):
                         else:
                             finchem_lims[blknom]['name-append'] += '-' + subnom
                     else:
-                        # if chem pots determined by two (or more) sub-specie containing
-                        # phases, skip this facet!
+                        # if chem pots determined by two (or more) sub-specie 
+                        # containing phases, skip this facet!
                         continue
             chem_lims = finchem_lims.copy()
 
@@ -370,10 +394,11 @@ class ChemPotAnalyzer(object):
         # common_approach = False determines chemical potentials based on the
         # facets that would contain the composition of interest
         chem_lims = {}
+        pd = pda._pd
         if common_approach:
             for facet in pda._pd.facets:
                 eltsinfac = [
-                    pda._pd.qhull_entries[j].composition.reduced_composition
+                    pd.qhull_entries[j].composition.reduced_composition
                     for j in facet]
                 if self.redcomp in eltsinfac:
                     chempots = pda.get_facet_chempots(facet)
@@ -387,19 +412,19 @@ class ChemPotAnalyzer(object):
                         limnom += '_rich'
                     print(limnom, chempots)
                     chemdict = {
-                        el.symbol: chempots[el] for el in pda._pd.elements}
+                        el.symbol: chempots[el] for el in pd.elements}
                     chem_lims[limnom] = chemdict
         else:
             # this uses basic form of creation of facets from initialization
             # of phase diagram object to find which facets of phase diagram
             # contain the composition of interest
             from scipy.spatial import ConvexHull
-            tmpnew_qdata = list(pda._pd.qhull_data)
+            tmpnew_qdata = list(pd.qhull_data)
             del tmpnew_qdata[-1]
             new_qdata = [[val[i] for i in range(len(val)-1)]
                          for val in tmpnew_qdata]
 
-            tmp_elts = [e for e in pda._pd.elements]
+            tmp_elts = [e for e in pd.elements]
             del tmp_elts[0]
             unstable_qdata_elt = [
                 self.bulk_composition.get_atomic_fraction(el)
@@ -409,7 +434,7 @@ class ChemPotAnalyzer(object):
             # take facets of composition space and see if the new
             # composition changes volume of facet
             facets = []
-            for facet in pda._pd.facets:
+            for facet in pd.facets:
                 tmp_facet = [new_qdata[e] for e in facet]
                 prev_vol = ConvexHull(
                     tmp_facet, qhull_options="QJ i").volume
@@ -420,9 +445,9 @@ class ChemPotAnalyzer(object):
 
             # now get chemical potentials
             for facet in facets:
-                chempots = pda.get_facet_chempots(facet)
+                mus = pda.get_facet_chempots(facet)
                 eltsinfac = [
-                    pda._pd.qhull_entries[j].composition.reduced_composition
+                    pd.qhull_entries[j].composition.reduced_composition
                     for j in facet]
                 limnom = ''
                 for sys in eltsinfac:
@@ -430,26 +455,11 @@ class ChemPotAnalyzer(object):
                 limnom = limnom[:-1]
                 if len(eltsinfac) == 1:
                     limnom += '_rich'
-                print(limnom, chempots)
-                chemdict = {el.symbol: chempots[el] for el in pda._pd.elements}
+                print(limnom, mus)
+                chemdict = {el.symbol: mus[el] for el in pd.elements}
                 chem_lims[limnom] = chemdict
 
         return chem_lims
-
-    def get_entries_from_symbols(self, list_spec_symbol, mapi_key=None):
-        """
-        Gets entries list from MP database based on entries of list_spec_symbol
-        """
-        logger = logging.getLogger(__name__)
-        with MPRester(api_key=mapi_key) as mp:
-            self.entries = mp.get_entries_in_chemsys(list_spec_symbol)
-            self.recent_list_specs = list_spec_symbol
-        if  not self.entries:
-            msg = "Could not fetch entries for atomic chempots! " \
-                  "MPRester query error."
-            logger.warning(msg)
-            raise ValueError(msg)
-        return
 
     def diff_bulk_sub_phases(self, face_list, sub_el=None):
         # method for pulling out phases within a facet of a phase diagram
@@ -478,10 +488,12 @@ class ChemPotAnalyzer(object):
         subnom = subnom[:-1]
         return blk, blknom, subnom
 
-    def analyze_chempots_from_composition(self, mapi_key=None):
-        # A simple method for getting GGA-PBE chemical potentials JUST
-        # from the composition information (Note: this only works if the
-        # composition already exists in the MP database)
+    def get_chempots_from_composition(self, mapi_key=None):
+        """
+        A simple method for getting GGA-PBE chemical potentials JUST
+        from the composition information (Note: this only works if the
+        composition already exists in the MP database)
+        """
         if not self.entries:
             self.get_mp_entries(mapi_key=mapi_key)
 
@@ -501,7 +513,7 @@ class ChemPotAnalyzer(object):
             logger.warning(msg)
             raise ValueError(msg)
         else:
-            chempots = self.analyze_GGA_chempots(mpid=lowest_energy_mpid,
-                                                 mapi_key=mapi_key)
+            mu = self.analyze_GGA_chempots(mpid=lowest_energy_mpid,
+                                           mapi_key=mapi_key)
 
-        return chempots
+        return mu

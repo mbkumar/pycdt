@@ -255,22 +255,18 @@ class PostProcess(object):
             else:
                 bulk_composition = structure.composition
 
-        #if self._chem_pot_details:
-        #    cpa = ChemPotAnalyzer.from_dict(self._chem_pot_details)
         if chem_pot_details:
             cpa = ChemPotAnalyzer.from_dict(chem_pot_details)
         else:
             cpa = ChemPotAnalyzer(bulk_composition,
                                   subs_species=self._substitution_species)
 
-        #note that _substitution_species set is something that needs to be pre-loaded
-        # (as it is in the parse_defect_calculations attribute)
+        # Note that _substitution_species set is something that needs to be 
+        # pre-loaded (as it is in the parse_defect_calculations attribute)
 
         chem_lims = cpa.analyze_GGA_chempots(root_fldr=self._root_fldr,
                                              mpid=self._mpid,
                                              mapi_key=self._mapi_key)
-
-        #self._chem_pot_details = cpa._chemical_data
 
         return chem_lims
 
