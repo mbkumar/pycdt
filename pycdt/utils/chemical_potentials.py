@@ -69,7 +69,7 @@ class ChemPotAnalyzer(object):
         Args:
             d:  python dict
         """
-        subs = set([elt for elt in d['sub_species_symsets'].keys()])
+        subs = set(d['sub_species_symsets'].keys())
         cpa = ChemPotAnalyzer(d['bulk_composition'], sub_species=subs,
                               entries=d['entries'])
 
