@@ -212,13 +212,6 @@ class ChemPotAnalyzer(object):
         # first get the computed entry
         if bulk_entry:
             self.bulk_ce = bulk_entry
-        #elif root_fldr:
-        #    if isinstance(root_fldr, Vasprun):  # see if root_fldr entry is already the vasprun
-        #        self.bulk_ce = root_fldr.get_computed_entry()
-        #    else:
-        #        bulkvr = Vasprun(os.path.join(root_fldr, "bulk",
-        #                                      "vasprun.xml"))
-        #        self.bulk_ce = bulkvr.get_computed_entry()
         elif mpid:
             with MPRester(api_key=mapi_key) as mp:
                 self.bulk_ce = mp.get_entry_by_material_id(mpid)
@@ -436,10 +429,6 @@ class ChemPotAnalyzer(object):
                 eltsinfac = [
                     pd.qhull_entries[j].composition.reduced_composition
                     for j in facet]
-                #limnom = ''
-                #for sys in eltsinfac:
-                #    limnom += str(sys.reduced_formula) + '-'
-                #limnom = limnom[:-1]
                 limnom = '-'.join(sys.reduced_formula for sys in eltsinfac)
                 if len(eltsinfac) == 1:
                     limnom += '_rich'
@@ -466,14 +455,6 @@ class ChemPotAnalyzer(object):
                 blk.append(face)
         blk.sort()
         sub_spcs.sort()
-        #blknom = ''
-        #subnom = ''
-        #for nom in blk:
-        #    blknom += nom + '-'
-        #blknom = blknom[:-1]
-        #for nom in sub_spcs:
-        #    subnom += nom+'-'
-        #subnom = subnom[:-1]
         blknom = '-'.join(blk)
         subnom = '-'.join(sub_spcs)
         return blk, blknom, subnom
