@@ -248,7 +248,7 @@ class PostProcess(object):
             else:
                 with MPRester(api_key=self._mapi_key) as mp:
                     structure = mp.get_structure_by_material_id(self._mpid)
-            if  not structure:
+            if not structure:
                 msg = "Could not fetch structure for atomic chempots!"
                 logger.warning(msg)
                 raise ValueError(msg)
@@ -263,8 +263,14 @@ class PostProcess(object):
 
         # Note that _substitution_species set is something that needs to be 
         # pre-loaded (as it is in the parse_defect_calculations attribute)
+        if not self._mpid:
+            bulkvr = Vasprun(os.path.join(
+                self._root_fldr, "bulk", "vasprun.xml"))
+            bulk_entry = bulkvr.get_computed_entry()
+        else:
+            bulk_entry = None # Use MP entry inside cpa
 
-        chem_lims = cpa.analyze_GGA_chempots(root_fldr=self._root_fldr,
+        chem_lims = cpa.analyze_GGA_chempots(bulk_entry=bulk_entry,
                                              mpid=self._mpid,
                                              mapi_key=self._mapi_key)
 
