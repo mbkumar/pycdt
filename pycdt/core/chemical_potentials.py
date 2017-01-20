@@ -146,8 +146,8 @@ class ChemPotAnalyzer(object):
             raise ValueError(msg)
         return
 
-    def analyze_GGA_chempots(self, bulk_computed_entry=None, root_fldr=None,
-                             mpid=None, mapi_key=None, full_sub_approach=False):
+    def analyze_GGA_chempots(self, bulk_entry=None, root_fldr=None, mpid=None,
+                             mapi_key=None, full_sub_approach=False):
         """
         For calculating GGA-PBE atomic chemical potentials by using
             Materials Project pre-computed data
@@ -155,7 +155,7 @@ class ChemPotAnalyzer(object):
         Args for input :
             (Among bulk_computed_entry, root_flr and mpid, only one of them is
             required)
-            bulk_computed_entry: Pymatgen ComputedStructureEntry object for
+            bulk_entry: Pymatgen ComputedStructureEntry object for
                 bulk supercell
             root_fldr: base folder for defects set, ends up loading
                 root_fldr/bulk/vasprun.xml and converting to a
@@ -214,12 +214,12 @@ class ChemPotAnalyzer(object):
 
         logger = logging.getLogger(__name__)
         # first get the computed entry
-        if bulk_computed_entry:
-            self.bulk_ce = bulk_computed_entry
+        if bulk_entry:
+            self.bulk_ce = bulk_entry
         elif root_fldr:
-            try:  # see if root_fldr entry is already the vasprun
+            if isinstance(root_fldr, Vasprun):  # see if root_fldr entry is already the vasprun
                 self.bulk_ce = root_fldr.get_computed_entry()
-            except:
+            else:
                 bulkvr = Vasprun(os.path.join(root_fldr, "bulk",
                                               "vasprun.xml"))
                 self.bulk_ce = bulkvr.get_computed_entry()
@@ -398,10 +398,7 @@ class ChemPotAnalyzer(object):
                     chempots = pda.get_facet_chempots(facet)
                     if len(eltsinfac) != 1:
                         eltsinfac.remove(self.redcomp)
-                    limnom = ''
-                    for sys in eltsinfac:
-                        limnom += str(sys.reduced_formula) + '-'
-                    limnom = limnom[:-1]
+                    limnom = '-'.join(sys.reduced_formula for sys in eltsinfac)
                     if len(eltsinfac) == 1:
                         limnom += '_rich'
                     print(limnom, chempots)
@@ -443,10 +440,11 @@ class ChemPotAnalyzer(object):
                 eltsinfac = [
                     pd.qhull_entries[j].composition.reduced_composition
                     for j in facet]
-                limnom = ''
-                for sys in eltsinfac:
-                    limnom += str(sys.reduced_formula) + '-'
-                limnom = limnom[:-1]
+                #limnom = ''
+                #for sys in eltsinfac:
+                #    limnom += str(sys.reduced_formula) + '-'
+                #limnom = limnom[:-1]
+                limnom = '-'.join(sys.reduced_formula for sys in eltsinfac)
                 if len(eltsinfac) == 1:
                     limnom += '_rich'
                 print(limnom, mus)
@@ -472,14 +470,16 @@ class ChemPotAnalyzer(object):
                 blk.append(face)
         blk.sort()
         sub_spcs.sort()
-        blknom = ''
-        subnom = ''
-        for nom in blk:
-            blknom += nom + '-'
-        blknom = blknom[:-1]
-        for nom in sub_spcs:
-            subnom += nom+'-'
-        subnom = subnom[:-1]
+        #blknom = ''
+        #subnom = ''
+        #for nom in blk:
+        #    blknom += nom + '-'
+        #blknom = blknom[:-1]
+        #for nom in sub_spcs:
+        #    subnom += nom+'-'
+        #subnom = subnom[:-1]
+        blknom = '-'.join(blk)
+        subnom = '-'.join(sub_spcs)
         return blk, blknom, subnom
 
     def get_chempots_from_composition(self, mapi_key=None):
