@@ -146,8 +146,8 @@ class ChemPotAnalyzer(object):
             raise ValueError(msg)
         return
 
-    def analyze_GGA_chempots(self, bulk_entry=None, root_fldr=None, mpid=None,
-                             mapi_key=None, full_sub_approach=False):
+    def analyze_GGA_chempots(self, bulk_entry=None, mpid=None, mapi_key=None,
+                             full_sub_approach=False):
         """
         For calculating GGA-PBE atomic chemical potentials by using
             Materials Project pre-computed data
@@ -157,10 +157,6 @@ class ChemPotAnalyzer(object):
             required)
             bulk_entry: Pymatgen ComputedStructureEntry object for
                 bulk supercell
-            root_fldr: base folder for defects set, ends up loading
-                root_fldr/bulk/vasprun.xml and converting to a
-                ComputedStructureEntry (alternatively, root_fldr can be
-                loaded as Vasprun object of bulk for even faster parsing)
             mpid (str): Materials Project ID of bulk structure;
                 format "mp-X", where X is an integer;
             mapi_key (str): Materials API key to access database
@@ -216,13 +212,13 @@ class ChemPotAnalyzer(object):
         # first get the computed entry
         if bulk_entry:
             self.bulk_ce = bulk_entry
-        elif root_fldr:
-            if isinstance(root_fldr, Vasprun):  # see if root_fldr entry is already the vasprun
-                self.bulk_ce = root_fldr.get_computed_entry()
-            else:
-                bulkvr = Vasprun(os.path.join(root_fldr, "bulk",
-                                              "vasprun.xml"))
-                self.bulk_ce = bulkvr.get_computed_entry()
+        #elif root_fldr:
+        #    if isinstance(root_fldr, Vasprun):  # see if root_fldr entry is already the vasprun
+        #        self.bulk_ce = root_fldr.get_computed_entry()
+        #    else:
+        #        bulkvr = Vasprun(os.path.join(root_fldr, "bulk",
+        #                                      "vasprun.xml"))
+        #        self.bulk_ce = bulkvr.get_computed_entry()
         elif mpid:
             with MPRester(api_key=mapi_key) as mp:
                 self.bulk_ce = mp.get_entry_by_material_id(mpid)
