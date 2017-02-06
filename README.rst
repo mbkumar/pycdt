@@ -2,13 +2,13 @@
 PyCDT
 =====
 
-Python Charge Defects Toolkit (PyCDT) is a python packaged aimed at making 
+Python Charge Defects Toolkit (PyCDT) is a python package aimed at making 
 charged defects modeling simpler, high throughput ready, and also accessible 
-to researchers who don't have the required background. At present it can do 
-simple defect thermodynamic calculations and error corrections for periodic
+to researchers who don't have the required background. PyCDT can handle
+thermodynamic calculations and error corrections in the context of periodic
 boundary condition density functional calculations of charged defects in 
 semiconductors and insulators. It can also generate the inputs for required 
-DFT calculations and can processes the output of the DFT calculations.
+DFT calculations and can process the output of the DFT calculations.
 The code is modular and any DFT code can be integrated into PyCDT for defect 
 calculations. 
 
