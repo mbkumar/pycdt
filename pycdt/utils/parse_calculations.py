@@ -259,7 +259,7 @@ class PostProcess(object):
             cpa = ChemPotAnalyzer.from_dict(chem_pot_details)
         else:
             cpa = ChemPotAnalyzer(bulk_composition,
-                                  subs_species=self._substitution_species)
+                                  sub_species=self._substitution_species)
 
         # Note that _substitution_species set is something that needs to be 
         # pre-loaded (as it is in the parse_defect_calculations attribute)
