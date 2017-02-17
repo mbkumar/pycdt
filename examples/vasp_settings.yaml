@@ -8,3 +8,5 @@ INCAR:
         EDIFF: 1e-4
     dielectric:
         EDIFF: 1e-6
+POTCAR:
+    functional: PBE_52
