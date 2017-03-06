@@ -75,16 +75,18 @@ class PotcarMod(Potcar):
     def __init__(self, **kwargs):
         super(self.__class__, self).__init__(**kwargs)
 
-    def set_symbols(self, symbols, functional=Potcar.DEFAULT_FUNCTIONAL,
+    def set_symbols(self, symbols, functional=None,
                     sym_potcar_map=None):
         """
         Initialize the POTCAR from a set of symbols. Currently, the POTCARs can
-        be fetched from a location specified in the environment variable
-        VASP_PSP_DIR or in a pymatgen.cfg or specified explicitly in a map.
+        be fetched from a location specified in .pmgrc.yaml. Use pmg config
+        to add this setting.
 
         Args:
             symbols ([str]): A list of element symbols
-            functional (str): The functional to use from the config file
+            functional (str): The functional to use. If None, the setting
+                PMG_DEFAULT_FUNCTIONAL in .pmgrc.yaml is used, or if this is
+                not set, it will default to PBE.
             sym_potcar_map (dict): A map of symbol:raw POTCAR string. If
                 sym_potcar_map is specified, POTCARs will be generated from
                 the given map data rather than the config file location.
