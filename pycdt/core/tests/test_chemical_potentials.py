@@ -19,7 +19,7 @@ from monty.tempfile import ScratchDir
 from monty.serialization import loadfn
 from pymatgen.core.composition import Composition
 from pymatgen.core.structure import Structure
-from pycdt.utils.chemical_potentials import ChemPotAnalyzer
+from pycdt.core.chemical_potentials import ChemPotAnalyzer
 
 file_loc = os.path.join('..', '..', '..', 'test_files')
 

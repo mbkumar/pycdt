@@ -24,7 +24,7 @@ from pymatgen.io.vasp.inputs import Potcar
 from pymatgen.entries.computed_entries import ComputedStructureEntry
 
 from pycdt.core.defects_analyzer import ComputedDefect 
-from pycdt.utils.chemical_potentials import ChemPotAnalyzer
+from pycdt.core.chemical_potentials import ChemPotAnalyzer
 
 class PostProcess(object):
     def __init__(self, root_fldr, mpid=None, mapi_key=None):
@@ -44,7 +44,7 @@ class PostProcess(object):
         self._mpid = mpid
         self._mapi_key = mapi_key
         self._substitution_species = set()
-        self._chem_pot_details = None
+        #self._chem_pot_details = None
 
     def parse_defect_calculations(self):
         """
@@ -215,12 +215,8 @@ class PostProcess(object):
                 bandgap = vr.eigenvalue_band_properties[0]
                 vbm = vr.eigenvalue_band_properties[2]
         else:
-            if not self._mapi_key:
-                with MPRester() as mp:
-                    bs = mp.get_bandstructure_by_material_id(self._mpid)
-            else:
-                with MPRester(self._mapi_key) as mp:
-                    bs = mp.get_bandstructure_by_material_id(self._mpid)
+            with MPRester(api_key=self._mapi_key) as mp:
+                bs = mp.get_bandstructure_by_material_id(self._mpid)
             if not bs:
                 logger.error("Could not fetch band structure!")
                 raise ValueError("Could not fetch band structure!")
@@ -232,14 +228,16 @@ class PostProcess(object):
 
         return (vbm, bandgap)
 
-    def get_chempot_limits(self, bulk_composition=None, chem_pot_details=dict()):
+    def get_chempot_limits(self, bulk_composition=None, chem_pot_details={}):
         """
-        Returns atomic chempots from bulk_composition based on data in the materials project database
-            this is abstractly handled in the ChemPotAnalyzer so as to make beyond PBE-GGA easier to extend to
+        Returns atomic chempots from bulk_composition based on data in
+        the materials project database. This is abstractly handled in the
+        ChemPotAnalyzer so as to make beyond PBE-GGA easier to extend to
 
-        chem_pot_details(dict): Is a dict from a previous query to MP database for chemical potentials
-                It is not neccessary, but makes query faster because of less calls to MP database...
-                typically will exist in defect_data.json
+        chem_pot_details(dict): Is a dict from a previous query to MP
+            database for chemical potentials It is not neccessary, but
+            makes query faster because of less calls to MP database...
+            typically will exist in defect_data.json
         """
         logger = logging.getLogger(__name__)
         if not bulk_composition:
@@ -247,34 +245,34 @@ class PostProcess(object):
                 bulkvr = Vasprun(os.path.join(
                     self._root_fldr, "bulk", "vasprun.xml"))
                 structure = bulkvr.final_structure
-            elif not self._mapi_key:
-                with MPRester() as mp:
-                    structure = mp.get_structure_by_material_id(self._mpid)
             else:
-                with MPRester(self._mapi_key) as mp:
+                with MPRester(api_key=self._mapi_key) as mp:
                     structure = mp.get_structure_by_material_id(self._mpid)
-            if  not structure:
+            if not structure:
                 msg = "Could not fetch structure for atomic chempots!"
                 logger.warning(msg)
                 raise ValueError(msg)
             else:
                 bulk_composition = structure.composition
 
-        if self._chem_pot_details:
-            cpa = ChemPotAnalyzer.from_chem_data(self._chem_pot_details)
-        elif chem_pot_details:
-            cpa = ChemPotAnalyzer.from_chem_data(self._chem_pot_details)
+        if chem_pot_details:
+            cpa = ChemPotAnalyzer.from_dict(chem_pot_details)
         else:
-            cpa = ChemPotAnalyzer(bulk_composition, subs_species=self._substitution_species,
-                              mapi_key=self._mapi_key)
+            cpa = ChemPotAnalyzer(bulk_composition,
+                                  sub_species=self._substitution_species)
 
-        #note that _substitution_species set is something that needs to be pre-loaded
-        # (as it is in the parse_defect_calculations attribute)
+        # Note that _substitution_species set is something that needs to be 
+        # pre-loaded (as it is in the parse_defect_calculations attribute)
+        if not self._mpid:
+            bulkvr = Vasprun(os.path.join(
+                self._root_fldr, "bulk", "vasprun.xml"))
+            bulk_entry = bulkvr.get_computed_entry()
+        else:
+            bulk_entry = None # Use MP entry inside cpa
 
-        chem_lims = cpa.analyze_GGA_chempots(root_fldr=self._root_fldr,
-                                mpid=self._mpid)
-
-        self._chem_pot_details = cpa._chemical_data
+        chem_lims = cpa.analyze_GGA_chempots(bulk_entry=bulk_entry,
+                                             mpid=self._mpid,
+                                             mapi_key=self._mapi_key)
 
         return chem_lims
 
@@ -320,7 +318,8 @@ class PostProcess(object):
         output = self.parse_defect_calculations()
         output['epsilon'] = self.parse_dielectric_calculation()
         output['mu_range'] = self.get_chempot_limits()
-        # output['chem_pot_details'] = self._chem_pot_details #this is entry data from MP query..could print for reducing future queries
+        #entry data from MP query..could print for reducing future queries
+        # output['chem_pot_details'] = self._chem_pot_details
         vbm,gap = self.get_vbm_bandgap()
         output['vbm'] = vbm
         output['gap'] = gap
