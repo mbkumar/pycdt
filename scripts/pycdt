@@ -246,13 +246,9 @@ def compute_formation_energies(args):
     # initialize variables
     defect_data_file_name = args.defect_data_file_name
     corrections_file_name = args.corrections_file_name
-    plot_results = args.plot_results
 
     # parse results to get defect data and correction terms
     defect_data = loadfn(defect_data_file_name, cls=MontyDecoder)
-    epsilon_tensor = args.epsilon_tensor
-    if epsilon_tensor is None:
-        epsilon_tensor = defect_data['epsilon']
     defects = defect_data['defects']
 
     formula = defect_data['bulk_entry'].structure.composition.reduced_formula
@@ -502,9 +498,6 @@ def main():
                                          action='store_true',
                                          dest="plot_results",
                                          help=plot_results_string)
-    parser_compute_energies.add_argument("-e", "--epsilon", default=None,
-                                         dest="epsilon_tensor",
-                                         help=epsilon_string)
     parser_compute_energies.add_argument("-bg", "--bandgap",
                                          type=float, default=0, dest="bandgap",
                                          help=bandgap_string)

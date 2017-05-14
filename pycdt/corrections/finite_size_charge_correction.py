@@ -192,7 +192,7 @@ class ChargeCorrection(object):
         from pycdt.corrections.freysoldt_correction import FreysoldtCorrection
 
         s=FreysoldtCorrection(axis, self._dielectricconst, self._purelocpot,
-            self._deflocpot, self._q, energy_cutoff=self._encut, 
+            self._deflocpot, self._q, energy_cutoff=self._encut,
             madetol=self._madetol)
 
         freyval=s.correction(title=title,partflag=partflag)
@@ -208,12 +208,14 @@ class ChargeCorrection(object):
 
         #if havent loaded locpots objects or positions of defect then save these for later
         # (good if you want to run freysoldt for multiple axes)
-        if (type(s._purelocpot) is Locpot) and (type(self._purelocpot) is not Locpot):
-            self._purelocpot=s._purelocpot
-        if (type(s._deflocpot) is Locpot) and (type(self._deflocpot) is not Locpot):
-            self._deflocpot=s._deflocpot
-        if self._pos is None: #want them in fractional coords
-            self._pos = self._purelocpot.structure.lattice.get_fractional_coords(s._pos)
+        # but make sure charge is non-zero to avoid broken code here...
+        if self._q:
+            if (type(s._purelocpot) is Locpot) and (type(self._purelocpot) is not Locpot):
+                self._purelocpot=s._purelocpot
+            if (type(s._deflocpot) is Locpot) and (type(self._deflocpot) is not Locpot):
+                self._deflocpot=s._deflocpot
+            if self._pos is None: #want them in fractional coords,
+                self._pos = self._purelocpot.structure.lattice.get_fractional_coords(s._pos)
 
         print('\n Final Freysoldt',nomtype,'value is ',freyval)
 
