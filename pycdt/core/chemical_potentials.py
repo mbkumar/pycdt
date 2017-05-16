@@ -347,6 +347,7 @@ class ChemPotAnalyzer(object):
                 pda = PDAnalyzer(pd)
                 chem_lims = self.get_chempots_from_pda(pda)
 
+
                 for key in chem_lims.keys():
                     face_list = key.split('-')
                     blk, blknom, subnom = self.diff_bulk_sub_phases(
@@ -367,7 +368,30 @@ class ChemPotAnalyzer(object):
                         # if chem pots determined by two (or more) sub-specie 
                         # containing phases, skip this facet!
                         continue
-            chem_lims = finchem_lims.copy()
+
+            #run a check to make sure all facets dominantly defined by bulk species
+            overdependent_chempot = False
+            if len(finchem_lims.keys()) > len(self.bulk_species_symbol):
+                for facetbase in finchem_lims.keys():
+                    if "_rich" in facetbase:
+                        overdependent_chempot = True
+                        logger.warning(
+                        "Determined chemical potential to be over dependent"
+                        " on a substitutional specie. Needing to revert to full_sub_approach. If "
+                        "multiple sub species exist this could take a while/break the code...")
+
+            if not overdependent_chempot:
+                chem_lims = finchem_lims.copy()
+            else:
+                #This is for when overdetermined chempots occur, forcing the full_sub_approach to happen
+                for sub, subentries in self.entries['subs_set'].items():
+                    for subentry in subentries:
+                        entry_list.append(subentry)
+                pd = PhaseDiagram(entry_list)
+                pda = PDAnalyzer(pd)
+                chem_lims = self.get_chempots_from_pda(
+                    pda, common_approach=common_approach)
+
 
         return chem_lims
 
