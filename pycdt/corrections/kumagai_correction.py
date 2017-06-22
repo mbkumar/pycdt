@@ -901,6 +901,7 @@ class KumagaiCorrection(object):
         TODO: Rename forplot to a more descriptive name
         """
         import matplotlib.pyplot as plt
+        from matplotlib.font_manager import FontProperties
 
         plt.figure()
         plt.clf()
@@ -948,7 +949,10 @@ class KumagaiCorrection(object):
                          alpha=0.15, label='sampling region')
         plt.axhline(y=potalign, linewidth=0.5, color='red',
                     label='pot. align. / q')
-        plt.legend(loc=8)
+
+        fontP = FontProperties()
+        fontP.set_size('small')
+        plt.legend(bbox_to_anchor=(1.05, 0.5), prop=fontP)
         plt.axhline(y=0, linewidth=0.2, color='black')
         plt.ylim([min(ylis) - 0.5, max(ylis) + 0.5])
         plt.xlim([0, max(rlis) + 3])
