@@ -187,13 +187,13 @@ class PostProcess(object):
                             supercell_size=supercell_size,
                             charge=chrg, name=fldr_name))
 
-        else:
+        try:
             parsed_defects_data = {}
             parsed_defects_data['bulk_entry'] = bulk_entry
             parsed_defects_data['defects'] = parsed_defects
             return parsed_defects_data
-
-        return {} # Return Null dict due to failure
+        except:
+            return {} # Return Null dict due to failure
 
     def get_vbm_bandgap(self):
         """
