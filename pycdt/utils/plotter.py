@@ -11,7 +11,7 @@ __date__ = "November 4, 2012"
 import numpy as np
 import matplotlib
 matplotlib.use('agg')
-from pymatgen.util.plotting import get_publication_quality_plot
+from pymatgen.util.plotting import pretty_plot
 
 
 class DefectPlotter(object):
@@ -139,11 +139,11 @@ class DefectPlotter(object):
         qi = []
         qi_non_eq = []
         for t in temps:
-            qi.append(self._analyzer.get_eq_Ef(t, me, mh)['Qi']*1e-6)
+            qi.append(self._analyzer.get_eq_ef(t, me, mh)['Qi']*1e-6)
             qi_non_eq.append(
-                    self._analyzer.get_non_eq_Ef(t, 300, me, mh)['Qi']*1e-6)
+                    self._analyzer.get_non_eq_ef(t, 300, me, mh)['Qi']*1e-6)
 
-        plt = get_publication_quality_plot(12, 8)
+        plt = pretty_plot(12, 8)
         plt.xlabel("temperature (K)")
         plt.ylabel("carrier concentration (cm$^{-3}$)")
         plt.semilogy(temps, qi, linewidth=3.0)
@@ -164,11 +164,12 @@ class DefectPlotter(object):
         Returns:
             a matplotlib object
         """
-        plt = get_publication_quality_plot(12, 8)
+        plt = pretty_plot(12, 8)
         qi = []
         efs = []
         for ef in [x * 0.01 for x in range(0, 100)]:
             efs.append(ef)
-            qi.append(self._analyzer.get_Qi(ef, temp, me, mh)*1e-6)
+            qi.append(self._analyzer.get_qi(ef, temp, me, mh)*1e-6)
         plt.ylim([1e14, 1e22])
-        return plt.semilogy(efs, qi)
+        plt.semilogy(efs, qi)
+        return plt

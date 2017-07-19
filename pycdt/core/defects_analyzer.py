@@ -396,7 +396,7 @@ class DefectsAnalyzer(object):
             summation += d['charge'] * d['conc']
         return summation
 
-    def _get_qi(self, ef, t, m_elec, m_hole):
+    def get_qi(self, ef, t, m_elec, m_hole):
         from scipy import integrate as intgrl
 
         elec_den_fn = lambda e: self._get_dos_fd_elec(
@@ -411,7 +411,7 @@ class DefectsAnalyzer(object):
         return elec_count + hole_count
 
     def _get_qtot(self, ef, t, m_elec, m_hole):
-        return self._get_qd(ef, t) + self._get_qi(ef, t, m_elec, m_hole)
+        return self._get_qd(ef, t) + self.get_qi(ef, t, m_elec, m_hole)
 
     def get_eq_ef(self, t, m_elec, m_hole):
         """
@@ -437,7 +437,7 @@ class DefectsAnalyzer(object):
         e_cbm = self._e_vbm+self._band_gap
         ef = bisect(lambda e:self._get_qtot(e,t,m_elec,m_hole), 0, 
                 self._band_gap)
-        return {'ef': ef, 'Qi': self._get_qi(ef, t, m_elec, m_hole),
+        return {'ef': ef, 'Qi': self.get_qi(ef, t, m_elec, m_hole),
                 'QD': self._get_qd(ef,t), 
                 'conc': self.get_defects_concentration(t, ef)}
 
@@ -476,7 +476,7 @@ class DefectsAnalyzer(object):
                 cd[c['name']] = c['conc']
         ef = bisect(lambda e:self._get_non_eq_qtot(cd, e, teq, m_elec, m_hole),
                     -1.0, self._band_gap+1.0)
-        return {'ef':ef, 'Qi':self._get_qi(ef, teq, m_elec, m_hole),
+        return {'ef':ef, 'Qi':self.get_qi(ef, teq, m_elec, m_hole),
                 'conc_syn':eqsyn['conc'],
                 'conc':self._get_non_eq_conc(cd, ef, teq)}
 
@@ -516,4 +516,4 @@ class DefectsAnalyzer(object):
 
     def _get_non_eq_qtot(self, cd, ef, t, m_elec, m_hole):
         return self._get_non_eq_qd(cd, ef, t) + \
-               self._get_qi(ef, t, m_elec, m_hole)
+               self.get_qi(ef, t, m_elec, m_hole)
