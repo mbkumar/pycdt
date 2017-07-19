@@ -13,7 +13,9 @@ __date__ = "May 6, 2015"
 import unittest
 import os
 
-from pycdt.utils.plotter import DefectPlotter
+#from pycdt.utils.plotter import DefectPlotter
+#from pycdt.core.defects_analyzer import DefectsAnalyzer
+#file_loc = os.path.join('..', '..', '..', 'test_files')
 
 class DefectPlotterTest(unittest.TestCase):
     def setUp(self):
@@ -26,4 +28,7 @@ class DefectPlotterTest(unittest.TestCase):
         pass
 
     def test_plot_carriers_ef(self):
+        pass
+
+    def tearDown(self):
         pass

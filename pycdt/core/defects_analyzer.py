@@ -14,7 +14,7 @@ from itertools import combinations
 
 import numpy as np
 
-from pymatgen.core.structure import PeriodicSite
+from pymatgen.core.structure import PeriodicSite, Structure
 from pymatgen.entries.computed_entries import ComputedStructureEntry
 from pymatgen.symmetry.analyzer import SpacegroupAnalyzer
 
@@ -112,7 +112,7 @@ class DefectsAnalyzer(object):
         self._formation_energies = []
 
     def as_dict(self):
-        d = {'entry_bulk': self._entry_bulk.as_dict(),
+        d = {'entry_bulk': self._entry_bulk,
              'e_vbm': self._e_vbm,
              'mu_elts': self._mu_elts,
              'band_gap': self._band_gap,
@@ -124,7 +124,9 @@ class DefectsAnalyzer(object):
 
     @classmethod
     def from_dict(cls, d):
-        entry_bulk = ComputedStructureEntry.from_dict(d['entry_bulk'])
+        entry_bulk = ComputedStructureEntry(Structure.from_dict(
+                d['entry_bulk']['bulk']['supercell']['structure']),
+                d['entry_bulk']['energy']) # originially failed because of key error
         analyzer = DefectsAnalyzer(
                 entry_bulk, d['e_vbm'], 
                 {el: d['mu_elts'][el] for el in d['mu_elts']}, d['band_gap'])
