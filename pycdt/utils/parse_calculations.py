@@ -24,7 +24,7 @@ from pymatgen.io.vasp.inputs import Potcar
 from pymatgen.entries.computed_entries import ComputedStructureEntry
 
 from pycdt.core.defects_analyzer import ComputedDefect 
-from pycdt.core.chemical_potentials import ChemPotAnalyzer
+from pycdt.core.chemical_potentials import MPChemPotAnalyzer
 
 class PostProcess(object):
     def __init__(self, root_fldr, mpid=None, mapi_key=None):
@@ -67,7 +67,7 @@ class PostProcess(object):
                 return (None, error_msg) #Further processing is not useful
 
             try:
-                vr = Vasprun(vr_file)
+                vr = Vasprun(vr_file, parse_potcar_file=False)
             except:
                 logger.warning("Couldn't parse {}".format(vr_file))
                 error_msg = ": Failure, couldn't parse vaprun.xml file."
@@ -211,7 +211,7 @@ class PostProcess(object):
                     'bulk calculation.\nNote that it would be better to '
                     'perform real band structure calculation...')
                 vr = Vasprun(os.path.join(self._root_fldr, 'bulk',
-                                          'vasprun.xml'))
+                                          'vasprun.xml'), parse_potcar_file=False)
                 bandgap = vr.eigenvalue_band_properties[0]
                 vbm = vr.eigenvalue_band_properties[2]
         else:
@@ -228,51 +228,32 @@ class PostProcess(object):
 
         return (vbm, bandgap)
 
-    def get_chempot_limits(self, bulk_composition=None, chem_pot_details={}):
+    def get_chempot_limits(self):
         """
         Returns atomic chempots from bulk_composition based on data in
         the materials project database. This is abstractly handled in the
-        ChemPotAnalyzer so as to make beyond PBE-GGA easier to extend to
+        ChemPotAnalyzer
 
-        chem_pot_details(dict): Is a dict from a previous query to MP
-            database for chemical potentials It is not neccessary, but
-            makes query faster because of less calls to MP database...
-            typically will exist in defect_data.json
+        Note to user: If personal phase diagram desired,
+            option exists in the pycdt.core.chemical_potentials to setup,
+            run and parse personal phase diagrams for purposes of chemical potentials
         """
         logger = logging.getLogger(__name__)
-        if not bulk_composition:
-            if not self._mpid:
-                bulkvr = Vasprun(os.path.join(
-                    self._root_fldr, "bulk", "vasprun.xml"))
-                structure = bulkvr.final_structure
-            else:
-                with MPRester(api_key=self._mapi_key) as mp:
-                    structure = mp.get_structure_by_material_id(self._mpid)
-            if not structure:
-                msg = "Could not fetch structure for atomic chempots!"
+
+        if self._mpid:
+            cpa = MPChemPotAnalyzer( mpid = self._mpid, sub_species = self._substitution_species,
+                                   mapi_key = self._mapi_key)
+        else:
+            bulkvr = Vasprun(os.path.join( self._root_fldr, "bulk", "vasprun.xml"), parse_potcar_file=False)
+            if not bulkvr:
+                msg = "Could not fetch computed entry for atomic chempots!"
                 logger.warning(msg)
                 raise ValueError(msg)
-            else:
-                bulk_composition = structure.composition
+            cpa = MPChemPotAnalyzer( bulk_ce=bulkvr.get_computed_entry(),
+                                   sub_species = self._substitution_species,
+                                   mapi_key = self._mapi_key)
 
-        if chem_pot_details:
-            cpa = ChemPotAnalyzer.from_dict(chem_pot_details)
-        else:
-            cpa = ChemPotAnalyzer(bulk_composition,
-                                  sub_species=self._substitution_species)
-
-        # Note that _substitution_species set is something that needs to be 
-        # pre-loaded (as it is in the parse_defect_calculations attribute)
-        if not self._mpid:
-            bulkvr = Vasprun(os.path.join(
-                self._root_fldr, "bulk", "vasprun.xml"))
-            bulk_entry = bulkvr.get_computed_entry()
-        else:
-            bulk_entry = None # Use MP entry inside cpa
-
-        chem_lims = cpa.analyze_GGA_chempots(bulk_entry=bulk_entry,
-                                             mpid=self._mpid,
-                                             mapi_key=self._mapi_key)
+        chem_lims = cpa.analyze_GGA_chempots()
 
         return chem_lims
 
@@ -292,7 +273,7 @@ class PostProcess(object):
 
         try:
             vr = Vasprun(os.path.join(
-                self._root_fldr,"dielectric","vasprun.xml"))
+                self._root_fldr,"dielectric","vasprun.xml"), parse_potcar_file=False)
         except:
             logging.getLogger(__name__).warning(
                 'Parsing Dielectric calculation failed')

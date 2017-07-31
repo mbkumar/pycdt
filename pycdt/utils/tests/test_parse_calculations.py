@@ -22,7 +22,7 @@ from pymatgen.io.vasp import Vasprun
 from pycdt.utils.parse_calculations import PostProcess
 
 pmgtestfiles_loc = os.path.join(os.path.split(os.path.split(initfilep)[0])[0], 'test_files')
-# file_loc = os.path.abspath(os.path.join('..', '..', '..', 'test_files')) #Pycdt Testfiles
+file_loc = os.path.abspath(os.path.abspath(os.path.join('..', '..', '..', 'test_files'))) #Pycdt Testfiles
 
 class PostProcessTest(unittest.TestCase):
     def setUp(self):
@@ -119,9 +119,15 @@ class PostProcessTest(unittest.TestCase):
             self.assertEqual(testgap_mpid, 0.18869999999999987)
 
     def test_get_chempot_limits(self):
-        #Will wait to finish this until the ChemPotAnalyzer has been written...?
-        #NOTE will want to small test to the compile_all test above when I DO implement something...
-        pass
+        with ScratchDir('.'):
+            #make a fake file structure to parse vaspruns
+            os.mkdir('bulk')
+            copyfile(os.path.join(file_loc, 'vasprun.xml_GaAs'), 'bulk/vasprun.xml')
+            pp = PostProcess('.')
+            gaas_cp = pp.get_chempot_limits()
+            self.assertEqual(set([u'As_rich', u'Ga_rich']), set(gaas_cp.keys()))
+            self.assertEqual({u'As': -4.6580705550000001, u'Ga': -3.7317319750000006}, gaas_cp['As_rich'])
+            self.assertEqual({u'As': -5.3589730550000008, u'Ga': -3.030829475}, gaas_cp['Ga_rich'])
 
     def test_dielectric_calculation(self):
         with ScratchDir('.'):
