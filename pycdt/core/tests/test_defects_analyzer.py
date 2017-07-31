@@ -24,7 +24,7 @@ file_loc = os.path.join('..', '..', '..', 'test_files')
 
 class ComputedDefectTest(unittest.TestCase):
     def setUp(self):
-        entry_file = os.path.join(file_loc, 'vac_Cr2o3_struct_entry.json')
+        entry_file = os.path.join(file_loc, 'vac_cr2o3_struct_entry.json')
         entry = loadfn(entry_file, cls=MontyDecoder)
         lattice = Lattice([[9.995004137201189, -2.1469568e-08, 0.0],
                            [-4.997501105922451, 8.655927903729987, 0.0],
@@ -53,17 +53,17 @@ class ComputedDefectTest(unittest.TestCase):
 
 class DefectsAnalyzerTest(unittest.TestCase):
     def setUp(self):
-        blk_entry_file = os.path.join(file_loc, 'Cr2O3_bulk_entry.json')
+        blk_entry_file = os.path.join(file_loc, 'Cr2O3_defects.json')
         blk_entry = loadfn(blk_entry_file, cls=MontyDecoder)
-        blk_entry.energy = -100
+        blk_entry['energy'] = -100
         e_vbm = 0.5
         mu_elts = {'Cr': -10, 'O': -5}
         bandgap = 3.0
         self.da = DefectsAnalyzer(blk_entry, e_vbm, mu_elts, bandgap)
 
-        d1_entry_file = os.path.join(file_loc, 'Cr2O3_def1_entry.json')
+        d1_entry_file = os.path.join(file_loc, 'Cr2O3_defects.json')
         d1_entry = loadfn(d1_entry_file, cls=MontyDecoder)
-        d1_entry.energy = -99
+        d1_entry['energy'] = -99
         mult = 6
         sc_size = 12
 
