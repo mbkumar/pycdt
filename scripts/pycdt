@@ -78,7 +78,13 @@ def generate_input(args):
     interstitial_elements = args.interstitial_elements
     settings = {}
     if args.input_settings_file:
-        settings = loadfn(args.input_settings_file)
+        if os.path.split(args.input_settings_file)[1] == 'INCAR':
+            settings = {'INCAR':{}}
+            from pymatgen.io.vasp import Incar
+            incar = Incar.from_file(args.input_settings_file)
+            settings['INCAR'] = incar
+        else:
+            settings = loadfn(args.input_settings_file)
 
     # error-checking
     if not struct_file and not mp_id:
