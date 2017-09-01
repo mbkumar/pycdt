@@ -616,13 +616,15 @@ class UserChemPotAnalyzer(ChemPotAnalyzer):
                 if not matched:
                     print('Adding entry from MP-database:',mpcomp,'(entry-id:',mplist[1])
                     personal_entry_list.append(mplist[2])
+        else:
+            personal_entry_list.append(self.bulk_ce)
 
         #see if bulk phase is unstable w.r.t phase diagram. If it is
         #        AND no composition exists then set common_approach to False
         pd = PhaseDiagram(personal_entry_list)
         pda = PDAnalyzer(pd)
         common_approach = True
-        if pda.get_decomp_and_e_above_hull(self.bulk_ce)[1] <= 0:
+        if pda.get_decomp_and_e_above_hull(self.bulk_ce, allow_negative=True)[1] < 0:
             personal_entry_list.append(self.bulk_ce)
         else:
             stable_composition_exists = False
