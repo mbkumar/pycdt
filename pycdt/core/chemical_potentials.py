@@ -16,9 +16,11 @@ import os
 import logging
 
 from pymatgen.matproj.rest import MPRester
+from pymatgen.core import Structure
 from pymatgen.io.vasp.outputs import Vasprun
 from pymatgen.phasediagram.maker import PhaseDiagram
 from pymatgen.phasediagram.analyzer import PDAnalyzer
+from pymatgen.entries.computed_entries import ComputedStructureEntry
 
 
 class ChemPotAnalyzer(object):
@@ -618,6 +620,21 @@ class UserChemPotAnalyzer(ChemPotAnalyzer):
                     personal_entry_list.append(mplist[2])
         else:
             personal_entry_list.append(self.bulk_ce)
+            #if you dont have entries for elemental corners of phase diagram then code breaks
+            #manually inserting entries with energies of zero for competeness...USER DO NOT USE THIS
+            eltcount = {elt:0 for elt in set(self.bulk_ce.composition.elements)}
+            for pentry in personal_entry_list:
+                if pentry.is_element:
+                    eltcount[pentry.composition.elements[0]] += 1
+            for elt, eltnum in eltcount.items():
+                if not eltnum:
+                    s=Structure([[1.,0.,0.],[0.,1.,0.],[0.,0.,1.]], [elt],[[0,0,0]])
+                    eltentry = ComputedStructureEntry(s, 0.)
+                    print('USER! Note that you have added a fake '+str(elt)+' structure to prevent from breaking the '
+                          'Phase Diagram Analyzer.\n As a result DO NOT trust the chemical potential results for regions '
+                          'of phase diagram that involve the element '+str(elt))
+                    personal_entry_list.append(eltentry)
+
 
         #see if bulk phase is unstable w.r.t phase diagram. If it is
         #        AND no composition exists then set common_approach to False
