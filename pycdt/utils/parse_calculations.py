@@ -223,7 +223,10 @@ class PostProcess(object):
 
             vbm = bs.get_vbm()['energy']
             if not vbm:
-                vbm = 0
+                try:
+                    vbm = bs.efermi
+                except:
+                    vbm = 0.
             bandgap = bs.get_band_gap()['energy']
 
         return (vbm, bandgap)
