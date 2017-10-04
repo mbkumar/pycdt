@@ -27,8 +27,8 @@ from monty.serialization import dumpfn
 from pymatgen.core.structure import PeriodicSite
 from pymatgen.core.periodic_table import Element, Specie, get_el_sp
 from pymatgen.symmetry.analyzer import SpacegroupAnalyzer
-from pymatgen.analysis.defects.point_defects import Vacancy, \
-        ValenceIonicRadiusEvaluator as VIRE
+from pymatgen.analysis.defects.point_defects import Vacancy
+from pymatgen.analysis.local_env import ValenceIonicRadiusEvaluator as VIRE
 from pymatgen.analysis.defects.point_defects import \
         StructureMotifInterstitial
 
