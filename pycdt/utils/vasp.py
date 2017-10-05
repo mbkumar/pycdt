@@ -53,8 +53,11 @@ class PotcarSingleMod(PotcarSingle):
                               "LDA": "potpaw", 
                               "PW91": "potpaw_GGA", 
                               "LDA_52": "potpaw_LDA.52",
+                              "LDA_54": "potpaw_LDA.54",
                               "PBE": "potpaw_PBE", 
-                              "PBE_52": "potpaw_PBE.52"}
+                              "PBE_52": "potpaw_PBE.52",
+                              "PBE_54": "potpaw_PBE.54",
+                              }
             funcdir = functional_dir[functional]
 
         # d = SETTINGS.get("PMG_VASP_PSP_DIR")
@@ -295,11 +298,13 @@ def make_vasp_defect_files(defects, path_base, user_settings={}, hse=False):
     # User setting dicts
     user_settings = deepcopy(user_settings)
     user_incar = user_settings.pop('INCAR', {})
-    user_incar_blk = user_incar.pop('bulk', {})
-    user_incar_def = user_incar.pop('defects', {})
+    user_incar_blk_tmp = user_incar.pop('bulk', {})
+    user_incar_blk_def = user_incar.pop('defects', {})
     user_incar.pop('dielectric', {})
-    user_incar_blk.update(user_incar)
-    user_incar_def.update(user_incar)
+    user_incar_blk = deepcopy(user_incar)
+    user_incar_def = deepcopy(user_incar)
+    user_incar_blk.update(user_incar_blk_tmp)
+    user_incar_def.update(user_incar_blk_def)
     user_kpoints = user_settings.pop('KPOINTS', {})
     user_potcar = user_settings.pop('POTCAR', {})
     potcar_functional = user_potcar.get('functional', 'PBE')

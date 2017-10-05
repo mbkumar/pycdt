@@ -15,12 +15,12 @@ __date__ = "Sep 14, 2014"
 import os
 import logging
 
-from pymatgen.matproj.rest import MPRester
-from pymatgen.core import Structure
-from pymatgen.io.vasp.outputs import Vasprun
-from pymatgen.phasediagram.maker import PhaseDiagram
-from pymatgen.phasediagram.analyzer import PDAnalyzer
+from pymatgen import Structure
 from pymatgen.entries.computed_entries import ComputedStructureEntry
+from pymatgen.ext.matproj import MPRester
+from pymatgen.io.vasp.outputs import Vasprun
+from pymatgen.analysis.phase_diagram import PhaseDiagram
+from pymatgen.analysis.phase_diagram import PDAnalyzer
 
 
 class ChemPotAnalyzer(object):
