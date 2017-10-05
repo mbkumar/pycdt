@@ -11,7 +11,7 @@ __date__ = "November 4, 2012"
 import numpy as np
 import matplotlib
 matplotlib.use('agg')
-from pymatgen.util.plotting import pretty_plot
+# from pymatgen.util.plotting import pretty_plot
 
 
 class DefectPlotter(object):
