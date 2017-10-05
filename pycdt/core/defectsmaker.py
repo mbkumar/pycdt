@@ -719,3 +719,33 @@ class ChargedDefectsStructures(object):
 
     def to(self, outfile):
         dumpfn(self.defects, outfile)
+
+    def get_n_defects_of_type(self, defect_type):
+        """
+        Get the number of defects of the given type.
+        Args:
+            defect_type (str): defect type (vacancies,
+                interstitials, substitutions).
+        Returns:
+            n_defects (int): number of defects of given type.
+        """
+        try:
+            return len(self.defects[defect_type])
+        except:
+            return 0
+
+    def get_ith_supercell_of_defect_type(self, i, defect_type):
+        """
+        Get the (i-1)-th defect supercell with the given defect type.
+        Args:
+            i (int): index (starting from 0) of target supercell.
+            defect_type (str): defect type (vacancies,
+                interstitials, substitutions).
+        Returns:
+            sc (Structure): copy of the defect supercell.
+        """
+        return self.defects[defect_type][i]['supercell'][
+            'structure'].copy()
+
+
+
