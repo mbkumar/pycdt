@@ -68,5 +68,5 @@ From the pycdt root folder, go to examples folder by typing::
 
 Questions?
 ---------
-Post your questions on PyCDT forum at https://groups.google.com/forum/#!forum/pycdt-forum
+Post your questions on `PyCDT forum <https://groups.google.com/forum/#!forum/pycdt-forum>`_.
 
