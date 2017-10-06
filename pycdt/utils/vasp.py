@@ -46,8 +46,7 @@ class PotcarSingleMod(PotcarSingle):
         funcdir = PotcarSingle.functional_dir[functional]
 
         if not os.path.isdir(os.path.join(
-                # SETTINGS.get("PMG_VASP_PSP_DIR"), funcdir)):
-                SETTINGS.get("VASP_PSP_DIR"), funcdir)):
+                SETTINGS.get("PMG_VASP_PSP_DIR"), funcdir)):
             functional_dir = {"LDA_US": "pot",
                               "PW91_US": "pot_GGA", 
                               "LDA": "potpaw", 
@@ -60,8 +59,7 @@ class PotcarSingleMod(PotcarSingle):
                               }
             funcdir = functional_dir[functional]
 
-        # d = SETTINGS.get("PMG_VASP_PSP_DIR")
-        d = SETTINGS.get("VASP_PSP_DIR")
+        d = SETTINGS.get("PMG_VASP_PSP_DIR")
         if d is None:
             raise ValueError("No POTCAR directory found. Please set "
                              "the VASP_PSP_DIR environment variable")
