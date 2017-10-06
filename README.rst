@@ -66,3 +66,7 @@ From the pycdt root folder, go to examples folder by typing::
 
     cd examples
 
+Questions?
+---------
+Post your questions on PyCDT forum at https://groups.google.com/forum/#!forum/pycdt-forum
+
