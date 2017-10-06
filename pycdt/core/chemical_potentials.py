@@ -53,9 +53,9 @@ class ChemPotAnalyzer(object):
             redcomp = bulk_composition.reduced_composition
 
         chem_lims = {}
-        pd = pda._pd
+        pd = pda # pda._pd
         if common_approach:
-            for facet in pda._pd.facets:
+            for facet in pd.facets: # pda._pd.facets:
                 eltsinfac = [
                     pd.qhull_entries[j].composition.reduced_composition
                     for j in facet]
@@ -239,7 +239,7 @@ class MPChemPotAnalyzer(ChemPotAnalyzer):
         # based on phase diagram
         entry_list = self.entries['bulk_derived']
         pd = PhaseDiagram(entry_list)
-        pda = PDAnalyzer(pd)
+        pda = pd # PDAnalyzer(pd)
         full_idlist = [i.entry_id for i in pd.qhull_entries]
         stable_idlist = [i.entry_id for i in pd.stable_entries]
 
@@ -323,7 +323,7 @@ class MPChemPotAnalyzer(ChemPotAnalyzer):
                 common_approach = False
 
         pd = PhaseDiagram(entry_list)
-        pda = PDAnalyzer(pd)
+        pda = pd # PDAnalyzer(pd)
         chem_lims = self.get_chempots_from_pda(
             pda, common_approach=common_approach)
 
@@ -350,7 +350,7 @@ class MPChemPotAnalyzer(ChemPotAnalyzer):
                     sub_specie_entries.append(entry)
 
                 pd = PhaseDiagram(sub_specie_entries)
-                pda = PDAnalyzer(pd)
+                pda = pd # PDAnalyzer(pd)
                 chem_lims = self.get_chempots_from_pda(pda)
 
 
@@ -394,7 +394,7 @@ class MPChemPotAnalyzer(ChemPotAnalyzer):
                     for subentry in subentries:
                         entry_list.append(subentry)
                 pd = PhaseDiagram(entry_list)
-                pda = PDAnalyzer(pd)
+                pda = pd # PDAnalyzer(pd)
                 chem_lims = self.get_chempots_from_pda(
                     pda, common_approach=common_approach)
 
@@ -639,7 +639,7 @@ class UserChemPotAnalyzer(ChemPotAnalyzer):
         #see if bulk phase is unstable w.r.t phase diagram. If it is
         #        AND no composition exists then set common_approach to False
         pd = PhaseDiagram(personal_entry_list)
-        pda = PDAnalyzer(pd)
+        pda = pd # PDAnalyzer(pd)
         common_approach = True
         if pda.get_decomp_and_e_above_hull(self.bulk_ce, allow_negative=True)[1] < 0:
             personal_entry_list.append(self.bulk_ce)
@@ -654,7 +654,7 @@ class UserChemPotAnalyzer(ChemPotAnalyzer):
         #compute chemical potentials
         if full_sub_approach:
             pd = PhaseDiagram(personal_entry_list)
-            pda = PDAnalyzer(pd)
+            pda = pd # PDAnalyzer(pd)
             chem_lims = self.get_chempots_from_pda(
                 pda, common_approach=common_approach)
         else:
@@ -674,7 +674,7 @@ class UserChemPotAnalyzer(ChemPotAnalyzer):
 
             #now iterate through and collect chemical potentials
             pd = PhaseDiagram(entry_list)
-            pda = PDAnalyzer(pd)
+            pda = pd # PDAnalyzer(pd)
             chem_lims = self.get_chempots_from_pda(
                 pda, common_approach=common_approach)
 
@@ -698,7 +698,7 @@ class UserChemPotAnalyzer(ChemPotAnalyzer):
                         sub_specie_entries.append(entry)
 
                 pd = PhaseDiagram(sub_specie_entries)
-                pda = PDAnalyzer(pd)
+                pda = pd # PDAnalyzer(pd)
                 chem_lims = self.get_chempots_from_pda(pda)
 
                 for key in chem_lims.keys():
@@ -790,7 +790,7 @@ class UserChemPotInputGenerator(object):
         #create phase diagram object for analyzing PBE-GGA energetics of structures computed in MP database
         full_structure_entries = [struct for entrykey in self.MPC.entries.keys() for struct in self.MPC.entries[entrykey]]
         pd = PhaseDiagram(full_structure_entries)
-        pda = PDAnalyzer(pd)
+        pda = pd # PDAnalyzer(pd)
 
         for entry in full_structure_entries:
             if (entry.name in setupphases) and (pda.get_decomp_and_e_above_hull(entry, allow_negative=True)[1] <= energy_above_hull):
