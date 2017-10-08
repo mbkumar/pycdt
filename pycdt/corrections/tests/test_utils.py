@@ -10,18 +10,18 @@ __email__ = "mbkumar@gmail.com"
 __status__ = "Development"
 __date__ = "June 23, 2016"
 
-import unittest
 import os
 
 import numpy as np
 
+from pymatgen.util.testing import PymatgenTest
 from pymatgen.core.structure import Structure
 from pycdt.corrections.utils import *
 
 bs_path = os.path.join('..', '..', '..', 'test_files', 'POSCAR_Ga4As4')
 ds_path = os.path.join('..', '..', '..', 'test_files', 'POSCAR_Ga3As4')
 
-class StructureFunctionsTest(unittest.TestCase):
+class StructureFunctionsTest(PymatgenTest):
     def setUp(self):
         self.bs = Structure.from_file(bs_path)
         self.ds = Structure.from_file(ds_path)
@@ -69,7 +69,7 @@ class StructureFunctionsTest(unittest.TestCase):
         self.assertAlmostEqual(list(bdefect), [0, 0, 0])
         self.assertIsNone(ddefect)
 
+
+import unittest
 if __name__ == '__main__':
     unittest.main()
-
-
