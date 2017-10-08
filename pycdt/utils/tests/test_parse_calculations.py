@@ -10,7 +10,6 @@ __email__ = "mbkumar@gmail.com"
 __status__ = "Development"
 __date__ = "May 6, 2015"
 
-import unittest
 import os
 from shutil import copyfile
 
@@ -18,16 +17,14 @@ from monty.serialization import dumpfn
 from monty.json import MontyEncoder
 from monty.tempfile import ScratchDir
 from pymatgen import __file__ as initfilep
+from pymatgen.util.testing import PymatgenTest
 from pymatgen.io.vasp import Vasprun
 from pycdt.utils.parse_calculations import PostProcess
 
 pmgtestfiles_loc = os.path.join(os.path.split(os.path.split(initfilep)[0])[0], 'test_files')
 file_loc = os.path.abspath(os.path.abspath(os.path.join('..', '..', '..', 'test_files'))) #Pycdt Testfiles
 
-class PostProcessTest(unittest.TestCase):
-    def setUp(self):
-        pass
-
+class PostProcessTest(PymatgenTest):
     def test_parse_defect_calculations_AND_compile_all(self):
         #testing both parse defect_calculatiosn And the compile all methods because they both require a file structure...
         with ScratchDir('.'):
@@ -144,5 +141,6 @@ class PostProcessTest(unittest.TestCase):
         #this function calls all the other functions...to save time, using the first test to look at this test
         pass
 
+import unittest
 if __name__ == '__main__':
     unittest.main()

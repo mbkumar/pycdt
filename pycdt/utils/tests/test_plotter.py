@@ -10,7 +10,6 @@ __email__ = "nils.e.r.zimmermann@gmail.com"
 __status__ = "Development"
 __date__ = "July 19, 2017"
 
-import unittest
 import os
 
 from pymatgen.core.structure import PeriodicSite, Structure, Lattice
@@ -55,6 +54,7 @@ class DefectPlotterTest(PymatgenTest):
     def tearDown(self):
         self.da
 
+
+import unittest
 if __name__ == '__main__':
     unittest.main()
-
