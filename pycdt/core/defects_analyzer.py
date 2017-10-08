@@ -124,12 +124,13 @@ class DefectsAnalyzer(object):
 
     @classmethod
     def from_dict(cls, d):
-        entry_bulk = ComputedStructureEntry(Structure.from_dict(
-                d['entry_bulk']['bulk']['supercell']['structure']),
-                d['entry_bulk']['energy']) # originially failed because of key error
+        struct = d['entry_bulk']['bulk']['supercell']['structure']
+        struct = struct if isinstance(struct, Structure) \
+            else Structure.from_dict(struct)
+        entry_bulk = ComputedStructureEntry(struct, d['entry_bulk']['energy'])
         analyzer = DefectsAnalyzer(
-                entry_bulk, d['e_vbm'], 
-                {el: d['mu_elts'][el] for el in d['mu_elts']}, d['band_gap'])
+            entry_bulk, d['e_vbm'], 
+            {el: d['mu_elts'][el] for el in d['mu_elts']}, d['band_gap'])
         for ddict in d['defects']:
             analyzer.add_computed_defect(ComputedDefect.from_dict(ddict))
         return analyzer

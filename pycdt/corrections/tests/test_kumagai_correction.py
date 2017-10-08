@@ -10,7 +10,7 @@ __email__ = "mbkumar@gmail.com"
 __status__ = "Development"
 __date__ = "June 23, 2016"
 
-import unittest
+from pymatgen.util.testing import PymatgenTest
 import os
 import numpy as np
 
@@ -25,7 +25,7 @@ bl_path = os.path.join('..', '..', '..', 'test_files', 'bLOCPOT.gz')
 dl_path = os.path.join('..', '..', '..', 'test_files', 'dLOCPOT.gz')
 kad_path = os.path.join('..', '..', '..', 'test_files', 'testKumagaiData.json')
 
-class KumagaiBulkInitANDCorrectionTest(unittest.TestCase):
+class KumagaiBulkInitANDCorrectionTest(PymatgenTest):
     #TODO: also might want to test outcar Kumagai method...
     def setUp(self):
         self.bl = Locpot.from_file(bl_path)
@@ -91,7 +91,7 @@ class KumagaiBulkInitANDCorrectionTest(unittest.TestCase):
         self.assertAlmostEqual(val, 1.5523329679084736)
 
 
-class KumagaiSetupFunctionsTest(unittest.TestCase):
+class KumagaiSetupFunctionsTest(PymatgenTest):
     def setUp(self):
         self.bl = Locpot.from_file(bl_path)
         self.dl = Locpot.from_file(dl_path)
@@ -140,17 +140,19 @@ class KumagaiSetupFunctionsTest(unittest.TestCase):
         pass
 
 
-class EnergyFunctionsTest(unittest.TestCase):
-    def setUp(self):
-        pass
+# These tests should go into utils/test/test_units.py
+#class EnergyFunctionsTest(PymatgenTest):
+#    def setUp(self):
+#        pass
+#
+#    def test_k_to_eV(self):
+#        g = [0.1, 0.2, 0.3]
+#        self.assertAlmostEqual(k_to_eV(g), 0.5333804)
+#
+#    def test_eV_to_k(self):
+#        self.assertAlmostEqual(eV_to_k(1), 0.9681404248678961)
 
-    def test_k_to_eV(self):
-        g = [0.1, 0.2, 0.3]
-        self.assertAlmostEqual(k_to_eV(g), 0.5333804)
 
-    def test_eV_to_k(self):
-        self.assertAlmostEqual(eV_to_k(1), 0.9681404248678961)
-
-
+import unittest
 if __name__ == '__main__':
     unittest.main()

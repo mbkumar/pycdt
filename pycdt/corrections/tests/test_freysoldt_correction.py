@@ -10,9 +10,9 @@ __email__ = "mbkumar@gmail.com"
 __status__ = "Development"
 __date__ = "June 23, 2016"
 
-import unittest
 import os
 
+from pymatgen.util.testing import PymatgenTest
 from pymatgen.io.vasp.outputs import Locpot
 from pycdt.corrections.freysoldt_correction import *
 
@@ -24,7 +24,7 @@ fad_path = os.path.join('..', '..', '..', 'test_files', 'testFreyAxisData.npz')
 #dl_path = 'dLOCPOT.gz'
 #fad_path = 'testFreyAxisData.npz'
 
-class FreysoldtCorrectionTest(unittest.TestCase):
+class FreysoldtCorrectionTest(PymatgenTest):
     def setUp(self):
         self.fc = FreysoldtCorrection(0, 15, bl_path, dl_path, -3)
 
@@ -38,7 +38,7 @@ class FreysoldtCorrectionTest(unittest.TestCase):
         self.assertAlmostEqual(self.fc.correction(), 3.99126)
 
 
-class FreysoldtCorrPlotterTest(unittest.TestCase):
+class FreysoldtCorrPlotterTest(PymatgenTest):
     def setUp(self):
         x = [0, 1, 2, 3]
         v_R = [1, 0.5, 0.5, 1]
@@ -63,7 +63,7 @@ class FreysoldtCorrPlotterTest(unittest.TestCase):
         os.system('rm TMPplotFreyplnravgPlot.pdf')
 
 
-class QModelTest(unittest.TestCase):
+class QModelTest(PymatgenTest):
     """
     #TODO: Find tests for this class
     """
@@ -71,17 +71,19 @@ class QModelTest(unittest.TestCase):
         pass
 
 
-class EnergyFunctionsTest(unittest.TestCase):
-    def setUp(self):
-        pass
+# These tests should go into utils/test/test_units.py
+#class EnergyFunctionsTest(PymatgenTest):
+#    def setUp(self):
+#        pass
+#
+#    def test_k_to_eV(self):
+#        g = [0.1, 0.2, 0.3]
+#        self.assertAlmostEqual(k_to_eV(g), 0.5333804)
+#
+#    def test_eV_to_k(self):
+#        self.assertAlmostEqual(eV_to_k(1.), 0.9681404248678961)
 
-    def test_k_to_eV(self):
-        g = [0.1, 0.2, 0.3]
-        self.assertAlmostEqual(k_to_eV(g), 0.5333804)
 
-    def test_eV_to_k(self):
-        self.assertAlmostEqual(eV_to_k(1.), 0.9681404248678961)
-
-
+import unittest
 if __name__ == '__main__':
     unittest.main()

@@ -10,8 +10,7 @@ __email__ = "mbkumar@gmail.com"
 __status__ = "Development"
 __date__ = "Jan 26, 2016"
 
-import unittest
-
+from pymatgen.util.testing import PymatgenTest
 from pymatgen.io.vasp.outputs import Locpot
 from pymatgen.entries.computed_entries import ComputedStructureEntry
 
@@ -22,7 +21,7 @@ from pycdt.core.defects_analyzer import ComputedDefect
 bl_path = os.path.join('..', '..', '..', 'test_files', 'bLOCPOT.gz')
 dl_path = os.path.join('..', '..', '..', 'test_files', 'dLOCPOT.gz')
 
-class FiniteSizeChargeCorrectionTest(unittest.TestCase):
+class FiniteSizeChargeCorrectionTest(PymatgenTest):
     """
     Test functions for getting freysoldt and kumagai as well as ChargeCorrection class itself
     if one breaks the other will likely break as well...
@@ -68,5 +67,6 @@ class FiniteSizeChargeCorrectionTest(unittest.TestCase):
         # self.assertAlmostEqual(kumagaiout, 4.24073)
 
 
+import unittest
 if __name__ == '__main__':
     unittest.main()
