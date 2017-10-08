@@ -10,12 +10,12 @@ __email__ = "mbkumar@gmail.com"
 __status__ = "Development"
 __date__ = "Jan 14, 2017"
 
-import unittest
 import os
 import copy
 from shutil import copyfile
 
 from monty.tempfile import ScratchDir
+from pymatgen.util.testing import PymatgenTest
 from pymatgen.core.composition import Composition
 from pycdt.core.chemical_potentials import *
 
@@ -26,7 +26,7 @@ from pymatgen.entries.computed_entries import ComputedEntry
 
 file_loc = os.path.abspath(os.path.join('..', '..', '..', 'test_files'))
 
-class ChemPotAnalyzerTest(unittest.TestCase):
+class ChemPotAnalyzerTest(PymatgenTest):
     def setUp(self):
         self.CPA = ChemPotAnalyzer()
 
@@ -53,7 +53,7 @@ class ChemPotAnalyzerTest(unittest.TestCase):
         self.assertEqual( 'GaSb-Sb', subnom)
 
 
-class MPChemPotAnalyzerTest(unittest.TestCase):
+class MPChemPotAnalyzerTest(PymatgenTest):
     def setUp(self):
         self.MPCPA = MPChemPotAnalyzer()
 
@@ -161,7 +161,7 @@ class MPChemPotAnalyzerTest(unittest.TestCase):
         self.assertEqual(15, len(ents['bulk_derived']))
 
 
-class UserChemPotAnalyzerTest(unittest.TestCase):
+class UserChemPotAnalyzerTest(PymatgenTest):
     def setUp(self):
         with MPRester() as mp:
             self.bulk_ce = mp.get_entry_by_material_id('mp-2534')
@@ -197,7 +197,7 @@ class UserChemPotAnalyzerTest(unittest.TestCase):
             self.assertAlmostEqual({u'As': -6.6157218225000003, u'Ga': -3.030829475}, cp['Ga_rich'])
 
 
-class UserChemPotInputGeneratorTest(unittest.TestCase):
+class UserChemPotInputGeneratorTest(PymatgenTest):
     def setUp(self):
         self.UCPIGT = UserChemPotInputGenerator(Composition({'Ga':1, 'As':1}))
 
@@ -214,7 +214,6 @@ class UserChemPotInputGeneratorTest(unittest.TestCase):
             self.assertTrue( os.path.exists('PhaseDiagram/mp-2534_GaAs/POSCAR'))
 
 
-
-
 if __name__ == '__main__':
+    import unittest
     unittest.main()
