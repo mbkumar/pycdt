@@ -71,19 +71,6 @@ class QModelTest(PymatgenTest):
         pass
 
 
-# These tests should go into utils/test/test_units.py
-#class EnergyFunctionsTest(PymatgenTest):
-#    def setUp(self):
-#        pass
-#
-#    def test_k_to_eV(self):
-#        g = [0.1, 0.2, 0.3]
-#        self.assertAlmostEqual(k_to_eV(g), 0.5333804)
-#
-#    def test_eV_to_k(self):
-#        self.assertAlmostEqual(eV_to_k(1.), 0.9681404248678961)
-
-
 import unittest
 if __name__ == '__main__':
     unittest.main()
