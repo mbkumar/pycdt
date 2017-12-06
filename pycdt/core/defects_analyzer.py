@@ -26,7 +26,7 @@ class ComputedDefect(object):
     composition+structure, energy, correction on energy and name
     """
     def __init__(self, entry_defect, site_in_bulk, multiplicity=None,
-                 supercell_size=[1, 1, 1], charge=0.0,
+                 supercell_size=(1, 1, 1), charge=0.0,
                  charge_correction=0.0, other_correction=0.0, name=None):
         """
         Args:
