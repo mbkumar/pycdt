@@ -23,70 +23,112 @@ If you use the corrections implemented in this module, cite
 __author__ = 'Danny Broberg, Bharat Medasani'
 __email__ = 'dbroberg@gmail.com, mbkumar@gmail.com'
 
-import os
+import os, shutil
 import numpy as np
 from pymatgen.io.vasp.outputs import Locpot
 from pycdt.corrections.kumagai_correction import KumagaiBulkInit, KumagaiCorrection
+from pycdt.corrections.freysoldt_correction import FreysoldtCorrection
+from pycdt.corrections.sxdefect_correction import FreysoldtCorrection as SXD
 
-def get_correction_freysoldt(defect, bulk_entry, epsilon, title = None):
+def get_correction_freysoldt(defect, bulk_entry, epsilon, title = None,
+                             partflag='All', averaging=False):
     """
     Function to compute the isotropic freysoldt correction for each defect.
     Args:
         defect: ComputedDefect object
         bulk_entry: ComputedStructureEntry corresponding to bulk OR bulk Locpot Object
         epsilon: dielectric constant
+        title: decides whether to plot electrostatic potential plots or not...
+            if None, no plot is printed, if a string,
+            then the plot will include that string in it's label
+        partflag: four options
+                'pc' for just point charge correction, or
+               'potalign' for just potalign correction, or
+               'All' for both, or
+               'AllSplit' for individual parts split up (form is [PC, potterm, full])
+        averaging (bool): method for taking 3-axis average of freysoldt.
     """
+    if partflag in ['All','AllSplit']:
+        nomtype='full correction'
+    elif partflag=='pc':
+        nomtype='point charge correction'
+    elif partflag=='potalign':
+        nomtype='potential alignment correction'
+    else:
+        print(partflag,' is incorrect potalign type. Must be "All","AllSplit", "pc", or "potalign".')
+        return
+
     if type(bulk_entry) is Locpot:
         locpot_blk = bulk_entry
-        locpot_path_blk = ''
     else:
-        locpot_blk = None
-        locpot_path_blk = bulk_entry.data['locpot_path']
+        locpot_blk = bulk_entry.data['locpot_path']
     locpot_path_def = defect.entry.data['locpot_path']
+    dpat, tmplocpotnom = os.path.split(locpot_path_def)
     charge = defect.charge
-    #frac_coords = defect.site.frac_coords  #maybe should be using this
+    # frac_coords = defect.site.frac_coords  #TODO: should be using this
     encut = defect.entry.data['encut']
+
     if not charge:
         print('charge is zero so charge correction is zero')
         return (0.,bulk_entry)
 
-    #if either locpot is already loaded then load pure_locpot= or defect_locpot=
-    # if you want to load position then can load it with pos=
-    #if want to to change energy tolerance for correction convergence then change madetol= (default is 0.0001)
-    # (for kumagai) if known optgamma, set optgamma=, if KumagaiBulk already initialized then set KumagaiBulk=
-    corr_meth = ChargeCorrection(epsilon,
-            locpot_path_blk, locpot_path_def, charge,
-            pure_locpot = locpot_blk, #for quicker loading of bulk locpot objects...
-            energy_cutoff = encut,
-            silence=False)
+    if not averaging:
+        #single freysoldt correction along x-axis
+        corr_meth = FreysoldtCorrection(0, epsilon, locpot_blk,
+                                locpot_path_def, charge, energy_cutoff = encut)
+        corr_val = corr_meth.correction(title=title,partflag=partflag)
+    else:
+        #averagefreysoldtcorrection over threeaxes
+        avgcorr = []
+        fullcorrset = []
+        locpot_def = locpot_path_def #start with path to defect
+        for ax in range(3):
+            corr_meth = FreysoldtCorrection(ax, epsilon, locpot_blk,
+                                    locpot_def, charge, energy_cutoff = encut)
+            valset = corr_meth.correction(title=title+'ax'+str(ax+1), partflag=partflag)
 
-    #could do an averaging over three axes but one axis works fine isotropic systems
-    corr_val = corr_meth.freysoldt(title=title, axis=0, partflag='All')
+            if partflag=='AllSplit':
+                avgcorr.append(valset[1])
+            else:
+                avgcorr.append(valset)
+            fullcorrset.append(valset)
+            # print (fullcorrset)
+            if title:
+                homepat = os.path.abspath('.')
+                src = os.path.join(homepat, title+'ax'+str(ax+1)+'FreyplnravgPlot.pdf')
+                dst = os.path.join(dpat, title+'ax'+str(ax+1)+'FreyplnravgPlot.pdf')
+                shutil.move(src, dst)
+            locpot_blk = corr_meth._purelocpot #prevent reloading of locpots
+            locpot_def = corr_meth._deflocpot
+        if partflag=='AllSplit':
+            corr_val = [valset[0], np.mean(avgcorr), valset[0]+np.mean(avgcorr), fullcorrset]
+        else:
+            corr_val = np.mean(avgcorr)
+
+    if partflag=='AllSplit':
+        freyval = corr_val[2]
+    else:
+        freyval = corr_val
+
+    print('\n Final Freysoldt',nomtype,'value is ',freyval)
 
     return (corr_val,corr_meth._purelocpot)
 
 
-def get_correction_kumagai(defect, path_blk, bulk_init, bulk_locpot=None, 
+def get_correction_kumagai(defect, path_blk, bulk_init, bulk_locpot=None,
                            title=None):
     """
-    Function to compute the correction for each defect.
+    Function to compute the Kumagai correction for each defect (modified freysoldt for anisotropic dielectric).
+    NOTE that bulk_init class must be pre-instantiated to use this function
     Args:
         defect: ComputedDefect object
         path_blk: location to Bulk folder
         bulk_init: KumagainBulkInit class object
+            note this contains the dielectric tensor to be used...
         bulk_locpot: BulkLocpot object 
                 (if already loaded, otherwise will load from path_blk)
-        type: 
-            "freysoldt": Freysoldt correction for isotropic crystals
-            "kumagai": modified Freysoldt or Kumagai for anisotropic crystals
-
-    notes for ChargeCorrection class below:
-    if either locpot already loaded then load pure_locpot= or defect_locpot=
-    if you want to load position then can load it with pos=
-    if want to to change energy tolerance for correction convergence then 
-        change madetol= (default is 0.0001)
-    (if known optgamma, set optgamma=, if KumagaiBulk already initialized 
-    then set KumagaiBulk=
+        title: decides whether to plot electrostatic potential plots or not
+            if None, no plot is printed, if a string, then the plot will include that string in it's label
     """
     epsilon = bulk_init.epsilon
     charge = defect.charge
@@ -115,161 +157,8 @@ def get_correction_kumagai(defect, path_blk, bulk_init, bulk_locpot=None,
     return kumval
 
 
-class ChargeCorrection(object):
-    def __init__(self, dielectric_tensor, pure_locpot_path,
-            defect_locpot_path, q, pure_locpot=None, defect_locpot=None, pos=None, energy_cutoff=520,
-            madetol=0.0001, silence=False, optgamma=None, KumagaiBulk=None ):
-        """
-        Args:
-            dielectric_tensor: Macroscopic dielectric tensor 
-                 Include ionic also if defect is relaxed, othewise ion clamped.
-                 Can be a matrix, array or scalar.
-            pure_locpot_path: Bulk Locpot file path
-            defect_locpot_path: Defect Locpot file path
-            q: Charge associated with the defect (not homogen. background). Typically integer
-            pos: fractional co-ordinates of defect position (just if you are doing sxdefectalign without kumagai or freysoldt first)
-            energy_cutoff: Energy for plane wave cutoff (in eV).
-                 If not given, Materials Project default 520 eV is used.
-            madetol: Tolerance for convergence of energy terms in eV (double or float)
-            silence: Flag for disabling/enabling  messages (Bool)
-            q_model (QModel object): User defined charge for correction.
-                 If not given, highly localized charge is assumed.
-            optgamma: (For anisotropic code) If you have previously optimized gamma,
-                put gamma value here for speed up calculation slightly.
-            KumagaiBulk: This is a class object for Kumagai Anisotropic correction
-                    that only needs to be calculated once for each bulk system looked at
-        """
-        if isinstance(dielectric_tensor, int) or \
-                isinstance(dielectric_tensor, float):
-            self._dielectricconst = float(dielectric_tensor)
-            self._dieltens = np.diag(np.ones(3) * dielectric_tensor)
-        else:
-            self._dieltens = np.array(dielectric_tensor)
-            self._dielectricconst = np.mean(np.diag(self._dieltens))
-        if 'LOCPOT' not in pure_locpot_path:
-            print('pure LOCPOT not in path. appending it to path.')
-            self._path_purelocpot = os.path.join(os.path.abspath(pure_locpot_path),'LOCPOT')
-        else:
-            self._path_purelocpot = os.path.abspath(pure_locpot_path)
-        if 'LOCPOT' not in defect_locpot_path:
-            print('defect LOCPOT not in path. appending it to path.')
-            self._path_deflocpot = os.path.join(os.path.abspath(defect_locpot_path),'LOCPOT')
-        else:
-            self._path_deflocpot = os.path.abspath(defect_locpot_path)
-
-        if pure_locpot:
-            self._purelocpot = pure_locpot   #actual pure locpot object
-        else:
-            self._purelocpot = self._path_purelocpot
-
-        if defect_locpot:
-            self._deflocpot = defect_locpot  #actual defect locpot object
-        else:
-            self._deflocpot = self._path_deflocpot
-        self._madetol = madetol
-        self._q = float(q)
-        self._pos = pos
-        self._encut = energy_cutoff
-        self._silence = silence
-        self._KumagaiBulk=KumagaiBulk
-        if KumagaiBulk is None:
-            self._optgamma=optgamma
-        else:
-            self._optgamma=KumagaiBulk.gamma
-
-    def freysoldt(self, title=None, axis=0, partflag='All'):
-        """
-        Args:
-            title: set if you want to plot the planar averaged potential
-            axis: Specifies axis to average over (zero-defined)
-            partflag: four options
-                'pc' for just point charge correction, or
-               'potalign' for just potalign correction, or
-               'All' for both, or
-               'AllSplit' for individual parts split up (form [PC,potterm,full])
-        """
-
-        from pycdt.corrections.freysoldt_correction import FreysoldtCorrection
-
-        s=FreysoldtCorrection(axis, self._dielectricconst, self._purelocpot,
-            self._deflocpot, self._q, energy_cutoff=self._encut,
-            madetol=self._madetol)
-
-        freyval=s.correction(title=title,partflag=partflag)
-        if partflag in ['All','AllSplit']:
-            nomtype='full correction'
-        elif partflag=='pc':
-            nomtype='point charge correction'
-        elif partflag=='potalign':
-            nomtype='potential alignment correction'
-        else:
-            print(partflag,' is incorrect potalign type. Must be "All","AllSplit", "pc", or "potalign".')
-            return
-
-        #if havent loaded locpots objects or positions of defect then save these for later
-        # (good if you want to run freysoldt for multiple axes)
-        # but make sure charge is non-zero to avoid broken code here...
-        if self._q:
-            if (type(s._purelocpot) is Locpot) and (type(self._purelocpot) is not Locpot):
-                self._purelocpot=s._purelocpot
-            if (type(s._deflocpot) is Locpot) and (type(self._deflocpot) is not Locpot):
-                self._deflocpot=s._deflocpot
-            if self._pos is None: #want them in fractional coords,
-                self._pos = self._purelocpot.structure.lattice.get_fractional_coords(s._pos)
-
-        print('\n Final Freysoldt',nomtype,'value is ',freyval)
-
-        return freyval
-
-    def kumagai(self,title=None, partflag='All', bulk_outcar_path=None, def_outcar_path=None):
-        """
-        Args:
-            title: set if you want to plot the atomic site averaged potential
-            partflag: four options
-                'pc' for just point charge correction, or
-               'potalign' for just pot. align correction, or
-               'All' for both, or
-               'AllSplit' for individual parts split up (form [PC,potterm,full])
-            bulk_outcar_path: path to Bulk OUTCAR (quicker method for performing kumagai code)
-            def_outcar_path: path to defect OUTCAR
-        """
-        
-        if bulk_outcar_path is None:
-            if type(self._purelocpot) is not Locpot:
-                self._purelocpot = Locpot.from_file(self._purelocpot)
-            s=KumagaiCorrection(self._dieltens, 
-                    self._q, self._KumagaiBulk.gamma, self._KumagaiBulk.g_sum, 
-                    self._purelocpot.structure, energy_cutoff=self._encut,
-                    madetol=self._madetol, 
-                    bulk_locpot=self._purelocpot, defect_locpot=self._deflocpot)
-        else:
-            if type(self._purelocpot) is not Locpot:
-                self._purelocpot = Locpot.from_file(self._purelocpot)
-            if type(self._deflocpot) is not Locpot:
-                self._deflocpot = Locpot.from_file(self._deflocpot)
-
-            s=KumagaiCorrection(self._dieltens, 
-                    self._q, self._KumagaiBulk.gamma, self._KumagaiBulk.g_sum, 
-                    self._purelocpot.structure, energy_cutoff=self._encut, 
-                    madetol=self._madetol,
-                    defstructure=self._deflocpot.structure,
-                    bulk_outcar=bulk_outcar_path, defect_outcar=def_outcar_path)
-
-        if partflag in ['All','AllSplit']:
-            nomtype='full correction'
-            kumval=s.correction(title=title,partflag=partflag)
-        elif partflag=='pc':
-            nomtype='point charge correction'
-            kumval=s.correction(title=title,partflag=partflag)
-        elif partflag=='potalign':
-            nomtype='potential alignment correction'
-            kumval=s.correction(title=title,partflag=partflag)
-
-        print('\n Final Kumagai',nomtype,'value is ',kumval)
-
-        return kumval
-
-    def sxdefect(self,lengths=None,pos=None, axiscalcs=[0],partflag='All',print_pot_flag='written'):
+def get_correction_sxdefect(path_def, path_blk, epsilon, charge, title=None,
+                            lengths=None, pos=None, partflag='All', encut=520)
         """
         Args:
             lengths: for length conversion (makes calculation faster)
@@ -281,17 +170,14 @@ class ChargeCorrection(object):
                'All' for both, or
                'AllSplit' for individual parts split up (form [PC,potterm,full])
         """
+        # TODO: update readme section
+        #TODO: test this function
 
-        if not pos:
-            pos=self._pos #already in fractional co-ordinates from earlier
+        # if not pos:
+        #     pos=self._pos #already in fractional co-ordinates from earlier in ChargeCorrection classing? TODO: add in ability to use position finder...
 
-        if lengths is None and type(self._purelocpot) is Locpot:
-            lengths=self._purelocpot.structure.lattice.abc
-
-        from sxdefect_correction import FreysoldtCorrection as SXD
-
-        s=SXD(self._path_purelocpot, self._path_deflocpot, self._q, self._dielectricconst, pos,
-                                        self._encut, lengths=lengths)
+        # if lengths is None and type(self._purelocpot) is Locpot: #TODO do this in smarter way?
+        #     lengths=self._purelocpot.structure.lattice.abc
 
         if partflag in ['All','AllSplit']:
             nomtype='full correction'
@@ -299,10 +185,213 @@ class ChargeCorrection(object):
             nomtype='point charge correction'
         elif partflag=='potalign':
             nomtype='potential alignment correction'
+        else:
+            print(partflag,' is incorrect potalign type. Must be "All","AllSplit", "pc", or "potalign".')
+            return
 
-        sxvals=s.run_correction(print_pot_flag=print_pot_flag, partflag=partflag)
+        # encut = 520 #TODO: smarter ability to grab encut values...
+
+        s = SXD(path_blk, path_def, charge, epsilon, pos, encut, lengths=lengths)
+
+        if title:
+            print_flag = 'plotfull'
+        else:
+            print_flag = 'none'
+        sxvals=s.run_correction(print_pot_flag=print_flag, partflag=partflag)
 
         print('\n Final Sxdefectalign ',nomtype,' correction value is ',sxvals)
 
         return sxvals
+
+
+# class ChargeCorrection(object):
+#     def __init__(self, dielectric_tensor, pure_locpot_path,
+#             defect_locpot_path, q, pure_locpot=None, defect_locpot=None, pos=None, energy_cutoff=520,
+#             madetol=0.0001, silence=False, optgamma=None, KumagaiBulk=None ):
+#         """
+#         Args:
+#             dielectric_tensor: Macroscopic dielectric tensor
+#                  Include ionic also if defect is relaxed, othewise ion clamped.
+#                  Can be a matrix, array or scalar.
+#             pure_locpot_path: Bulk Locpot file path
+#             defect_locpot_path: Defect Locpot file path
+#             q: Charge associated with the defect (not homogen. background). Typically integer
+#             pos: fractional co-ordinates of defect position (just if you are doing sxdefectalign without kumagai or freysoldt first)
+#             energy_cutoff: Energy for plane wave cutoff (in eV).
+#                  If not given, Materials Project default 520 eV is used.
+#             madetol: Tolerance for convergence of energy terms in eV (double or float)
+#             silence: Flag for disabling/enabling  messages (Bool)
+#             q_model (QModel object): User defined charge for correction.
+#                  If not given, highly localized charge is assumed.
+#             optgamma: (For anisotropic code) If you have previously optimized gamma,
+#                 put gamma value here for speed up calculation slightly.
+#             KumagaiBulk: This is a class object for Kumagai Anisotropic correction
+#                     that only needs to be calculated once for each bulk system looked at
+#         """
+#         if isinstance(dielectric_tensor, int) or \
+#                 isinstance(dielectric_tensor, float):
+#             self._dielectricconst = float(dielectric_tensor)
+#             self._dieltens = np.diag(np.ones(3) * dielectric_tensor)
+#         else:
+#             self._dieltens = np.array(dielectric_tensor)
+#             self._dielectricconst = np.mean(np.diag(self._dieltens))
+#         if 'LOCPOT' not in pure_locpot_path:
+#             print('pure LOCPOT not in path. appending it to path.')
+#             self._path_purelocpot = os.path.join(os.path.abspath(pure_locpot_path),'LOCPOT')
+#         else:
+#             self._path_purelocpot = os.path.abspath(pure_locpot_path)
+#         if 'LOCPOT' not in defect_locpot_path:
+#             print('defect LOCPOT not in path. appending it to path.')
+#             self._path_deflocpot = os.path.join(os.path.abspath(defect_locpot_path),'LOCPOT')
+#         else:
+#             self._path_deflocpot = os.path.abspath(defect_locpot_path)
+#
+#         if pure_locpot:
+#             self._purelocpot = pure_locpot   #actual pure locpot object
+#         else:
+#             self._purelocpot = self._path_purelocpot
+#
+#         if defect_locpot:
+#             self._deflocpot = defect_locpot  #actual defect locpot object
+#         else:
+#             self._deflocpot = self._path_deflocpot
+#         self._madetol = madetol
+#         self._q = float(q)
+#         self._pos = pos
+#         self._encut = energy_cutoff
+#         self._silence = silence
+#         self._KumagaiBulk=KumagaiBulk
+#         if KumagaiBulk is None:
+#             self._optgamma=optgamma
+#         else:
+#             self._optgamma=KumagaiBulk.gamma
+#
+#     def freysoldt(self, title=None, axis=0, partflag='All'):
+#         """
+#         Args:
+#             title: set if you want to plot the planar averaged potential
+#             axis: Specifies axis to average over (zero-defined)
+#             partflag: four options
+#                 'pc' for just point charge correction, or
+#                'potalign' for just potalign correction, or
+#                'All' for both, or
+#                'AllSplit' for individual parts split up (form [PC,potterm,full])
+#         """
+#
+#         from pycdt.corrections.freysoldt_correction import FreysoldtCorrection
+#
+#         s=FreysoldtCorrection(axis, self._dielectricconst, self._purelocpot,
+#             self._deflocpot, self._q, energy_cutoff=self._encut,
+#             madetol=self._madetol)
+#
+#         freyval=s.correction(title=title,partflag=partflag)
+#         if partflag in ['All','AllSplit']:
+#             nomtype='full correction'
+#         elif partflag=='pc':
+#             nomtype='point charge correction'
+#         elif partflag=='potalign':
+#             nomtype='potential alignment correction'
+#         else:
+#             print(partflag,' is incorrect potalign type. Must be "All","AllSplit", "pc", or "potalign".')
+#             return
+#
+#         #if havent loaded locpots objects or positions of defect then save these for later
+#         # (good if you want to run freysoldt for multiple axes)
+#         # but make sure charge is non-zero to avoid broken code here...
+#         if self._q:
+#             if (type(s._purelocpot) is Locpot) and (type(self._purelocpot) is not Locpot):
+#                 self._purelocpot=s._purelocpot
+#             if (type(s._deflocpot) is Locpot) and (type(self._deflocpot) is not Locpot):
+#                 self._deflocpot=s._deflocpot
+#             if self._pos is None: #want them in fractional coords,
+#                 self._pos = self._purelocpot.structure.lattice.get_fractional_coords(s._pos)
+#
+#         print('\n Final Freysoldt',nomtype,'value is ',freyval)
+#
+#         return freyval
+#
+#     def kumagai(self,title=None, partflag='All', bulk_outcar_path=None, def_outcar_path=None):
+#         """
+#         Args:
+#             title: set if you want to plot the atomic site averaged potential
+#             partflag: four options
+#                 'pc' for just point charge correction, or
+#                'potalign' for just pot. align correction, or
+#                'All' for both, or
+#                'AllSplit' for individual parts split up (form [PC,potterm,full])
+#             bulk_outcar_path: path to Bulk OUTCAR (quicker method for performing kumagai code)
+#             def_outcar_path: path to defect OUTCAR
+#         """
+#
+#         if bulk_outcar_path is None:
+#             if type(self._purelocpot) is not Locpot:
+#                 self._purelocpot = Locpot.from_file(self._purelocpot)
+#             s=KumagaiCorrection(self._dieltens,
+#                     self._q, self._KumagaiBulk.gamma, self._KumagaiBulk.g_sum,
+#                     self._purelocpot.structure, energy_cutoff=self._encut,
+#                     madetol=self._madetol,
+#                     bulk_locpot=self._purelocpot, defect_locpot=self._deflocpot)
+#         else:
+#             if type(self._purelocpot) is not Locpot:
+#                 self._purelocpot = Locpot.from_file(self._purelocpot)
+#             if type(self._deflocpot) is not Locpot:
+#                 self._deflocpot = Locpot.from_file(self._deflocpot)
+#
+#             s=KumagaiCorrection(self._dieltens,
+#                     self._q, self._KumagaiBulk.gamma, self._KumagaiBulk.g_sum,
+#                     self._purelocpot.structure, energy_cutoff=self._encut,
+#                     madetol=self._madetol,
+#                     defstructure=self._deflocpot.structure,
+#                     bulk_outcar=bulk_outcar_path, defect_outcar=def_outcar_path)
+#
+#         if partflag in ['All','AllSplit']:
+#             nomtype='full correction'
+#             kumval=s.correction(title=title,partflag=partflag)
+#         elif partflag=='pc':
+#             nomtype='point charge correction'
+#             kumval=s.correction(title=title,partflag=partflag)
+#         elif partflag=='potalign':
+#             nomtype='potential alignment correction'
+#             kumval=s.correction(title=title,partflag=partflag)
+#
+#         print('\n Final Kumagai',nomtype,'value is ',kumval)
+#
+#         return kumval
+#
+#     def sxdefect(self,lengths=None,pos=None, axiscalcs=[0],partflag='All',print_pot_flag='written'):
+#         """
+#         Args:
+#             lengths: for length conversion (makes calculation faster)
+#             pos: specify position for sxdefectalign code
+#             axiscalcs: Specifies axes to average over (zero-defined)
+#             partflag: four options
+#                 'pc' for just point charge correction, or
+#                'potalign' for just potalign correction, or
+#                'All' for both, or
+#                'AllSplit' for individual parts split up (form [PC,potterm,full])
+#         """
+#
+#         if not pos:
+#             pos=self._pos #already in fractional co-ordinates from earlier
+#
+#         if lengths is None and type(self._purelocpot) is Locpot:
+#             lengths=self._purelocpot.structure.lattice.abc
+#
+#         from sxdefect_correction import FreysoldtCorrection as SXD
+#
+#         s=SXD(self._path_purelocpot, self._path_deflocpot, self._q, self._dielectricconst, pos,
+#                                         self._encut, lengths=lengths)
+#
+#         if partflag in ['All','AllSplit']:
+#             nomtype='full correction'
+#         elif partflag=='pc':
+#             nomtype='point charge correction'
+#         elif partflag=='potalign':
+#             nomtype='potential alignment correction'
+#
+#         sxvals=s.run_correction(print_pot_flag=print_pot_flag, partflag=partflag)
+#
+#         print('\n Final Sxdefectalign ',nomtype,' correction value is ',sxvals)
+#
+#         return sxvals
 

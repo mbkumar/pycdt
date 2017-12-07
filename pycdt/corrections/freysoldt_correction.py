@@ -337,7 +337,7 @@ class FreysoldtCorrection(object):
                 (good for quickly plotting multiple axes without having to reload Locpot)
         """
         logger = logging.getLogger(__name__)
-        if not axis:
+        if axis is None:
             axis = self._axis
         else:
             axis = axis

@@ -265,7 +265,7 @@ class FreysoldtCorrection(object):
                         y.append(float(tmp[2].rstrip("\n")))
                         y_diff.append(float(tmp[1]))
 
-            if print_pot_flag == 'none':
+            if print_pot_flag != 'none':
                 if os.path.exists("vline-eV.dat"):
                     os.rename("vline-eV.dat","axis"+str(axis)+"vline-eV.dat")
             else:
