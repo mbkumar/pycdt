@@ -158,7 +158,7 @@ def get_correction_kumagai(defect, path_blk, bulk_init, bulk_locpot=None,
 
 
 def get_correction_sxdefect(path_def, path_blk, epsilon, charge, title=None,
-                            lengths=None, pos=None, partflag='All', encut=520)
+                            lengths=None, pos=None, partflag='All', encut=520):
         """
         Args:
             lengths: for length conversion (makes calculation faster)
