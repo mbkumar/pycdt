@@ -373,7 +373,7 @@ def read_ES_avg_fromlocpot(locpot):
     """
     structure = locpot.structure
     radii = {specie: 1.0 for specie in set(structure.species)}
-    # The above radii could be smarter (related to ENAUG?)
+    # TODO: The above radii could be smarter (related to ENAUG?)
     # but turns out you get a similar result to Outcar differences
     # when taking locpot avgd differences
 
@@ -611,7 +611,7 @@ class KumagaiCorrection(object):
                 1) bulk_locpot: Bulk Locpot file path OR Bulk Locpot 
                    defect_locpot: Defect Locpot file path or defect Locpot 
                 2) (Or) bulk_outcar:   Bulk Outcar file path 
-                   defect_outcar: Defect outcar file path 
+                   defect_outcar: Defect outcar file path
         """
         if isinstance(dielectric_tensor, int) or \
                 isinstance(dielectric_tensor, float):
