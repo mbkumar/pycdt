@@ -366,76 +366,16 @@ def wigner_seitz_radius(structure):
     return wsrad
 
 
-# def read_ES_avg(location_outcar):
-#     """
-#     Reads NGXF information and Electrostatic potential at each atomic
-#     site from VASP OUTCAR file.
-#     """
-#     with open(location_outcar,'r') as file:
-#         tmp_out_dat = file.read()
-#
-#         out_dat = tmp_out_dat.split('\n')
-#         start_line = 0
-#         end_line = 0
-#         ngxf_line = 0
-#         for line_num, line in enumerate(out_dat):
-#             if "dimension x,y,z NGXF" in line:
-#                 ngxf_line = line_num
-#             elif "average (electrostatic) potential at core" in line:
-#                 start_line = line_num
-#                 end_line = 0 # For multiple electrostatic read outs
-#             elif start_line and not end_line and not len(line.split()):
-#                 end_line = line_num
-#
-#         ngxlineout = out_dat[ngxf_line].split()
-#         ngxf_dims = list(map(int, ngxlineout[3:8:2]))
-#
-#         rad_line = out_dat[start_line+1].split()
-#         radii = list(map(float, rad_line[5:]))
-#         #Above would be better to do as dictionary but no structure available
-#
-#         ES_data = {'sampling_radii': radii, 'ngxf_dims': ngxf_dims}
-#         pot = []
-#         for line_num in range(start_line+3, end_line):
-#             line = out_dat[line_num].split()
-#             #TO BHARAT: Outcar can sometimes produces lines that get read in here like:
-#             #['16-105.4492', '17-105.4453', '18-105.4643', '19-105.4629', '20-105.4482']
-#             #so I added this stupid hack to get around when the numbers were together in Outcar...
-#             badflag=0
-#             for entry in line:
-#                 if ('-' in entry) and (entry[0]!='-'):
-#                     badflag=1
-#             if badflag:
-#                 line = []
-#                 for inval in out_dat[line_num].split():
-#                     if (len(inval.split('-'))!=1) and inval[0]!='-':
-#                         # print 'rewriting',inval
-#                         [x,y] = inval.split('-')
-#                         line.append(x)
-#                         line.append('-'+y)
-#                     else:
-#                         line.append(inval)
-#                 # print 'made ',line
-#             ############
-#             avg_es = map(float, line[1::2])
-#             pot += avg_es
-#         ES_data.update({'potential': pot})
-#
-#         return ES_data
-#
-#     return None
-
-
 def read_ES_avg_fromlocpot(locpot):
     """
-    TODO: smarter radii based on ENAUG to reproduce the core
-
     Reads Electrostatic potential at each atomic
     site from Locpot Pymatgen object
     """
     structure = locpot.structure
     radii = {specie: 1.0 for specie in set(structure.species)}
-    # The above needs to be smarter (related to ENAUG?)
+    # The above radii could be smarter (related to ENAUG?)
+    # but turns out you get a similar result to Outcar differences
+    # when taking locpot avgd differences
 
     ES_data = {'sampling_radii': radii, 'ngxf_dims': locpot.dim}
     pot = []
