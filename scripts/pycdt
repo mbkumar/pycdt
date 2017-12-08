@@ -220,7 +220,7 @@ def compute_corrections(args):
             defect.charge_correction = correction
             corrections[defect.name].append({
                 'charge_correction': correction, 'charge':defect.charge})
-    else:    
+    elif correction_method == 'kumagai':
         locpot_path_blk = bulk.data['locpot_path']
         path_blk = os.path.split(locpot_path_blk)[0]
         encut = bulk.data['encut']
@@ -235,6 +235,9 @@ def compute_corrections(args):
             defect.charge_correction = correction
             corrections[defect.name].append({
                     'charge_correction': correction, 'charge': defect.charge})
+    else:
+        print ('Invalid correction method: ',correction_method,'. Select either ' \
+               '"freysoldt" or "kumagai"')
 
     dumpfn(corrections, corrections_file_name, cls=MontyEncoder, indent=2)
 

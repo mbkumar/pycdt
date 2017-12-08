@@ -122,7 +122,7 @@ def get_correction_kumagai(defect, path_blk, bulk_init, bulk_locpot=None,
     NOTE that bulk_init class must be pre-instantiated to use this function
     Args:
         defect: ComputedDefect object
-        path_blk: location to Bulk folder
+        path_blk: location to Bulk folder (only needed if bulk_locpot not supplied)
         bulk_init: KumagainBulkInit class object
             note this contains the dielectric tensor to be used...
         bulk_locpot: BulkLocpot object 
@@ -133,6 +133,10 @@ def get_correction_kumagai(defect, path_blk, bulk_init, bulk_locpot=None,
     epsilon = bulk_init.epsilon
     charge = defect.charge
     encut = defect.entry.data['encut']
+
+    if not charge:
+        print('charge is zero so charge correction is zero')
+        return 0.
 
     outcar_path_blk = os.path.join(path_blk,'OUTCAR')
     locpot_path_def = defect.entry.data['locpot_path']
