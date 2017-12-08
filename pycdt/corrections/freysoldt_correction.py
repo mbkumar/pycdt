@@ -142,7 +142,7 @@ class FreysoldtCorrPlotter(object):
 class FreysoldtCorrection(object):
     def __init__(self, axis, dielectricconst, pure_locpot_path,
                  defect_locpot_path, q, energy_cutoff=520,
-                 madetol=0.0001, q_model=None):
+                 madetol=0.0001, q_model=None, **kw):
         """
         Args:
             axis:
@@ -166,6 +166,12 @@ class FreysoldtCorrection(object):
             q_model (QModel object):
                 User defined charge for correction.
                 If not given, highly localized charge is assumed.
+            keywords:
+                1) defect_position: Defect position as a pymatgen Site object in the bulk supercell structure
+                    NOTE: this is optional but recommended, if not provided then analysis is done to find
+                    the defect position; this analysis has been rigorously tested, but has broken in an example with
+                    severe long range relaxation
+                    (at which point you probably should not be including the defect in your analysis...)
         """
         self._axis = axis
         if isinstance(dielectricconst, int) or \
@@ -178,8 +184,10 @@ class FreysoldtCorrection(object):
         self._madetol = madetol
         self._q = q
         self._encut = energy_cutoff
-        self._pos = None #code will determine positions of defect in bulk cell
-        self._defpos = None #code will determine defect position in defect cell
+        if 'defect_position' in kw:
+            self._defpos = kw['defect_position']
+        else:
+            self._defpos = None #code will determine defect position in defect cell
         if not q_model:
             self._q_model = QModel()
 
@@ -337,7 +345,7 @@ class FreysoldtCorrection(object):
                 (good for quickly plotting multiple axes without having to reload Locpot)
         """
         logger = logging.getLogger(__name__)
-        if not axis:
+        if axis is None:
             axis = self._axis
         else:
             axis = axis
@@ -351,7 +359,8 @@ class FreysoldtCorrection(object):
 
         #determine location of defects
         blksite, defsite = find_defect_pos(self._purelocpot.structure, 
-                                           self._deflocpot.structure)
+                                           self._deflocpot.structure,
+                                           defpos = self._defpos)
         if blksite is None and defsite is None:
             logger.error('Not able to determine defect site')
             return

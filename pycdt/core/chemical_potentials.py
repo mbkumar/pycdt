@@ -768,7 +768,7 @@ class UserChemPotInputGenerator(object):
                 default is 0, meaning just the PBE-GGA ground state phases are set up. If you set value to 0.5 then all
                 phases within 0.5 eV/atom of PBE-GGA ground state hull will be set up etc.
 
-        struct_fmt: is file format you want structure to be written as. Options are “cif”, “poscar”, “cssr”, and “json”
+        struct_fmt: is file format you want structure to be written as. Options are “cif”, “poscar”, “cssr”, and “json”
 
         """
 
