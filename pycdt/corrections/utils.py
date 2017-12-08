@@ -104,9 +104,16 @@ def closestsites(struct_blk, struct_def, pos):
     return blk_close_sites[0], def_close_sites[0] 
 
 
-def find_defect_pos(struct_blk, struct_def):
+def find_defect_pos(struct_blk, struct_def, defpos=None):
     """
     output cartesian coords of defect in bulk,defect cells.
+
+    Args:
+        struct_blk:
+        struct_def:
+        defpos: (if known) defect position as a pymatgen Site object within the bulk supercell
+            if this is not given, then defect position can be determined
+            (but if large relaxation occured, this process can sometimes be problematic...)
 
     If vacancy defectpos=None, 
     if interstitial bulkpos=None, 
@@ -114,10 +121,16 @@ def find_defect_pos(struct_blk, struct_def):
     """
     if len(struct_blk.sites) > len(struct_def.sites):
         type_def = 'vacancy'
+        if defpos:
+            return defpos.coords, None
     elif len(struct_blk.sites) < len(struct_def.sites):
         type_def = 'interstitial'
+        if defpos:
+            return None, defpos.coords
     else:
         type_def = 'substitution' # also corresponds to antisite
+        if defpos:
+            return defpos.coords, defpos.coords
 
     sitematching = []
     for site in struct_blk.sites:

@@ -31,7 +31,7 @@ from pycdt.corrections.freysoldt_correction import FreysoldtCorrection
 from pycdt.corrections.sxdefect_correction import FreysoldtCorrection as SXD
 
 def get_correction_freysoldt(defect, bulk_entry, epsilon, title = None,
-                             partflag='All', averaging=False):
+                             partflag='All', averaging=False, defpos = None):
     """
     Function to compute the isotropic freysoldt correction for each defect.
     Args:
@@ -47,6 +47,7 @@ def get_correction_freysoldt(defect, bulk_entry, epsilon, title = None,
                'All' for both, or
                'AllSplit' for individual parts split up (form is [PC, potterm, full])
         averaging (bool): method for taking 3-axis average of freysoldt.
+        defpos: (if known) defect position as a pymatgen Site object within bulk supercell
     """
     if partflag in ['All','AllSplit']:
         nomtype='full correction'
@@ -65,7 +66,6 @@ def get_correction_freysoldt(defect, bulk_entry, epsilon, title = None,
     locpot_path_def = defect.entry.data['locpot_path']
     dpat, tmplocpotnom = os.path.split(locpot_path_def)
     charge = defect.charge
-    # frac_coords = defect.site.frac_coords  #TODO: should be using this
     encut = defect.entry.data['encut']
 
     if not charge:
@@ -75,7 +75,7 @@ def get_correction_freysoldt(defect, bulk_entry, epsilon, title = None,
     if not averaging:
         #single freysoldt correction along x-axis
         corr_meth = FreysoldtCorrection(0, epsilon, locpot_blk,
-                                locpot_path_def, charge, energy_cutoff = encut)
+                                locpot_path_def, charge, energy_cutoff = encut, defect_position=defpos)
         corr_val = corr_meth.correction(title=title,partflag=partflag)
     else:
         #averagefreysoldtcorrection over threeaxes
@@ -84,7 +84,7 @@ def get_correction_freysoldt(defect, bulk_entry, epsilon, title = None,
         locpot_def = locpot_path_def #start with path to defect
         for ax in range(3):
             corr_meth = FreysoldtCorrection(ax, epsilon, locpot_blk,
-                                    locpot_def, charge, energy_cutoff = encut)
+                                    locpot_def, charge, energy_cutoff = encut, defect_position=defpos)
             valset = corr_meth.correction(title=title+'ax'+str(ax+1), partflag=partflag)
 
             if partflag=='AllSplit':
@@ -116,7 +116,7 @@ def get_correction_freysoldt(defect, bulk_entry, epsilon, title = None,
 
 
 def get_correction_kumagai(defect, path_blk, bulk_init, bulk_locpot=None,
-                           title=None):
+                           title=None, defpos = None):
     """
     Function to compute the Kumagai correction for each defect (modified freysoldt for anisotropic dielectric).
     NOTE that bulk_init class must be pre-instantiated to use this function
@@ -129,6 +129,7 @@ def get_correction_kumagai(defect, path_blk, bulk_init, bulk_locpot=None,
                 (if already loaded, otherwise will load from path_blk)
         title: decides whether to plot electrostatic potential plots or not
             if None, no plot is printed, if a string, then the plot will include that string in it's label
+        defpos: (if known) defect position as a pymatgen Site object within bulk supercell
     """
     epsilon = bulk_init.epsilon
     charge = defect.charge
@@ -147,22 +148,22 @@ def get_correction_kumagai(defect, path_blk, bulk_init, bulk_locpot=None,
         s = KumagaiCorrection(epsilon, charge, bulk_init.gamma, 
                 bulk_init.g_sum, bulk_init.structure, defect.entry.structure, 
                 energy_cutoff=encut, madetol=0.0001, 
-                bulk_outcar=outcar_path_blk, defect_outcar=outcar_path_def)
+                bulk_outcar=outcar_path_blk, defect_outcar=outcar_path_def, defect_position=defpos)
     else:
         if not bulk_locpot:
             bulk_locpot = Locpot.from_file(path_blk)
         s = KumagaiCorrection(epsilon, charge, bulk_init.gamma,
                 bulk_init.g_sum, bulk_init.structure, defect.entry.structure,
                 energy_cutoff=encut, madetol=0.0001, 
-                bulk_locpot=bulk_locpot, defect_locpot=locpot_path_def)
+                bulk_locpot=bulk_locpot, defect_locpot=locpot_path_def, defect_position=defpos)
 
     kumval = s.correction(title=title, partflag='All')
     print('\n Kumagai Correction value is ', kumval)
     return kumval
 
 
-def get_correction_sxdefect(path_def, path_blk, epsilon, charge, title=None,
-                            lengths=None, pos=None, partflag='All', encut=520):
+def get_correction_sxdefect(path_def, path_blk, epsilon, pos, charge, title=None,
+                            lengths=None, partflag='All', encut=520):
         """
         Args:
             lengths: for length conversion (makes calculation faster)

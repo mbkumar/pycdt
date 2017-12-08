@@ -216,7 +216,8 @@ def compute_corrections(args):
             print ('defect_name: ', defect.full_name)
             print ('-----------------------------------------\n\n')
             correction, blklpt = get_correction_freysoldt(
-                    defect, blklpt, epsilon, title=defect.full_name)
+                    defect, blklpt, epsilon, title=defect.full_name,
+                    defpos = defect.site)
             defect.charge_correction = correction
             corrections[defect.name].append({
                 'charge_correction': correction, 'charge':defect.charge})
@@ -231,7 +232,7 @@ def compute_corrections(args):
             print ('-----------------------------------------\n\n')
             correction = get_correction_kumagai(
                     defect, path_blk, kumagai_init, bulk_locpot=blklpt,
-                    title=defect.full_name)
+                    title=defect.full_name, defpos = defect.site)
             defect.charge_correction = correction
             corrections[defect.name].append({
                     'charge_correction': correction, 'charge': defect.charge})
