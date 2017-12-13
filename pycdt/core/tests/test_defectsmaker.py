@@ -188,8 +188,37 @@ class ChargedDefectsStructuresTest(PymatgenTest):
         self.assertEqual('sub_2_Sb_on_As', CDS.defects['substitutions'][2]['name'])
         self.assertEqual(self.as_site, CDS.defects['substitutions'][2]['unique_site'])
 
-        #NEXT do intersites
+        # Test automatic interstitial finding.
+        CDS = ChargedDefectsStructures(self.gaas_struct,
+                                       include_interstitials=True,
+                                       interstitial_elements=['Mn'])
+        #self.assertEqual(len(CDS.defects['interstitials']), 2)
+        self.assertEqual(CDS.get_n_defects_of_type('interstitials'), 2)
+        fnames = [i['name'][i['name'].index('M'):] for i in CDS.defects['interstitials']]
+        self.assertEqual(sorted(fnames), sorted(['Mn_tet_As4', 'Mn_tet_Ga4']))
+        #print(str(CDS.defects['interstitials'][0].keys()))
+        #print(str(CDS.defects['interstitials'][0]['charges']))
+        nsites = len(CDS.defects['interstitials'][0]['supercell']['structure'].sites)
+        self.assertEqual(len(CDS.get_ith_supercell_of_defect_type(
+                0, 'interstitials').sites), nsites)
+        self.assertEqual(CDS.defects['interstitials'][0]['charges'], \
+                [0, 1, 2, 3, 4, 5, 6, 7])
+        self.assertEqual(CDS.defects['interstitials'][1]['charges'], \
+                [0, 1, 2, 3, 4, 5, 6, 7])
+        #self.assertEqual(CDS.defects['interstitials'][1]['supercell']['structure'][
+        #        nsites-1]['charges'], [0, 1, 2, 3, 4, 5, 6, 7])
 
+        # Test manual interstitial specification.
+        isite = PeriodicSite('Mn',
+                CDS.defects['interstitials'][0]['supercell']['structure'][nsites-1].frac_coords,
+                CDS.defects['interstitials'][0]['supercell']['structure'][0].lattice)
+#                CDS.defects['interstitials'][0]['supercell']['structure'].lattice)
+        cds2 = ChargedDefectsStructures(self.gaas_struct,
+                                        include_interstitials=True,
+                                        intersites=(isite,))
+        self.assertEqual(cds2.get_n_defects_of_type('interstitials'), 1)
+        self.assertEqual(cds2.defects['interstitials'][0]['charges'], \
+                [0, 1, 2, 3, 4, 5, 6, 7])
 
 if __name__ == '__main__':
     import unittest

@@ -115,7 +115,7 @@ class DefectChargerSemiconductor(DefectCharger):
     Use BVM or specified oxidation states for site oxidation preference
     Use possible oxidation state list for sub_site elements
     """
-    def __init__(self, structure, min_max_oxi={}, oxi_states={}):
+    def __init__(self, structure, min_max_oxi=None, oxi_states=None):
         """
         Charge assignment based on the oxidation states referenced from 
         semiconductor database. Targetted materials are shallow and some 
@@ -126,6 +126,9 @@ class DefectChargerSemiconductor(DefectCharger):
             min_max_oxi: any user specified min/max oxidation ranges for elements in structure
             oxi_states: any user specified oxidation states of elements in structure
         """
+        min_max_oxi = min_max_oxi if min_max_oxi is not None else {}
+        oxi_states = oxi_states if oxi_states is not None else {}
+
         struct_species = structure.types_of_specie
         if (len(struct_species) == 1) and struct_species[0].symbol not in oxi_states.keys():
             oxi_states[struct_species[0].symbol] = 0
@@ -345,7 +348,7 @@ class DefectChargerUserCustom(DefectCharger):
     (unless oxidation states specified)
     Then ask user what charges they want
     """
-    def __init__(self, structure, oxi_states={}):
+    def __init__(self, structure, oxi_states=None):
         """
         Does initial Valence bond method to initialize oxidation states for user help
         Overwridden by oxi_state specified by
@@ -354,6 +357,7 @@ class DefectChargerUserCustom(DefectCharger):
             min_max_oxi: any user specified min/max oxidation ranges for elements in structure
             oxi_states: any user specified oxidation states of elements in structure
         """
+        oxi_states = oxi_states if oxi_states is not None else {}
         struct_species = structure.types_of_specie
         if (len(struct_species) == 1) and struct_species[0].symbol not in oxi_states.keys():
             oxi_states[struct_species[0].symbol] = 0
@@ -436,10 +440,10 @@ class ChargedDefectsStructures(object):
     and vacancies are generated.  Interstitial finding is also implemented
     (optional).
     """
-    def __init__(self, structure,  max_min_oxi={}, substitutions={}, 
-                 oxi_states={}, cellmax=128, antisites_flag=True, 
-                 include_interstitials=False, interstitial_elements=[], 
-                 intersites=[], standardized=False, 
+    def __init__(self, structure,  max_min_oxi=None, substitutions=None, 
+                 oxi_states=None, cellmax=128, antisites_flag=True, 
+                 include_interstitials=False, interstitial_elements=None,
+                 intersites=None, standardized=False, 
                  struct_type='semiconductor'):
         """
         Args:
@@ -488,6 +492,11 @@ class ChargedDefectsStructures(object):
                 is used to assign defect charges. For insulators, defect 
                 charges are conservatively assigned. 
         """
+        max_min_oxi = max_min_oxi if max_min_oxi is not None else {}
+        substitutions = substitutions if substitutions is not None else {}
+        oxi_states = oxi_states if oxi_states is not None else {}
+        interstitial_elements = interstitial_elements if interstitial_elements is not None else []
+        intersites = intersites if intersites is not None else []
 
         self.defects = []
         self.cellmax = cellmax
@@ -503,30 +512,15 @@ class ChargedDefectsStructures(object):
         else:
             self.struct = structure
 
-        # If interstitials are provided as a list of PeriodicSites,
-        # make sure that the lattice has not changed.
-        if include_interstitials and intersites:
-            smat = self.struct.lattice.matrix
-            for intersite in intersites:
-                imat = intersite.lattice.matrix
-                for i1 in range(3):
-                    for i2 in range(3):
-                        if math.fabs(imat[i1][i2]-smat[i1][i2])/math.fabs(
-                                imat[i1][i2]) > 1.0e-4:
-                            raise RuntimeError("Discrepancy between lattices"
-                                    " underlying the input interstitials and"
-                                    " the bulk structure; possibly because of"
-                                    " standardizing the input structure.")
-
         struct_species = self.struct.types_of_specie
         if self.struct_type == 'semiconductor':
             self.defect_charger = DefectChargerSemiconductor(self.struct,
-                                                             max_min_oxi)
+                                                             min_max_oxi=max_min_oxi)
         elif self.struct_type == 'insulator':
             self.defect_charger = DefectChargerInsulator(self.struct)
         elif self.struct_type == 'manual':
             self.defect_charger = DefectChargerUserCustom(self.struct,
-                                                          oxi_states)
+                                                          oxi_states=oxi_states)
         else:
             raise NotImplementedError
         
@@ -544,6 +538,22 @@ class ChargedDefectsStructures(object):
         self.defects['bulk'] = {
                 'name': 'bulk',
                 'supercell': {'size': sc_scale, 'structure': sc}}
+
+        # If interstitials are provided as a list of PeriodicSites,
+        # make sure that the lattice has not changed.
+        if include_interstitials and intersites:
+            smat = sc.lattice.matrix
+            for intersite in intersites:
+                imat = intersite.lattice.matrix
+                print(str(imat))
+                print(str(smat))
+                for i1 in range(3):
+                    for i2 in range(3):
+                        if math.fabs(imat[i1][i2]-smat[i1][i2]) > 0.001:
+                            raise RuntimeError("Discrepancy between lattices"
+                                    " underlying the input interstitials and"
+                                    " the bulk structure; possibly because of"
+                                    " standardizing the input structure.")
 
         vacancies = []
         as_defs = []
@@ -746,6 +756,5 @@ class ChargedDefectsStructures(object):
         """
         return self.defects[defect_type][i]['supercell'][
             'structure'].copy()
-
 
 
