@@ -124,20 +124,39 @@ class KumagaiSetupFunctionsTest(PymatgenTest):
         val = real_sum(a, b, c, np.array([0.1, 0.1, 0.1]), -1, tmpdiel, 3, 1)
         self.assertAlmostEqual(val, -0.0049704211394050414)
 
+    def test_getgridind(self):
+        triv_ans = getgridind(self.bs, (96,96,96), [0,0,0])
+        self.assertArrayEqual(triv_ans, [0,0,0])
+        diff_ans = getgridind(self.bs, (96,96,96), [0.2,0.3,0.4])
+        self.assertArrayEqual(diff_ans, [19,29,38])
+        #test atomic site averaging approach
+        asa_ans = getgridind(self.bs, (96,96,96), [0,0,0], gridavg=0.08)
+        correct_avg = [(95, 0, 0), (0, 95, 0), (0, 0, 95), (0, 0, 0),
+                       (0, 0, 1), (0, 1, 0), (1, 0, 0)]
+        self.assertArrayEqual(asa_ans, correct_avg)
+
     def test_disttrans(self):
-        #not sure what best way to test dictionary is...
-        pass
+        nodefpos = disttrans( self.bs, self.ds)
+        self.assertArrayEqual(nodefpos.keys(), [1, 2, 3, 4, 5, 6, 7])
+        self.assertArrayEqual(nodefpos[3]['cart_reldef'], [ 2.8750915, 2.8750915, 0.])
+        self.assertEqual(nodefpos[3]['bulk_site_index'], 3)
+        self.assertEqual(nodefpos[3]['dist'], 4.0659933923636054)
+        self.assertEqual(nodefpos[3]['def_site_index'], 2)
+        self.assertArrayEqual(nodefpos[3]['cart'], [ 2.8750915, 2.8750915, 0.])
+        self.assertArrayEqual(nodefpos[3]['siteobj'][0], [ 2.8750915, 2.8750915, 0.])
+        self.assertArrayEqual(nodefpos[3]['siteobj'][1], [ 0.5, 0.5, 0.])
+        self.assertEqual(nodefpos[3]['siteobj'][2], 'Ga')
 
     def test_wigner_seitz_radius(self):
         self.assertAlmostEqual(wigner_seitz_radius(self.bs), 2.8750914999999999)
 
-    def test_read_ES_avg(self):
-        #not sure what best way to test dictionary is...
-        pass
-
     def test_read_ES_avg_fromlocpot(self):
-        #not sure what best way to test dictionary is...
-        pass
+        potdict = read_ES_avg_fromlocpot(self.bl)
+        correct_potential = [-12.275644645892712, -12.275648494671156, -12.275640119791278,
+                             -12.275643801037788, -24.350725695796118, -24.350725266618685,
+                             -24.350723873595474, -24.350723145563087]
+        self.assertArrayEqual(potdict['potential'], correct_potential)
+        self.assertArrayEqual(potdict['ngxf_dims'], (96, 96, 96))
 
 
 import unittest
