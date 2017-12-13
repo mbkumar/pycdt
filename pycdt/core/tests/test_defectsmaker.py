@@ -192,12 +192,9 @@ class ChargedDefectsStructuresTest(PymatgenTest):
         CDS = ChargedDefectsStructures(self.gaas_struct,
                                        include_interstitials=True,
                                        interstitial_elements=['Mn'])
-        #self.assertEqual(len(CDS.defects['interstitials']), 2)
         self.assertEqual(CDS.get_n_defects_of_type('interstitials'), 2)
         fnames = [i['name'][i['name'].index('M'):] for i in CDS.defects['interstitials']]
         self.assertEqual(sorted(fnames), sorted(['Mn_tet_As4', 'Mn_tet_Ga4']))
-        #print(str(CDS.defects['interstitials'][0].keys()))
-        #print(str(CDS.defects['interstitials'][0]['charges']))
         nsites = len(CDS.defects['interstitials'][0]['supercell']['structure'].sites)
         self.assertEqual(len(CDS.get_ith_supercell_of_defect_type(
                 0, 'interstitials').sites), nsites)
@@ -205,20 +202,31 @@ class ChargedDefectsStructuresTest(PymatgenTest):
                 [0, 1, 2, 3, 4, 5, 6, 7])
         self.assertEqual(CDS.defects['interstitials'][1]['charges'], \
                 [0, 1, 2, 3, 4, 5, 6, 7])
-        #self.assertEqual(CDS.defects['interstitials'][1]['supercell']['structure'][
-        #        nsites-1]['charges'], [0, 1, 2, 3, 4, 5, 6, 7])
 
         # Test manual interstitial specification.
         isite = PeriodicSite('Mn',
                 CDS.defects['interstitials'][0]['supercell']['structure'][nsites-1].frac_coords,
                 CDS.defects['interstitials'][0]['supercell']['structure'][0].lattice)
-#                CDS.defects['interstitials'][0]['supercell']['structure'].lattice)
         cds2 = ChargedDefectsStructures(self.gaas_struct,
                                         include_interstitials=True,
                                         intersites=(isite,))
-        self.assertEqual(cds2.get_n_defects_of_type('interstitials'), 1)
-        self.assertEqual(cds2.defects['interstitials'][0]['charges'], \
-                [0, 1, 2, 3, 4, 5, 6, 7])
+        self.assertEqual(cds2.get_n_defects_of_type('interstitials'), 2)
+        fnames = [i['name'][i['name'].index('_')+3:] for i in cds2.defects['interstitials']]
+        self.assertEqual(sorted(fnames), sorted(['As', 'Ga']))
+        nsites = len(cds2.defects['interstitials'][0]['supercell']['structure'].sites)
+        self.assertEqual(len(cds2.get_ith_supercell_of_defect_type(
+                0, 'interstitials').sites), nsites)
+        cds3 = ChargedDefectsStructures(self.gaas_struct,
+                                        include_interstitials=True,
+                                        interstitial_elements=['Mn'],
+                                        intersites=(isite,))
+        self.assertEqual(cds3.get_n_defects_of_type('interstitials'), 1)
+        fnames = [i['name'][i['name'].index('_')+3:] for i in cds3.defects['interstitials']]
+        self.assertEqual(sorted(fnames), sorted(['Mn']))
+        nsites = len(cds3.defects['interstitials'][0]['supercell']['structure'].sites)
+        self.assertEqual(len(cds3.get_ith_supercell_of_defect_type(
+                0, 'interstitials').sites), nsites)
+
 
 if __name__ == '__main__':
     import unittest

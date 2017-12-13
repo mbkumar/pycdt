@@ -473,8 +473,8 @@ class ChargedDefectsStructures(object):
                 (default: False).
             interstitial_elements ([str]):
                 List of strings containing symbols of the elements that are
-                to be considered for interstitial sites.  The default is an
-                empty list, which triggers self-interstitial generation,
+                to be considered for interstitial sites.  The default (None)
+                triggers self-interstitial generation,
                 given that include_interstitials is True.
             intersites ([PeriodicSite]):
                 A list of PeriodicSites in the bulk structure on which we put
