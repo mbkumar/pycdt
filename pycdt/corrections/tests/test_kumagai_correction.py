@@ -136,7 +136,16 @@ class KumagaiSetupFunctionsTest(PymatgenTest):
         self.assertArrayEqual(asa_ans, correct_avg)
 
     def test_disttrans(self):
-        pass
+        nodefpos = disttrans( self.bs, self.ds)
+        self.assertArrayEqual(nodefpos.keys(), [1, 2, 3, 4, 5, 6, 7])
+        self.assertArrayEqual(nodefpos[3]['cart_reldef'], [ 2.8750915, 2.8750915, 0.])
+        self.assertEqual(nodefpos[3]['bulk_site_index'], 3)
+        self.assertEqual(nodefpos[3]['dist'], 4.0659933923636054)
+        self.assertEqual(nodefpos[3]['def_site_index'], 2)
+        self.assertArrayEqual(nodefpos[3]['cart'], [ 2.8750915, 2.8750915, 0.])
+        self.assertArrayEqual(nodefpos[3]['siteobj'][0], [ 2.8750915, 2.8750915, 0.])
+        self.assertArrayEqual(nodefpos[3]['siteobj'][1], [ 0.5, 0.5, 0.])
+        self.assertEqual(nodefpos[3]['siteobj'][2], 'Ga')
 
     def test_wigner_seitz_radius(self):
         self.assertAlmostEqual(wigner_seitz_radius(self.bs), 2.8750914999999999)
