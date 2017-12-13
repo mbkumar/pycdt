@@ -64,11 +64,17 @@ class FreysoldtCorrPlotterTest(PymatgenTest):
 
 
 class QModelTest(PymatgenTest):
-    """
-    #TODO: Find tests for this class
-    """
     def setUp(self):
-        pass
+        self.qm = QModel()
+        self.modqm = QModel(beta=2., expnorm=0.5, gamma=0.1)
+
+    def test_rho_rec(self):
+        self.assertEqual(self.qm.rho_rec(1.), 0.77880078307140488)
+        self.assertEqual(self.modqm.rho_rec(1.), 0.6814583156907158)
+
+    def test_rho_rec_limit0(self):
+        self.assertEqual(self.qm.rho_rec_limit0(), -0.25)
+        self.assertEqual(self.modqm.rho_rec_limit0(), -0.51)
 
 
 import unittest

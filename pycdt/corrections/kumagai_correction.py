@@ -253,14 +253,13 @@ def getgridind(structure, dim, r, gridavg=0.0):
     return grdind
 
 
-def disttrans(struct, defstruct, dim, defpos=None):
+def disttrans(struct, defstruct, defpos=None):
     """
     To calculate distance from defect to each atom and finding NGX grid
     pts at each atom.
     Args:
         struct: Bulk structure object
         defstruct: Defect structure object
-        dim: dimensions of FFT grid
         defpos: (if known) defect position as a pymatgen Site object within bulk supercell
     """
 
@@ -737,7 +736,7 @@ class KumagaiCorrection(object):
         angset, [a1, a2, a3], vol, determ, invdiel = kumagai_init(
                 self.structure, self.dieltens)
 
-        potinddict = disttrans(self.structure, self.defstructure, self.dim, defpos=self._defpos)
+        potinddict = disttrans(self.structure, self.defstructure, defpos=self._defpos)
 
         minlat = min(norm(a1), norm(a2), norm(a3))
         lat_perc_diffs = [100 * abs(norm(a1) - norm(lat)) / minlat for lat \
