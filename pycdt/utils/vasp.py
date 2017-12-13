@@ -9,6 +9,7 @@ __status__ = "Development"
 __date__ = "November 4, 2012"
 
 import os
+import shutil
 from copy import deepcopy
 import functools
 import numpy as np # xxx
@@ -128,8 +129,12 @@ class DefectRelaxSet(MPRelaxSet):
     @property
     def incar(self):
         inc = super(self.__class__, self).incar
-        if self.charge:
-            inc['NELECT'] = self.nelect - self.charge
+        try:
+            if self.charge:
+                inc['NELECT'] = self.nelect - self.charge
+        except:
+            print("NELECT flag is not set due to non-availability of POTCARs")
+
         return inc
 
     @property

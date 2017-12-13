@@ -44,7 +44,7 @@ class VaspDefectFilesTest(PymatgenTest):
             incar_loc = os.path.join(cr_def_path, 'charge_0')
             incar = Incar.from_file(os.path.join(incar_loc, "INCAR"))
             self.assertTrue(
-                    self.neutral_def_incar_min.viewitems() <= incar.items())
+                    self.neutral_def_incar_min.items() <= incar.items())
             self.assertTrue(set(self.def_keys).issubset(incar))
 
     def test_charged_defect_incar(self):
@@ -55,7 +55,7 @@ class VaspDefectFilesTest(PymatgenTest):
             incar = Incar.from_file(os.path.join(incar_loc, "INCAR"))
             self.assertIsNotNone(incar.pop('NELECT', None))
             self.assertTrue(
-                    self.neutral_def_incar_min.viewitems() <= incar.items())
+                    self.neutral_def_incar_min.items() <= incar.items())
             self.assertTrue(set(self.def_keys).issubset(incar))
 
     def test_bulk_incar(self):
@@ -64,7 +64,7 @@ class VaspDefectFilesTest(PymatgenTest):
             make_vasp_defect_files(self.defects, self.path)
             incar_loc = os.path.join(self.path, 'bulk')
             incar = Incar.from_file(os.path.join(incar_loc, "INCAR"))
-            self.assertTrue(self.bulk_incar.viewitems() <= incar.items())
+            self.assertTrue(self.bulk_incar.items() <= incar.items())
             self.assertTrue(set(self.bulk_keys).issubset(incar))
 
     def test_kpoints(self):
@@ -91,7 +91,7 @@ class VaspDefectFilesTest(PymatgenTest):
                                    user_settings=user_settings)
             incar_loc = os.path.join(self.path, 'bulk')
             incar = Incar.from_file(os.path.join(incar_loc, "INCAR"))
-            self.assertTrue(self.bulk_incar.viewitems() <= incar.items())
+            self.assertTrue(self.bulk_incar.items() <= incar.items())
             self.assertTrue(set(self.bulk_keys).issubset(incar))
             self.assertEqual(incar['ENCUT'], 620)
 
@@ -116,9 +116,10 @@ class VaspDielectricFilesTest(PymatgenTest):
         with ScratchDir('.'):
             make_vasp_dielectric_files(self.structure, self.path)
             incar = Incar.from_file(os.path.join(self.path, "INCAR"))
-            print incar
+            print (incar.items())
+            print (self.dielectric_min.items())
             self.assertTrue(
-                    self.dielectric_min.viewitems() <= incar.items())
+                    self.dielectric_min.items() <= incar.items())
             self.assertTrue(set(self.keys).issubset(incar))
 
     def test_user_modified_dielectric_files(self):
@@ -127,7 +128,7 @@ class VaspDielectricFilesTest(PymatgenTest):
                                        user_settings=self.user_settings)
             incar = Incar.from_file(os.path.join(self.path, "INCAR"))
             self.assertTrue(
-                    self.dielectric_min.viewitems() <= incar.items())
+                    self.dielectric_min.items() <= incar.items())
             self.assertTrue(set(self.keys).issubset(incar))
             self.assertEqual(incar['EDIFF'], 5e-7)
             self.assertEqual(incar['ENCUT'], 620)
