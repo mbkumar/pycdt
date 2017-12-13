@@ -139,25 +139,25 @@ class DefectRelaxSet(MPRelaxSet):
         """
         return PotcarMod(symbols=self.potcar_symbols, functional=self.potcar_functional)
 
-    #@property
-    #def all_input(self):
-    #    """
-    #    Returns all input files as a dict of {filename: vasp object}
+    @property
+    def all_input(self):
+        """
+        Returns all input files as a dict of {filename: vasp object}
 
-    #    Returns:
-    #        dict of {filename: object}, e.g., {'INCAR': Incar object, ...}
-    #    """
-    #    try:
-    #        return super(DefectRelaxSet, self).all_input
-    #    except:
-    #        kpoints = self.kpoints
-    #        incar = self.incar
-    #        if np.product(kpoints.kpts) < 4 and incar.get("ISMEAR", 0) == -5:
-    #            incar["ISMEAR"] = 0
+        Returns:
+            dict of {filename: object}, e.g., {'INCAR': Incar object, ...}
+        """
+        try:
+            return super(DefectRelaxSet, self).all_input
+        except:   # Expecting the error to be POTCAR related, its ignored
+            kpoints = self.kpoints
+            incar = self.incar
+            if np.product(kpoints.kpts) < 4 and incar.get("ISMEAR", 0) == -5:
+                incar["ISMEAR"] = 0
 
-    #        return {'INCAR': incar,
-    #                'KPOINTS': kpoints,
-    #                'POSCAR': self.poscar}
+            return {'INCAR': incar,
+                    'KPOINTS': kpoints,
+                    'POSCAR': self.poscar}
 
 
 class DefectStaticSet(MPStaticSet):
@@ -181,25 +181,25 @@ class DefectStaticSet(MPStaticSet):
         """
         return PotcarMod(symbols=self.potcar_symbols, functional=self.potcar_functional)
 
-    #@property
-    #def all_input(self):
-    #    """
-    #    Returns all input files as a dict of {filename: vasp object}
+    @property
+    def all_input(self):
+        """
+        Returns all input files as a dict of {filename: vasp object}
 
-    #    Returns:
-    #        dict of {filename: object}, e.g., {'INCAR': Incar object, ...}
-    #    """
-    #    try:
-    #        return super(DefectStaticSet, self).all_input
-    #    except:
-    #        kpoints = self.kpoints
-    #        incar = self.incar
-    #        if np.product(kpoints.kpts) < 4 and incar.get("ISMEAR", 0) == -5:
-    #            incar["ISMEAR"] = 0
+        Returns:
+            dict of {filename: object}, e.g., {'INCAR': Incar object, ...}
+        """
+        try:
+            return super(DefectStaticSet, self).all_input
+        except:
+            kpoints = self.kpoints
+            incar = self.incar
+            if np.product(kpoints.kpts) < 4 and incar.get("ISMEAR", 0) == -5:
+                incar["ISMEAR"] = 0
 
-    #        return {'INCAR': incar,
-    #                'KPOINTS': kpoints,
-    #                'POSCAR': self.poscar}
+            return {'INCAR': incar,
+                    'KPOINTS': kpoints,
+                    'POSCAR': self.poscar}
 
 
 class DielectricSet(MPStaticSet):
@@ -224,25 +224,25 @@ class DielectricSet(MPStaticSet):
         return PotcarMod(symbols=self.potcar_symbols, 
                          functional=self.potcar_functional)
 
-    #@property
-    #def all_input(self):
-    #    """
-    #    Returns all input files as a dict of {filename: vasp object}
+    @property
+    def all_input(self):
+        """
+        Returns all input files as a dict of {filename: vasp object}
 
-    #    Returns:
-    #        dict of {filename: object}, e.g., {'INCAR': Incar object, ...}
-    #    """
-    #    try:
-    #        return super(self.__class__, self).all_input
-    #    except:
-    #        kpoints = self.kpoints
-    #        incar = self.incar
-    #        if np.product(kpoints.kpts) < 4 and incar.get("ISMEAR", 0) == -5:
-    #            incar["ISMEAR"] = 0
+        Returns:
+            dict of {filename: object}, e.g., {'INCAR': Incar object, ...}
+        """
+        try:
+            return super(self.__class__, self).all_input
+        except:
+            kpoints = self.kpoints
+            incar = self.incar
+            if np.product(kpoints.kpts) < 4 and incar.get("ISMEAR", 0) == -5:
+                incar["ISMEAR"] = 0
 
-    #        return {'INCAR': incar,
-    #                'KPOINTS': kpoints,
-    #                'POSCAR': self.poscar}
+            return {'INCAR': incar,
+                    'KPOINTS': kpoints,
+                    'POSCAR': self.poscar}
 
 
 def write_additional_files(path, trans_dict=None, incar={}, kpoints=None,
@@ -290,7 +290,7 @@ def make_vasp_defect_files(defects, path_base, user_settings={}, hse=False):
             hse run or not
     """
     bulk_sys = defects['bulk']['supercell']
-    comb_defs = functools.reduce(lambda x,y: x+y, [
+    comb_defs = functools.reduce(lambda x, y: x+y, [
         defects[key] for key in defects if key != 'bulk'])
 
     # User setting dicts
@@ -375,9 +375,8 @@ def make_vasp_defect_files_dos(defects, path_base, user_settings={},
             (-1,7) should work for most of the cases.
     """
     bulk_sys = defects['bulk']['supercell']
-    comb_defs = reduce(
-            lambda x,y: x+y, 
-            [defects[key] for key in defects if key != 'bulk'])
+    comb_defs = functools.reduce(lambda x, y: x+y, [
+        defects[key] for key in defects if key != 'bulk'])
 
     for defect in comb_defs:
         for charge in defect['charges']:
