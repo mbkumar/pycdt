@@ -17,7 +17,7 @@ from monty.json import MontyDecoder
 from monty.tempfile import ScratchDir
 from monty.serialization import loadfn
 from pymatgen.util.testing import PymatgenTest
-from pymatgen.io.vasp.inputs import Incar, Kpoints, Poscar
+from pymatgen.io.vasp.inputs import Incar, Kpoints, Poscar, Potcar
 from pymatgen.core.structure import Structure
 from pycdt.utils.vasp import make_vasp_defect_files, \
         make_vasp_dielectric_files
@@ -53,7 +53,12 @@ class VaspDefectFilesTest(PymatgenTest):
             cr_def_path = glob.glob(os.path.join(self.path, 'vac*Cr'))[0]
             incar_loc = os.path.join(cr_def_path, 'charge_-1')
             incar = Incar.from_file(os.path.join(incar_loc, "INCAR"))
-            self.assertIsNotNone(incar.pop('NELECT', None))
+            try:
+                potcar = Potcar.from_file(os.path.join(incar_loc, "POTCAR"))
+            except:
+                potcar = None
+            if potcar:
+                self.assertIsNotNone(incar.pop('NELECT', None))
             self.assertTrue(
                     self.neutral_def_incar_min.items() <= incar.items())
             self.assertTrue(set(self.def_keys).issubset(incar))
