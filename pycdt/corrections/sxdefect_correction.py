@@ -23,10 +23,17 @@ from monty.tempfile import ScratchDir
 
 class FreysoldtCorrection(object):
     """
-    This class applies the Freysoldt correction to remove electrostatic defect
+        NOTE from developers:
+            This code is a python wrapped to sxdefectalign.
+            We have our own version written in python within
+                pycdt.corrections.freysoldt_correction
+            This code has no unit test and will not be maintained
+            going forward (as of 12/15/2017).
+            However, we are keeping function here to allow for
+            current users to make use of it...
+    This class applies the Freysoldt correction code (sxdefectalign)
+    to remove electrostatic defect
     interaction contribution to energy and apply potential alignment.
-    Ideally this sxdefectalign wrapper class should be replaced by a python
-    code implementing a generalized anisotropic Freysoldt correction
     """
     
     def __init__(self, locpot_bulk_path, locpot_defect_path, charge, epsilon, 

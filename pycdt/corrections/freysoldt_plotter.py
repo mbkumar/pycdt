@@ -22,6 +22,14 @@ import matplotlib.pyplot as plt
 
 class FreysoldtPlot(object):
     """
+        NOTE from developers:
+            This code has excessive electrostatic potential
+            plotting methods. This code will not ever be used
+            by command line option and has unit test
+            It will not be maintained
+            going forward (as of 12/15/2017).
+            However, we are keeping function here to allow for
+            current users to make use of it...
     This class applies the Freysoldt correction to remove electrostatic defect
     interaction contribution to energy and apply potential alignment.
     Ideally this sxdefectalign wrapper class should be replaced by a python
@@ -241,6 +249,4 @@ class FreysoldtPlot(object):
 
 if __name__ == '__main__':
     pass
-    #s=FreysoldtPlot('.',[0.0,0.0,0.0])
-    #s.plot_vline()
 

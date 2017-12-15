@@ -344,6 +344,14 @@ class DefectChargerInsulator(DefectCharger):
 
 class DefectChargerUserCustom(DefectCharger):
     """
+        NOTE from developers:
+            This code is for full control over charging approach of defects
+            but will be replaced with a future version.
+            Code has no unit test and will not be maintained
+            going forward (as of 12/15/2017).
+            However, we are keeping function here to allow for
+            current users to make use of it...
+
     Determine oxidation states from bond valence method 
     (unless oxidation states specified)
     Then ask user what charges they want
