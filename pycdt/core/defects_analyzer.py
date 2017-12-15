@@ -59,7 +59,10 @@ class ComputedDefect(object):
         self.charge_correction = charge_correction # Can be added after initialization
         self.other_correction = other_correction
         self.name = name
-        self.full_name = self.name + "_" + str(charge)
+        if self.name:
+            self.full_name = self.name + "_" + str(charge)
+        else:
+            self.full_name = "defect_" + str(charge)
 
     def as_dict(self):
         return {'entry': self.entry.as_dict(),
