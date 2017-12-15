@@ -350,7 +350,9 @@ def make_vasp_defect_files(defects, path_base, user_settings={}, hse=False):
                 os.makedirs(path)
                 with open(os.path.join(path, 'readme.txt'), 'w') as fp:
                     print("Vasp input files not generated for charged defects "
-                          "due to unavailability of POTCAR", end="", file=fp)
+                          "due to unavailability of POTCAR. "
+                          "If charged defects desired, please supply POTCAR file "
+                          "path to .pmgrc.yaml file.", end="", file=fp)
 
     # Generate bulk supercell inputs
     s = bulk_sys
