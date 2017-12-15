@@ -2,6 +2,18 @@
 
 from __future__ import division
 
+import os
+import glob
+import unittest
+
+from monty.json import MontyDecoder
+from monty.tempfile import ScratchDir
+from monty.serialization import loadfn
+from pymatgen.util.testing import PymatgenTest
+from pymatgen.io.vasp.inputs import Incar, Kpoints, Poscar, Potcar
+from pymatgen.core.structure import Structure
+from pycdt.utils.vasp import *
+
 __author__ = "Bharat Medasani"
 __copyright__ = "Copyright 2014, The Materials Project"
 __version__ = "1.0"
@@ -10,31 +22,76 @@ __email__ = "mbkumar@gmail.com"
 __status__ = "Development"
 __date__ = "May 6, 2015"
 
-import os
-import glob
-
-from monty.json import MontyDecoder
-from monty.tempfile import ScratchDir
-from monty.serialization import loadfn
-from pymatgen.util.testing import PymatgenTest
-from pymatgen.io.vasp.inputs import Incar, Kpoints, Poscar, Potcar
-from pymatgen.core.structure import Structure
-from pycdt.utils.vasp import make_vasp_defect_files, \
-        make_vasp_dielectric_files
-
 file_loc = os.path.join('..', '..', '..', 'test_files')
 
-class VaspDefectFilesTest(PymatgenTest):
+
+class PotcarSingleModTest(PymatgenTest):
+    def setUp(self):
+        pass
+
+    @unittest.expectedFailure
+    def test_from_symbol_and_functional(self):
+        pass
+
+
+class PotcarModTest(PymatgenTest):
+    def setUp(self):
+        pass
+
+    @unittest.expectedFailure
+    def test_set_symbols(self):
+        pass
+
+
+class DefectRelaxTest(PymatgenTest):
+    def setUp(self):
+        self.structure = Structure.from_file(os.path.join(
+            file_loc, 'POSCAR_Cr2O3'))
+        self.user_settings = loadfn(os.path.join(file_loc,
+                                                 'test_vasp_settings.yaml'))
+        self.path = 'Cr2O3'
+        self.neutral_def_incar_min = {'LVHAR': True, 'ISYM': 0, 'ISMEAR': 0,
+                                      'ISIF': 2,  'ISPIN': 2}
+        self.def_keys = ['EDIFF', 'EDIFFG', 'IBRION']
+
+    def test_neutral_defect_incar(self):
+        drs = DefectRelaxSet(self.structure)
+        self.assertTrue(
+            self.neutral_def_incar_min.items() <= drs.incar.items())
+        self.assertTrue(set(self.def_keys).issubset(drs.incar))
+
+    @unittest.expectedFailure
+    def test_charged_defect_incar(self):
+        drs = DefectRelaxSet(self.structure, charge=1)
+        self.assertIn('NELECT', drs.incar)
+        self.assertTrue(
+            self.neutral_def_incar_min.items() <= drs.incar.items())
+        self.assertTrue(set(self.def_keys).issubset(drs.incar))
+
+    def test_user_settings_defect_incar(self):
+        user_incar_settings = {'EDIFF': 1e-8, 'EDIFFG': 0.1, 'ENCUT': 720}
+        drs = DefectRelaxSet(self.structure,
+                             charge=1,
+                             user_incar_settings=user_incar_settings)
+        self.assertTrue(
+            self.neutral_def_incar_min.items() <= drs.incar.items())
+        self.assertTrue(set(self.def_keys).issubset(drs.incar))
+        self.assertEqual(drs.incar['ENCUT'], 720)
+        self.assertEqual(drs.incar['EDIFF'], 1e-8)
+        self.assertEqual(drs.incar['EDIFFG'], 0.1)
+
+
+class MakeVaspDefectFilesTest(PymatgenTest):
     def setUp(self):
         self.defects = loadfn(os.path.join(file_loc, 'Cr2O3_defects.json'))
         self.user_settings = loadfn(os.path.join(file_loc,
                                                  'test_vasp_settings.yaml'))
         self.path = 'Cr2O3'
         self.neutral_def_incar_min = {'LVHAR': True, 'ISYM': 0, 'ISMEAR': 0,
-                'ISIF': 2,  'ISPIN': 2}
+                                      'ISIF': 2,  'ISPIN': 2}
         self.def_keys = ['EDIFF', 'EDIFFG', 'IBRION']
         self.bulk_incar = {'LVHAR': True, 'ISYM': 0, 'ISMEAR': 0,
-                'IBRION': -1,  'ISPIN': 2}
+                           'IBRION': -1,  'ISPIN': 2}
         self.bulk_keys = ['EDIFF']
 
     def test_neutral_defect_incar(self):
@@ -106,7 +163,7 @@ class VaspDefectFilesTest(PymatgenTest):
     #    self.assertTrue(0)
 
 
-class VaspDielectricFilesTest(PymatgenTest):
+class MakeVaspDielectricFilesTest(PymatgenTest):
     def setUp(self):
         self.structure = Structure.from_file(os.path.join(file_loc, 
                                                           'POSCAR_Cr2O3'))
@@ -135,6 +192,5 @@ class VaspDielectricFilesTest(PymatgenTest):
             self.assertEqual(incar['EDIFF'], 5e-7)
             self.assertEqual(incar['ENCUT'], 620)
 
-import unittest
 if __name__ == '__main__':
     unittest.main()
