@@ -64,8 +64,8 @@ class DefectChargerSemiconductorTest(PymatgenTest):
         zn_impurity_qs = self.def_charger.get_charges('substitution', 'Ga', 'Zn')
         self.assertArrayEqual( s_impurity_qs, [-1, 0, 1, 2, 3, 4, 5, 6])
         self.assertArrayEqual( se_impurity_qs, [-1, 0, 1, 2, 3, 4, 5, 6])
-        self.assertArrayEqual( mg_impurity_qs, [-1, 0, 1, 2])
-        self.assertArrayEqual( zn_impurity_qs, [-1, 0, 1, 2])
+        self.assertArrayEqual( mg_impurity_qs, [-2, -1, 0, 1, 2])
+        self.assertArrayEqual( zn_impurity_qs, [-2, -1, 0, 1, 2])
 
     def test_interstitial_charges(self):
         """
