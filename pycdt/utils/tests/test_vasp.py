@@ -9,7 +9,6 @@ import unittest
 from monty.json import MontyDecoder
 from monty.tempfile import ScratchDir
 from monty.serialization import loadfn
-from pymatgen.util.testing import PymatgenTest
 from pymatgen.io.vasp.inputs import Incar, Kpoints, Poscar, Potcar
 from pymatgen.core.structure import Structure
 from pycdt.utils.vasp import *
@@ -25,25 +24,40 @@ __date__ = "May 6, 2015"
 file_loc = os.path.join('..', '..', '..', 'test_files')
 
 
-class PotcarSingleModTest(PymatgenTest):
+class PotcarSingleModTest(unittest.TestCase):
+    """
+    This test is applicable for the specific case where POTCAR files are not
+    organized according to The Materials Project directory layout, but
+    in the default layout.
+    """
     def setUp(self):
         pass
 
     @unittest.expectedFailure
     def test_from_symbol_and_functional(self):
-        pass
+        try:
+            potcar = PotcarSingleMod.from_symbol_and_functional('Ni')
+        except:
+            potcar = None
+
+        self.assertIsNotNone(potcar)
 
 
-class PotcarModTest(PymatgenTest):
+class PotcarModTest(unittest.TestCase):
     def setUp(self):
         pass
 
     @unittest.expectedFailure
     def test_set_symbols(self):
-        pass
+        try:
+            potcar = PotcarMod(symbols=['Ni', 'O'])
+        except:
+            potcar = None
+
+        self.assertIsNotNone(potcar)
 
 
-class DefectRelaxTest(PymatgenTest):
+class DefectRelaxTest(unittest.TestCase):
     def setUp(self):
         self.structure = Structure.from_file(os.path.join(
             file_loc, 'POSCAR_Cr2O3'))
@@ -81,7 +95,7 @@ class DefectRelaxTest(PymatgenTest):
         self.assertEqual(drs.incar['EDIFFG'], 0.1)
 
 
-class MakeVaspDefectFilesTest(PymatgenTest):
+class MakeVaspDefectFilesTest(unittest.TestCase):
     def setUp(self):
         self.defects = loadfn(os.path.join(file_loc, 'Cr2O3_defects.json'))
         self.user_settings = loadfn(os.path.join(file_loc,
@@ -109,16 +123,16 @@ class MakeVaspDefectFilesTest(PymatgenTest):
             make_vasp_defect_files(self.defects, self.path)
             cr_def_path = glob.glob(os.path.join(self.path, 'vac*Cr'))[0]
             incar_loc = os.path.join(cr_def_path, 'charge_-1')
-            incar = Incar.from_file(os.path.join(incar_loc, "INCAR"))
             try:
                 potcar = Potcar.from_file(os.path.join(incar_loc, "POTCAR"))
             except:
                 potcar = None
             if potcar:
+                incar = Incar.from_file(os.path.join(incar_loc, "INCAR"))
                 self.assertIsNotNone(incar.pop('NELECT', None))
-            self.assertTrue(
-                    self.neutral_def_incar_min.items() <= incar.items())
-            self.assertTrue(set(self.def_keys).issubset(incar))
+                self.assertTrue(
+                        self.neutral_def_incar_min.items() <= incar.items())
+                self.assertTrue(set(self.def_keys).issubset(incar))
 
     def test_bulk_incar(self):
 
@@ -163,7 +177,7 @@ class MakeVaspDefectFilesTest(PymatgenTest):
     #    self.assertTrue(0)
 
 
-class MakeVaspDielectricFilesTest(PymatgenTest):
+class MakeVaspDielectricFilesTest(unittest.TestCase):
     def setUp(self):
         self.structure = Structure.from_file(os.path.join(file_loc, 
                                                           'POSCAR_Cr2O3'))

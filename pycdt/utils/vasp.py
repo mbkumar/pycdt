@@ -64,6 +64,7 @@ class PotcarSingleMod(PotcarSingle):
         if d is None:
             raise ValueError("No POTCAR directory found. Please set "
                              "the VASP_PSP_DIR environment variable")
+
         paths_to_try = [os.path.join(d, funcdir, "POTCAR.{}".format(symbol)),
                         os.path.join(d, funcdir, symbol, "POTCAR.Z"),
                         os.path.join(d, funcdir, symbol, "POTCAR")]
@@ -321,7 +322,7 @@ def make_vasp_defect_files(defects, path_base, user_settings={}, hse=False):
                     'defect_supercell_site': defect['bulk_supercell_site'],
                     'defect_multiplicity': defect['site_multiplicity'],
                     'charge': charge, 'supercell': s['size']}
-            if 'substitution_specie' in  defect:
+            if 'substitution_specie' in defect:
                 dict_transf['substitution_specie'] = defect['substitution_specie']
 
             defect_relax_set = DefectRelaxSet(
@@ -330,13 +331,25 @@ def make_vasp_defect_files(defects, path_base, user_settings={}, hse=False):
 
             path = os.path.join(path_base, defect['name'],
                                 "charge_"+str(charge))
-            defect_relax_set.write_input(path)
+            try:
+                potcar = defect_relax_set.potcar
+            except:
+                potcar = None
 
-            incar = defect_relax_set.incar if hse else {}
-            kpoints = Kpoints.from_dict(user_kpoints) if user_kpoints else None
+            if potcar or not charge:
+                defect_relax_set.write_input(path)
+                incar = defect_relax_set.incar if hse else {}
+                kpoints = Kpoints.from_dict(user_kpoints) if user_kpoints \
+                    else None
 
-            write_additional_files(path, dict_transf, incar=incar,
-                                   kpoints=kpoints, hse=hse)
+                write_additional_files(path, dict_transf, incar=incar,
+                                       kpoints=kpoints, hse=hse)
+            else:
+                os.makedirs(path, exist_ok=True)
+                print("Vasp input files not generated for charged defects "
+                      "due to unavailability of POTCAR",
+                      end="",
+                      file=os.path.join(path, 'readme.txt'))
 
     # Generate bulk supercell inputs
     s = bulk_sys
@@ -357,7 +370,7 @@ def make_vasp_defect_files(defects, path_base, user_settings={}, hse=False):
 
 
 def make_vasp_defect_files_dos(defects, path_base, user_settings={}, 
-                           hse=False, dos_limits=(-1,7)):
+                               hse=False, dos_limits=(-1,7)):
     """
     Generates VASP files for defect computations which include dos 
     generation. Useful when the user don't want to use MPWorks for 
