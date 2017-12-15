@@ -173,13 +173,6 @@ class ChargedDefectsStructuresTest(PymatgenTest):
 
 
     def test_subs_and_interstits(self):
-        # latt = self.gaas_struct.lattice
-        # pregen_intersite = [PeriodicSite('As', [0.4750, 0.4750, 0.5250], latt),
-        #                     PeriodicSite('As', [0.7250, 0.7250, 0.7750], latt)]
-        # CDS = ChargedDefectsStructures(self.gaas_struct,
-        #                                substitutions={'Ga':['Si','In'], 'As':['Sb']},
-        #                                intersites= pregen_intersite,
-        #                                include_interstitials=True)
         CDS = ChargedDefectsStructures(self.gaas_struct,
                                        substitutions={'Ga':['Si','In'], 'As':['Sb']})
         self.assertEqual('sub_1_Si_on_Ga', CDS.defects['substitutions'][0]['name'])
