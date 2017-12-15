@@ -113,16 +113,13 @@ class VaspDielectricFilesTest(PymatgenTest):
         self.user_settings = loadfn(os.path.join(file_loc,
                                                  'test_vasp_settings.yaml'))
         self.path = 'dielectric'
-        self.dielectric_min = {'LVHAR': True, 'ISYM': 0, 'LPEAD': True,
-                'LEPSILON': True,  'ISPIN': 2, 'IBRION': 8}
+        self.dielectric_min = {'LPEAD': True, 'LEPSILON': True, 'IBRION': 8}
         self.keys = ['EDIFF']
 
     def test_dielectric_files(self):
         with ScratchDir('.'):
             make_vasp_dielectric_files(self.structure, self.path)
             incar = Incar.from_file(os.path.join(self.path, "INCAR"))
-            print (incar.items())
-            print (self.dielectric_min.items())
             self.assertTrue(
                     self.dielectric_min.items() <= incar.items())
             self.assertTrue(set(self.keys).issubset(incar))
