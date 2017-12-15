@@ -173,9 +173,7 @@ def parse_output(args):
 
 def compute_corrections(args):
     """
-    TODO 1: have option to suppress potential plots
-            (but for now want to plot them to make sure correction is working)
-    TODO 2: Include option for printing pot. plots to defect files,
+    TODO : Include option for printing pot. plots to defect files,
             rather than main directory
     ----------
     Computes corrections for the charged point defects
