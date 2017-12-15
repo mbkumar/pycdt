@@ -112,7 +112,6 @@ class PostProcess(object):
             if 'bulk' in fldr_fields:
                 vr, error_msg = get_vr_and_check_locpot(fldr)
                 if error_msg:
-                    #print(fldr_name, error_msg)
                     logger.error("Abandoning parsing of the calculations")
                     break
                 bulk_energy = vr.final_energy
@@ -124,7 +123,6 @@ class PostProcess(object):
                     if error_msg:
                         logger.error("Abandoning parsing of the calculations")
                         break
-                        #raise AttributeError(error_msg)
 
                 trans_dict = loadfn(
                             os.path.join(fldr, 'transformation.json'),

@@ -101,14 +101,10 @@ class DefectPlotter(object):
 
         if len(y.keys())<5:
             plt.legend(get_legends(y.keys()), fontsize=1.8*width, loc=8)
-        else: #note to Bharat -> so far I have been having to adjust the bbox_to_anchor based on number of defects
-            #would like to be able to have this be automagic enough that legend won't interfere with plot when lots
-            # of defects exist....
+        else:
             plt.legend(get_legends(y.keys()), fontsize=1.8*width, ncol=3,
                        loc='lower center', bbox_to_anchor=(.5,-.6))
         for cnt, c in enumerate(y):
-        #for c in y:
-           # plt.plot(x, y[c], next(linecycler), linewidth=6, color=colors[cnt])
             x_trans = [pt[0] for pt in trans_level_pt[c]]
             y_trans = [pt[1] for pt in trans_level_pt[c]]
             plt.plot(x_trans, y_trans,  marker='*', color=colors[cnt], markersize=12, fillstyle='full')

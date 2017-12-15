@@ -148,8 +148,6 @@ class MakeVaspDefectFilesTest(unittest.TestCase):
             make_vasp_defect_files(self.defects, self.path)
             kpoints_loc = os.path.join(self.path, 'bulk')
             kpoints = Kpoints.from_file(os.path.join(kpoints_loc, 'KPOINTS'))
-            # xxx: doesn't work?!
-            #self.assertEqual(kpoints.kpts, [[2,2,2]])
 
     def test_poscar(self):
         with ScratchDir('.'):

@@ -15,7 +15,6 @@ from copy import deepcopy
 import functools
 import numpy as np
 
-#import smart_open
 from monty.serialization import loadfn, dumpfn
 from monty.json import MontyEncoder
 from monty.os.path import zpath
