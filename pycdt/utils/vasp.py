@@ -11,13 +11,11 @@ __status__ = "Development"
 __date__ = "November 4, 2012"
 
 import os
-import shutil
 from copy import deepcopy
 import functools
-import numpy as np # xxx
+import numpy as np
 
 #import smart_open
-import numpy as np
 from monty.serialization import loadfn, dumpfn
 from monty.json import MontyEncoder
 from monty.os.path import zpath
