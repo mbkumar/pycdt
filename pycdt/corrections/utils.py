@@ -14,8 +14,7 @@ from pycdt.utils.units import eV_to_k, invang_to_ev, ang_to_bohr
 
 def cleanlat(dat):
     """
-    # TODO: Identify better function and input variable name
-    return lattice constants
+    TODO: Identify better function name and input variable name
     Args:
         dat: array of lattice vectors
 
@@ -94,8 +93,6 @@ def closestsites(struct_blk, struct_def, pos):
         pos: Position 
     Return: (site object, dist, index)
     """
-    # input bulk and defect structures and get site that is nearest 
-    # to the (cartesian) input position
     blk_close_sites = struct_blk.get_sites_in_sphere(pos, 5, include_index=True)
     blk_close_sites.sort(key=lambda x:x[1])
     def_close_sites = struct_def.get_sites_in_sphere(pos, 5, include_index=True)
