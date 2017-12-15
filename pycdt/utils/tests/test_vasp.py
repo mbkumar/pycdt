@@ -173,8 +173,6 @@ class MakeVaspDefectFilesTest(unittest.TestCase):
 
     def test_hse_settings(self):
         pass
-    # xxx: doesn't work?!
-    #    self.assertTrue(0)
 
 
 class MakeVaspDielectricFilesTest(unittest.TestCase):

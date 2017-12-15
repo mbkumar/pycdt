@@ -115,7 +115,7 @@ class DefectsAnalyzer(object):
         self._formation_energies = []
 
     def as_dict(self):
-        d = {'entry_bulk': self._entry_bulk,
+        d = {'entry_bulk': self._entry_bulk.as_dict(),
              'e_vbm': self._e_vbm,
              'mu_elts': self._mu_elts,
              'band_gap': self._band_gap,
@@ -127,7 +127,7 @@ class DefectsAnalyzer(object):
 
     @classmethod
     def from_dict(cls, d):
-        struct = d['entry_bulk']['bulk']['supercell']['structure']
+        struct = d['entry_bulk']['structure']
         struct = struct if isinstance(struct, Structure) \
             else Structure.from_dict(struct)
         entry_bulk = ComputedStructureEntry(struct, d['entry_bulk']['energy'])
@@ -244,57 +244,6 @@ class DefectsAnalyzer(object):
                     transit_levels[dfct_name][qpair] = x[np.argmin(y_absdiff)]
         return transit_levels
 
-    def correct_bg(self, dict_levels, vbm_correct, cbm_correct):
-        """
-        correct the band gap in the analyzer and make sure the levels move
-        accordingly.
-        There are two types of defects vbm_like and cbm_like and we need
-        to provide a formal oxidation state
-        The vbm-like will follow the vbm and the cbm_like the cbm. If nothing
-        is specified the defect transition level does not move
-        Args:
-            dict_levels: a dictionary of type {defect_name:
-            {'type':type_of_defect,'q*':formal_ox_state}}
-            Where type_of_defect is a string: 'vbm_like' or 'cbm_like'
-        """
-        self._band_gap = self._band_gap + cbm_correct + vbm_correct
-        self._e_vbm = self._e_vbm - vbm_correct
-        self._compute_form_en()
-        for i in range(len(self._defects)):
-            name = self._defects[i].name
-            if not name in dict_levels:
-                continue
-
-            if dict_levels[name]['type'] == 'vbm_like':
-                z = self._defects[i].charge - dict_levels[name]['q*']
-                self._formation_energies[i] += z * vbm_correct
-            if dict_levels[name]['type'] == 'cbm_like':
-                z = dict_levels[name]['q*'] - self._defects[i].charge
-                self._formation_energies[i] +=  z * cbm_correct
-
-    def get_defect_occupancies(self):
-        """
-        Defect occupancies with respect to defect chargest.
-        The assumption is that the highest charge of defect numerically
-        has zero occupancy:
-        Ex: In Cr2O3, V_O has 0 occupancy for +2 q and 2 occupancy for 0 q.
-            V_{Cr} has 0 occupancy for 0 q and 3 occupancy for -3 q
-        Caution: Didn't check for semiconductor with large # of defect q's.
-        Returns: 
-            Defect occupancies as a nested dict
-        """
-        charges = defaultdict(list)
-        for dfct in self._defects:
-            charges[dfct.name].append(dfct.charge)
-
-        occupancies = defaultdict(lambda: defaultdict(int))
-        for dfct_name in charges:
-            for i, q in enumerate(sorted(charges[dfct_name], reverse=True)):
-                occupancies[dfct_name][q] = i
-            occupancies[dfct_name]['0_occupancy'] = \
-                    sorted(charges[dfct_name], reverse=True)[0]
-        return occupancies
-
     def _get_form_energy(self, ef, i):
         return self._formation_energies[i] + self._defects[i].charge*ef
 
@@ -305,15 +254,15 @@ class DefectsAnalyzer(object):
             ef:
                 the fermi level in eV (with respect to the VBM)
         Returns:
-            a list of dict of {'name': defect name, 'charge': defect charge 
+            a list of dict of {'name': defect name, 'charge': defect charge
                                'energy': defect formation energy in eV}
         """
         energies = []
         i = 0
         for i, d in enumerate(self._defects):
             energies.append({
-                'name': d.name, 
-                'charge': d.charge, 
+                'name': d.name,
+                'charge': d.charge,
                 'energy': self._get_form_energy(ef, i)
                 })
         return energies
@@ -521,3 +470,64 @@ class DefectsAnalyzer(object):
     def _get_non_eq_qtot(self, cd, ef, t, m_elec, m_hole):
         return self._get_non_eq_qd(cd, ef, t) + \
                self.get_qi(ef, t, m_elec, m_hole)
+
+    def correct_bg(self, dict_levels, vbm_correct, cbm_correct):
+        """
+        NOTE from developers: This code uses deprecated concepts and
+            will not be used or maintained going forward (as of 12/15/2017).
+            However, we are keeping function here to allow for
+            current users to make use of it...
+
+        correct the band gap in the analyzer and make sure the levels move
+        accordingly.
+        There are two types of defects vbm_like and cbm_like and we need
+        to provide a formal oxidation state
+        The vbm-like will follow the vbm and the cbm_like the cbm. If nothing
+        is specified the defect transition level does not move
+        Args:
+            dict_levels: a dictionary of type {defect_name:
+            {'type':type_of_defect,'q*':formal_ox_state}}
+            Where type_of_defect is a string: 'vbm_like' or 'cbm_like'
+        """
+        self._band_gap = self._band_gap + cbm_correct + vbm_correct
+        self._e_vbm = self._e_vbm - vbm_correct
+        self._compute_form_en()
+        for i in range(len(self._defects)):
+            name = self._defects[i].name
+            if not name in dict_levels:
+                continue
+
+            if dict_levels[name]['type'] == 'vbm_like':
+                z = self._defects[i].charge - dict_levels[name]['q*']
+                self._formation_energies[i] += z * vbm_correct
+            if dict_levels[name]['type'] == 'cbm_like':
+                z = dict_levels[name]['q*'] - self._defects[i].charge
+                self._formation_energies[i] +=  z * cbm_correct
+
+    def get_defect_occupancies(self):
+        """
+        NOTE from developers: This code uses deprecated concepts and
+            will not be used or maintained going forward (as of 12/15/2017).
+            However, we are keeping function here to allow for
+            current users to make use of it...
+
+        Defect occupancies with respect to defect chargest.
+        The assumption is that the highest charge of defect numerically
+        has zero occupancy:
+        Ex: In Cr2O3, V_O has 0 occupancy for +2 q and 2 occupancy for 0 q.
+            V_{Cr} has 0 occupancy for 0 q and 3 occupancy for -3 q
+        Caution: Didn't check for semiconductor with large # of defect q's.
+        Returns:
+            Defect occupancies as a nested dict
+        """
+        charges = defaultdict(list)
+        for dfct in self._defects:
+            charges[dfct.name].append(dfct.charge)
+
+        occupancies = defaultdict(lambda: defaultdict(int))
+        for dfct_name in charges:
+            for i, q in enumerate(sorted(charges[dfct_name], reverse=True)):
+                occupancies[dfct_name][q] = i
+            occupancies[dfct_name]['0_occupancy'] = \
+                    sorted(charges[dfct_name], reverse=True)[0]
+        return occupancies
