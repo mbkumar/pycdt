@@ -18,15 +18,12 @@ from pymatgen.io.vasp.outputs import Locpot
 from pycdt.corrections.kumagai_correction import *
 
 # Paths to files we are testing on
-# bl_path = 'bLOCPOT.gz'
-# dl_path = 'dLOCPOT.gz'
-# kad_path = 'testKumagaiData.json'
 bl_path = os.path.join('..', '..', '..', 'test_files', 'bLOCPOT.gz')
 dl_path = os.path.join('..', '..', '..', 'test_files', 'dLOCPOT.gz')
 kad_path = os.path.join('..', '..', '..', 'test_files', 'testKumagaiData.json')
 
 class KumagaiBulkInitANDCorrectionTest(PymatgenTest):
-    #TODO: also might want to test outcar Kumagai method...
+    #TODO: add test for outcar Kumagai method...
     def setUp(self):
         self.bl = Locpot.from_file(bl_path)
         self.dl = Locpot.from_file(dl_path)
@@ -42,8 +39,6 @@ class KumagaiBulkInitANDCorrectionTest(PymatgenTest):
         self.assertEqual(self.kbi.find_optimal_gamma(), 3.4942322698305639)
 
     def test_reciprocal_sum(self):
-        # This is initialized with KBI.
-        # Not sure how else to test besides size of list of vectors
         self.assertEqual(self.kbi.g_sum.size, 884736)
         self.assertAlmostEqual(self.kbi.g_sum[0][0][0], 0.050661706751775192)
 
