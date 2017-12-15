@@ -12,7 +12,7 @@ def readme():
 setup(
         name="pycdt",
         packages=find_packages(),
-        version="0.8.0",
+        version="1.5.0",
         install_requires=["numpy>=1.9", "pymatgen>=4.0.2", "matplotlib>=1.1"],
         package_data={"pycdt.utils": ["*.yaml"]},
         author="Danny Broberg, Bharat Medasani, Nils Zimmerman",
