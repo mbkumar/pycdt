@@ -240,7 +240,7 @@ class DefectsAnalyzer(object):
             q_ys = y[dfct_name]
             for qpair in combinations(q_ys.keys(), 2):
                 y_absdiff = abs(q_ys[qpair[1]] - q_ys[qpair[0]])
-                if y_absdiff.min() < 0.4: # Forgot why 0.4 check was added
+                if y_absdiff.min() < 0.4:
                     transit_levels[dfct_name][qpair] = x[np.argmin(y_absdiff)]
         return transit_levels
 
