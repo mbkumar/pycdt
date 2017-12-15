@@ -11,15 +11,15 @@ __status__ = "Development"
 __date__ = "June 6, 2016"
 
 import os
+import unittest
 
-from pymatgen.util.testing import PymatgenTest
 from pymatgen.core.structure import Structure
 from pymatgen.core import PeriodicSite
 from pycdt.core.defectsmaker import *
 
 file_loc = os.path.join('..', '..', '..', 'test_files')
 
-class GetOptimizedScScaleTest(PymatgenTest):
+class GetOptimizedScScaleTest(unittest.TestCase):
     def setUp(self):
         self.gaas_prim_struct = Structure.from_file(
                 os.path.join(file_loc, 'POSCAR_GaAs'))
@@ -31,7 +31,7 @@ class GetOptimizedScScaleTest(PymatgenTest):
         self.assertEqual([3, 3, 3], lattchange)
 
 
-class DefectChargerSemiconductorTest(PymatgenTest):
+class DefectChargerSemiconductorTest(unittest.TestCase):
     def setUp(self):
         self.gaas_struct = Structure.from_file(
             os.path.join(file_loc, 'POSCAR_GaAs'))
@@ -81,7 +81,7 @@ class DefectChargerSemiconductorTest(PymatgenTest):
         self.assertIn(1, self_qs)
 
 
-class DefectChargerInsulatorTest(PymatgenTest):
+class DefectChargerInsulatorTest(unittest.TestCase):
     def setUp(self):
         cr2o3_struct = Structure.from_file(
                 os.path.join(file_loc, 'POSCAR_Cr2O3'))
@@ -132,7 +132,7 @@ class DefectChargerInsulatorTest(PymatgenTest):
         self.assertNotIn(5, ti_inter_qs)
 
 
-class ChargedDefectsStructuresTest(PymatgenTest):
+class ChargedDefectsStructuresTest(unittest.TestCase):
     def setUp(self):
         self.gaas_struct = Structure.from_file(
             os.path.join(file_loc, 'POSCAR_GaAs'))

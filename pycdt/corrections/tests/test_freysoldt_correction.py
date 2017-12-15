@@ -11,8 +11,8 @@ __status__ = "Development"
 __date__ = "June 23, 2016"
 
 import os
+import unittest
 
-from pymatgen.util.testing import PymatgenTest
 from pymatgen.io.vasp.outputs import Locpot
 from pycdt.corrections.freysoldt_correction import *
 
@@ -21,7 +21,7 @@ bl_path = os.path.join('..', '..', '..', 'test_files', 'bLOCPOT.gz')
 dl_path = os.path.join('..', '..', '..', 'test_files', 'dLOCPOT.gz')
 fad_path = os.path.join('..', '..', '..', 'test_files', 'testFreyAxisData.npz')
 
-class FreysoldtCorrectionTest(PymatgenTest):
+class FreysoldtCorrectionTest(unittest.TestCase):
     def setUp(self):
         self.fc = FreysoldtCorrection(0, 15, bl_path, dl_path, -3)
 
@@ -35,7 +35,7 @@ class FreysoldtCorrectionTest(PymatgenTest):
         self.assertAlmostEqual(self.fc.correction(), 3.99126)
 
 
-class FreysoldtCorrPlotterTest(PymatgenTest):
+class FreysoldtCorrPlotterTest(unittest.TestCase):
     def setUp(self):
         x = [0, 1, 2, 3]
         v_R = [1, 0.5, 0.5, 1]
@@ -60,7 +60,7 @@ class FreysoldtCorrPlotterTest(PymatgenTest):
         os.system('rm TMPplotFreyplnravgPlot.pdf')
 
 
-class QModelTest(PymatgenTest):
+class QModelTest(unittest.TestCase):
     def setUp(self):
         self.qm = QModel()
         self.modqm = QModel(beta=2., expnorm=0.5, gamma=0.1)

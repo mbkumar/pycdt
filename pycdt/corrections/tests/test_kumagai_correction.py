@@ -10,9 +10,9 @@ __email__ = "mbkumar@gmail.com"
 __status__ = "Development"
 __date__ = "June 23, 2016"
 
-from pymatgen.util.testing import PymatgenTest
 import os
 import numpy as np
+import unittest
 
 from pymatgen.io.vasp.outputs import Locpot
 from pycdt.corrections.kumagai_correction import *
@@ -22,7 +22,7 @@ bl_path = os.path.join('..', '..', '..', 'test_files', 'bLOCPOT.gz')
 dl_path = os.path.join('..', '..', '..', 'test_files', 'dLOCPOT.gz')
 kad_path = os.path.join('..', '..', '..', 'test_files', 'testKumagaiData.json')
 
-class KumagaiBulkInitANDCorrectionTest(PymatgenTest):
+class KumagaiBulkInitANDCorrectionTest(unittest.TestCase):
     #TODO: add test for outcar Kumagai method...
     def setUp(self):
         self.bl = Locpot.from_file(bl_path)
@@ -86,7 +86,7 @@ class KumagaiBulkInitANDCorrectionTest(PymatgenTest):
         self.assertAlmostEqual(val, 1.5523329679084736)
 
 
-class KumagaiSetupFunctionsTest(PymatgenTest):
+class KumagaiSetupFunctionsTest(unittest.TestCase):
     def setUp(self):
         self.bl = Locpot.from_file(bl_path)
         self.dl = Locpot.from_file(dl_path)
