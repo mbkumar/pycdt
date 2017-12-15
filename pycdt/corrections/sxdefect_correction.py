@@ -23,10 +23,17 @@ from monty.tempfile import ScratchDir
 
 class FreysoldtCorrection(object):
     """
-    This class applies the Freysoldt correction to remove electrostatic defect
+        NOTE from developers:
+            This code is a python wrapper to sxdefectalign.
+            We have our own version written in python within
+                pycdt.corrections.freysoldt_correction
+            This code has no unit test and will not be maintained
+            going forward (as of 12/15/2017).
+            However, we are keeping function here to allow for
+            current users to make use of it...
+    This class applies the Freysoldt correction code (sxdefectalign)
+    to remove electrostatic defect
     interaction contribution to energy and apply potential alignment.
-    Ideally this sxdefectalign wrapper class should be replaced by a python
-    code implementing a generalized anisotropic Freysoldt correction
     """
     
     def __init__(self, locpot_bulk_path, locpot_defect_path, charge, epsilon, 
@@ -414,13 +421,3 @@ class FreysoldtCorrection(object):
 
 if __name__ == '__main__':
     pass
-    #for testing, example given here is Se_sn+1 in 72 atom cell
-    #from pymatgen.io.vaspio.vasp_output import Locpot
-    #print 'load locpots'
-    #sdef=Locpot.from_file("LOCPOT")
-    #spure=Locpot.from_file("../pure/LOCPOT")
-    #s1=DefectCorrectionFreysoldt(spure,sdef,1,47.852,[0.0833330000000032,0.0307343554185392,0.3830636916206969],520)
-    #s1.run_correction()
-
-    #test=s1.plot_pot_diff(align=[0.0,0.0,0.0],print_pot_flag='none')
-    #print 'output of plotting code is:'+str(test)

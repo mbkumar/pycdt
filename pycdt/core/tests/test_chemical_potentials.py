@@ -21,7 +21,6 @@ from pycdt.core.chemical_potentials import *
 
 from pymatgen.ext.matproj import MPRester
 from pymatgen.analysis.phase_diagram import PhaseDiagram
-#from pymatgen.phasediagram.analyzer import PDAnalyzer
 from pymatgen.entries.computed_entries import ComputedEntry
 
 file_loc = os.path.abspath(os.path.join('..', '..', '..', 'test_files'))
@@ -120,8 +119,6 @@ class MPChemPotAnalyzerTest(PymatgenTest):
         self.assertAlmostEqual(-3.6694075900000023, cp_fsaf_s_cdne['GaAs_rich']['Ga'])
         self.assertAlmostEqual(-4.6580705550000001, cp_fsaf_s_cdne['As_rich']['As'])
         self.assertAlmostEqual(-3.7628941674999994, cp_fsaf_s_cdne['As_rich']['Ga'])
-        #self.assertAlmostEqual({u'As': -4.7203949399999985, u'Ga': -3.6694075900000023}, cp_fsaf_s_cdne['GaAs_rich'])
-        #self.assertAlmostEqual({u'As': -4.6580705550000001, u'Ga': -3.7628941674999994}, cp_fsaf_s_cdne['As_rich'])
 
         #test (iv) not stable, composition DOESNT exists in list of stable comps of PD; full_sub_approach = False
         #       case a) simple 2D phase diagram

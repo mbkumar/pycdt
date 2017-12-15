@@ -92,13 +92,12 @@ def get_correction_freysoldt(defect, bulk_entry, epsilon, title = None,
             else:
                 avgcorr.append(valset)
             fullcorrset.append(valset)
-            # print (fullcorrset)
             if title:
                 homepat = os.path.abspath('.')
                 src = os.path.join(homepat, title+'ax'+str(ax+1)+'FreyplnravgPlot.pdf')
                 dst = os.path.join(dpat, title+'ax'+str(ax+1)+'FreyplnravgPlot.pdf')
                 shutil.move(src, dst)
-            locpot_blk = corr_meth._purelocpot #prevent reloading of locpots
+            locpot_blk = corr_meth._purelocpot #prevent reloading of locpots to save time
             locpot_def = corr_meth._deflocpot
         if partflag=='AllSplit':
             corr_val = [valset[0], np.mean(avgcorr), valset[0]+np.mean(avgcorr), fullcorrset]
@@ -165,6 +164,10 @@ def get_correction_kumagai(defect, path_blk, bulk_init, bulk_locpot=None,
 def get_correction_sxdefect(path_def, path_blk, epsilon, pos, charge, title=None,
                             lengths=None, partflag='All', encut=520):
         """
+            NOTE FROM DEVELOPERS:
+            This is not unit tested and will not be maintained past 12/15/17.
+            Code remaining here to allow for existing users to keep using it.
+
         Args:
             lengths: for length conversion (makes calculation faster)
             pos: specify position for sxdefectalign code
@@ -175,14 +178,7 @@ def get_correction_sxdefect(path_def, path_blk, epsilon, pos, charge, title=None
                'All' for both, or
                'AllSplit' for individual parts split up (form [PC,potterm,full])
         """
-        # TODO: update readme section
         #TODO: test this function
-
-        # if not pos:
-        #     pos=self._pos #already in fractional co-ordinates from earlier in ChargeCorrection classing? TODO: add in ability to use position finder...
-
-        # if lengths is None and type(self._purelocpot) is Locpot: #TODO do this in smarter way?
-        #     lengths=self._purelocpot.structure.lattice.abc
 
         if partflag in ['All','AllSplit']:
             nomtype='full correction'
@@ -193,8 +189,6 @@ def get_correction_sxdefect(path_def, path_blk, epsilon, pos, charge, title=None
         else:
             print(partflag,' is incorrect potalign type. Must be "All","AllSplit", "pc", or "potalign".')
             return
-
-        # encut = 520 #TODO: smarter ability to grab encut values...
 
         s = SXD(path_blk, path_def, charge, epsilon, pos, encut, lengths=lengths)
 

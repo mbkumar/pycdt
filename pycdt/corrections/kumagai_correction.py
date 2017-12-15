@@ -314,9 +314,6 @@ def disttrans(struct, defstruct, defpos=None):
             continue
 
         blksite, defsite = closestsites(struct, defstruct, i.coords)
-
-        # blkindex=struct.index(blksite[0])
-        # defindex=defstruct.index(defsite[0])
         blkindex = blksite[-1]
         defindex = defsite[-1]
 
@@ -331,8 +328,6 @@ def disttrans(struct, defstruct, defpos=None):
             logger.warning('In defect supercell')
             logger.warning('Distance should be %f', defdist)
             logger.warning('But, calculated distance is %f', norm(cart_reldef))
-            #dont want to break the code here, but want flag to exist...what to do?
-            #return 
 
         if blkindex in grid_sites:
             logger.warning('Index %d already exists in potinddict!', blkindex)
@@ -492,7 +487,7 @@ class KumagaiBulkInit(object):
             return recippartreal, gamma
 
         logger = logging.getLogger(__name__)
-        #start with gamma s.t. gamma*L=5 (some paper said this is optimal)
+        #start with gamma s.t. gamma*L=5 (this is optimal)
         #optimizing gamma for the reciprocal sum to improve convergence 
         gamma = 5.0/(vol ** (1/3.0))
         optimal_gamma_found = False
@@ -756,7 +751,7 @@ class KumagaiCorrection(object):
             else:
                 potinddict[i]['OutsideWS'] = False
 
-        if not self.do_outcar_method: #TODO: testing (non-outcar forced version of this code not rigorously tested)
+        if not self.do_outcar_method:
             puredat = read_ES_avg_fromlocpot(self.locpot_blk)
             defdat = read_ES_avg_fromlocpot(self.locpot_def)
         else:

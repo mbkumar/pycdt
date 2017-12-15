@@ -14,7 +14,6 @@ invang_to_ev = 3.80986
 kb = 8.6173324e-5 #eV / K
 hbar = 6.58211928e-16  #eV s
 
-#no idea what is meaning for this constant. Used in defects_analyzer
 conv = math.sqrt((9.1*1e-31)**3) * math.sqrt((1.6*1e-19)**3) / ((1.05*1e-34)**3)
 
 def k_to_eV(g):

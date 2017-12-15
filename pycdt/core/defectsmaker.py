@@ -252,8 +252,6 @@ class DefectChargerInsulator(DefectCharger):
             strip_key = ''.join([s for s in key if s.isalpha()])
             self.oxi_states[str2unicode(strip_key)] = val
 
-        #print ('self.oxistes', self.oxi_states)
-
         self.min_max_oxi = {}
         for s in struct_species:
             if isinstance(s, Specie):
@@ -265,7 +263,6 @@ class DefectChargerInsulator(DefectCharger):
             max_oxi = max(el.common_oxidation_states)
             min_oxi = min(el.common_oxidation_states)
             self.min_max_oxi[str2unicode(el.symbol)] = (min_oxi,max_oxi)
-        #print ('self.min_max_oxi', self.min_max_oxi)
         
     def get_charges(self, defect_type, site_specie=None, sub_specie=None):
         """
@@ -282,7 +279,6 @@ class DefectChargerInsulator(DefectCharger):
         if defect_type == 'vacancy':
             vac_symbol = get_el_sp(site_specie).symbol
             vac_oxi_state = self.oxi_states[str2unicode(vac_symbol)]
-            #print ('vac_oxi_state', vac_oxi_state)
             if vac_oxi_state < 0:
                 min_oxi = max(vac_oxi_state, self.min_max_oxi[vac_symbol][0])
                 max_oxi = 0
@@ -334,7 +330,6 @@ class DefectChargerInsulator(DefectCharger):
                         return [min_oxi_sub - vac_oxi_state]
         
         elif defect_type == 'interstitial':
-            #print ('inter_symbol=', site_specie)
             site_specie = get_el_sp(site_specie)
             min_oxi = min(min(site_specie.common_oxidation_states), 0)
             max_oxi = max(max(site_specie.common_oxidation_states), 0)
@@ -344,6 +339,14 @@ class DefectChargerInsulator(DefectCharger):
 
 class DefectChargerUserCustom(DefectCharger):
     """
+        NOTE from developers:
+            This code is for full control over charging approach of defects
+            but will be replaced with a future version.
+            Code has no unit test and will not be maintained
+            going forward (as of 12/15/2017).
+            However, we are keeping function here to allow for
+            current users to make use of it...
+
     Determine oxidation states from bond valence method 
     (unless oxidation states specified)
     Then ask user what charges they want
@@ -666,7 +669,7 @@ class ChargedDefectsStructures(object):
 
                     else:
                         name = "inter_{}_{}".format(i+1, elt)
-                        # This needs further attention at some point.
+                        # TODO: This needs better structuring
                         site_mult = int(1.0 / conv_prim_rat)
 
                     site = PeriodicSite(Element(elt), intersite.frac_coords,

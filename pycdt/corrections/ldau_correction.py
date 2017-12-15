@@ -61,6 +61,9 @@ class LDAUCorrection(object):
 def get_ldau_corrections(exp_gap, ldau_gap, lda_gap, ldau_trans, lda_trans,
                          occupancies):
     """
+        NOTE from developers:
+            As of 12/15/17 this code does not have unit test
+            TODO: benchmark implementation and make unit test
     Compute the corrections to LDA+U computed transition levels and defect
     formation energies using the scheme by Janotti and van de Walle
     Reference:

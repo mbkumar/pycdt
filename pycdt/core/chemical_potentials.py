@@ -66,7 +66,6 @@ class ChemPotAnalyzer(object):
                     limnom = '-'.join(sys.reduced_formula for sys in eltsinfac)
                     if len(eltsinfac) == 1:
                         limnom += '_rich'
-                    # print(limnom, chempots)
                     chemdict = {
                         el.symbol: chempots[el] for el in pd.elements}
                     chem_lims[limnom] = chemdict
@@ -122,7 +121,6 @@ class ChemPotAnalyzer(object):
                 limnom = '-'.join(sys.reduced_formula for sys in eltsinfac)
                 if len(eltsinfac) == 1:
                     limnom += '_rich'
-                # print(limnom, mus)
                 chemdict = {el.symbol: mus[el] for el in pd.elements}
                 chem_lims[limnom] = chemdict
 

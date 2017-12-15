@@ -15,7 +15,6 @@ from copy import deepcopy
 import functools
 import numpy as np
 
-#import smart_open
 from monty.serialization import loadfn, dumpfn
 from monty.json import MontyEncoder
 from monty.os.path import zpath
@@ -254,6 +253,14 @@ class DielectricSet(MPStaticSet):
 def write_additional_files(path, trans_dict=None, incar={}, kpoints=None,
                            hse=False):
     """
+        NOTE from developers:
+            This code is primarily used for dumping extra files
+            for users desiring to do HSE
+            will not be used in command line code or maintained (with unit tests etc.)
+            going forward (as of 12/15/2017).
+            However, we are keeping function here to allow for
+            current users to make use of it...
+
     Write the additional files based on user settings
     """
     if kpoints:
@@ -348,7 +355,9 @@ def make_vasp_defect_files(defects, path_base, user_settings={}, hse=False):
                 os.makedirs(path)
                 with open(os.path.join(path, 'readme.txt'), 'w') as fp:
                     print("Vasp input files not generated for charged defects "
-                          "due to unavailability of POTCAR", end="", file=fp)
+                          "due to unavailability of POTCAR. "
+                          "If charged defects desired, please supply POTCAR file "
+                          "path to .pmgrc.yaml file.", end="", file=fp)
 
     # Generate bulk supercell inputs
     s = bulk_sys
@@ -371,6 +380,12 @@ def make_vasp_defect_files(defects, path_base, user_settings={}, hse=False):
 def make_vasp_defect_files_dos(defects, path_base, user_settings={}, 
                                hse=False, dos_limits=(-1,7)):
     """
+        NOTE from developers:
+            This code will not be used in command line code or
+            maintained going forward (as of 12/15/2017).
+            However, we are keeping function here to allow for
+            current users to make use of it...
+
     Generates VASP files for defect computations which include dos 
     generation. Useful when the user don't want to use MPWorks for 
     dos calculations.
