@@ -11,13 +11,13 @@ __status__ = "Development"
 __date__ = "Aug 22, 2016"
 
 import os
+import unittest
 
-from pymatgen.util.testing import PymatgenTest
 from pycdt.corrections.ldau_correction import *
 
 test_file_loc = os.path.join('..', '..', '..', 'test_files')
 
-class LDAUCorrectionTest(PymatgenTest):
+class LDAUCorrectionTest(unittest.TestCase):
     def setUp(self):
         exp_gap, ggau_gap, gga_gap = (3, 2, 1)
         self.corrector = LDAUCorrection(exp_gap, ggau_gap, gga_gap)

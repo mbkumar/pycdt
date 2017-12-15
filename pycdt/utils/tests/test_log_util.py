@@ -12,12 +12,12 @@ __date__ = "October 9, 2017"
 
 import os
 import logging
+import unittest
 import logging.config
 
-from pymatgen.util.testing import PymatgenTest
 from pycdt.utils.log_util import initialize_logging
 
-class InitializeLoggingTest(PymatgenTest):
+class InitializeLoggingTest(unittest.TestCase):
     def test_initialize_logging(self):
         self.assertEqual(initialize_logging(), None)
         self.assertEqual(initialize_logging(filename='this_tmp_filename.txt'), None)

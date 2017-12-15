@@ -12,10 +12,10 @@ __date__ = "Jan 14, 2017"
 
 import os
 import copy
+import unittest
 from shutil import copyfile
 
 from monty.tempfile import ScratchDir
-from pymatgen.util.testing import PymatgenTest
 from pymatgen.core.composition import Composition
 from pycdt.core.chemical_potentials import *
 
@@ -25,7 +25,7 @@ from pymatgen.entries.computed_entries import ComputedEntry
 
 file_loc = os.path.abspath(os.path.join('..', '..', '..', 'test_files'))
 
-class ChemPotAnalyzerTest(PymatgenTest):
+class ChemPotAnalyzerTest(unittest.TestCase):
     def setUp(self):
         self.CPA = ChemPotAnalyzer()
 
@@ -52,7 +52,7 @@ class ChemPotAnalyzerTest(PymatgenTest):
         self.assertEqual( 'GaSb-Sb', subnom)
 
 
-class MPChemPotAnalyzerTest(PymatgenTest):
+class MPChemPotAnalyzerTest(unittest.TestCase):
     def setUp(self):
         self.MPCPA = MPChemPotAnalyzer()
 
@@ -158,7 +158,7 @@ class MPChemPotAnalyzerTest(PymatgenTest):
         self.assertEqual(15, len(ents['bulk_derived']))
 
 
-class UserChemPotAnalyzerTest(PymatgenTest):
+class UserChemPotAnalyzerTest(unittest.TestCase):
     def setUp(self):
         with MPRester() as mp:
             self.bulk_ce = mp.get_entry_by_material_id('mp-2534')
@@ -194,7 +194,7 @@ class UserChemPotAnalyzerTest(PymatgenTest):
             self.assertAlmostEqual({u'As': -6.6157218225000003, u'Ga': -3.030829475}, cp['Ga_rich'])
 
 
-class UserChemPotInputGeneratorTest(PymatgenTest):
+class UserChemPotInputGeneratorTest(unittest.TestCase):
     def setUp(self):
         self.UCPIGT = UserChemPotInputGenerator(Composition({'Ga':1, 'As':1}))
 

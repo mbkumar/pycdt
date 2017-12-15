@@ -11,17 +11,16 @@ __status__ = "Development"
 __date__ = "June 23, 2016"
 
 import os
-
+import unittest
 import numpy as np
 
-from pymatgen.util.testing import PymatgenTest
 from pymatgen.core.structure import Structure
 from pycdt.corrections.utils import *
 
 bs_path = os.path.join('..', '..', '..', 'test_files', 'POSCAR_Ga4As4')
 ds_path = os.path.join('..', '..', '..', 'test_files', 'POSCAR_Ga3As4')
 
-class StructureFunctionsTest(PymatgenTest):
+class StructureFunctionsTest(unittest.TestCase):
     def setUp(self):
         self.bs = Structure.from_file(bs_path)
         self.ds = Structure.from_file(ds_path)

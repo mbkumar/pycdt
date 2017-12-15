@@ -11,8 +11,8 @@ __status__ = "Development"
 __date__ = "May 6, 2015"
 
 import os
+import unittest
 
-from pymatgen.util.testing import PymatgenTest
 from monty.serialization import loadfn, dumpfn
 from monty.json import MontyDecoder, MontyEncoder
 from monty.tempfile import ScratchDir
@@ -23,7 +23,7 @@ from pycdt.core.defects_analyzer import ComputedDefect, DefectsAnalyzer
 
 file_loc = os.path.join('..', '..', '..', 'test_files')
 
-class ComputedDefectTest(PymatgenTest):
+class ComputedDefectTest(unittest.TestCase):
     def setUp(self):
         entry_file = os.path.join(file_loc, 'vac_cr2o3_struct_entry.json')
         entry = loadfn(entry_file, cls=MontyDecoder)
@@ -52,7 +52,7 @@ class ComputedDefectTest(PymatgenTest):
             self.assertIsInstance(comp_def, ComputedDefect)
 
 
-class DefectsAnalyzerTest(PymatgenTest):
+class DefectsAnalyzerTest(unittest.TestCase):
     def setUp(self):
         blk_entry_file = os.path.join(file_loc, 'Cr2O3_defects.json')
         blk_entry = loadfn(blk_entry_file, cls=MontyDecoder)
