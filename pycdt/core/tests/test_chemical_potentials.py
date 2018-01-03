@@ -37,7 +37,7 @@ class ChemPotAnalyzerTest(unittest.TestCase):
 
         #intrinsic chempot test
         pd = PhaseDiagram(entries)
-        pda = pd # PDAnalyzer(pd)
+        pda = pd 
         self.CPA.bulk_ce = bulk_ce
         gaas_cp = self.CPA.get_chempots_from_pda(pda)
         self.assertEqual([u'As_rich', u'Ga_rich'], gaas_cp.keys())
