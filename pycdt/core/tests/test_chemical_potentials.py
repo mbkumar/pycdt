@@ -23,7 +23,8 @@ from pymatgen.ext.matproj import MPRester
 from pymatgen.analysis.phase_diagram import PhaseDiagram
 from pymatgen.entries.computed_entries import ComputedEntry
 
-file_loc = os.path.abspath(os.path.join('..', '..', '..', 'test_files'))
+file_loc = os.path.abspath(os.path.join(
+    __file__, '..', '..', '..', '..', 'test_files'))
 
 class ChemPotAnalyzerTest(unittest.TestCase):
     def setUp(self):

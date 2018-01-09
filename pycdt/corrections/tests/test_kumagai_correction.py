@@ -19,9 +19,12 @@ from pycdt.corrections.kumagai_correction import *
 from pymatgen.util.testing import PymatgenTest
 
 # Paths to files we are testing on
-bl_path = os.path.join('..', '..', '..', 'test_files', 'bLOCPOT.gz')
-dl_path = os.path.join('..', '..', '..', 'test_files', 'dLOCPOT.gz')
-kad_path = os.path.join('..', '..', '..', 'test_files', 'testKumagaiData.json')
+bl_path = os.path.abspath(os.path.join(
+    __file__, '..', '..', '..', '..', 'test_files', 'bLOCPOT.gz'))
+dl_path = os.path.abspath(os.path.join(
+    __file__, '..', '..', '..', '..', 'test_files', 'dLOCPOT.gz'))
+kad_path = os.path.abspath(os.path.join(
+    __file__, '..', '..', '..', '..', 'test_files', 'testKumagaiData.json'))
 
 class KumagaiBulkInitANDCorrectionTest(PymatgenTest):
     #TODO: add test for outcar Kumagai method...

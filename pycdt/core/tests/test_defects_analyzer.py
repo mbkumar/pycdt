@@ -22,7 +22,8 @@ from pymatgen.entries.computed_entries import ComputedStructureEntry
 from pycdt.core.defects_analyzer import ComputedDefect, DefectsAnalyzer
 from pymatgen.util.testing import PymatgenTest
 
-file_loc = os.path.join('..', '..', '..', 'test_files')
+file_loc = os.path.abspath(os.path.join(
+    __file__, '..', '..', '..', '..', 'test_files'))
 
 class ComputedDefectTest(PymatgenTest):
     def setUp(self):

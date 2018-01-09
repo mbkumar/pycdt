@@ -18,7 +18,8 @@ from pymatgen.core import PeriodicSite
 from pycdt.core.defectsmaker import *
 from pymatgen.util.testing import PymatgenTest
 
-file_loc = os.path.join('..', '..', '..', 'test_files')
+file_loc = os.path.abspath(os.path.join(
+    __file__, '..', '..', '..', '..', 'test_files'))
 
 class GetOptimizedScScaleTest(PymatgenTest):
     def setUp(self):
