@@ -20,10 +20,11 @@ from pymatgen.core.sites import PeriodicSite
 from pymatgen.core.lattice import Lattice
 from pymatgen.entries.computed_entries import ComputedStructureEntry
 from pycdt.core.defects_analyzer import ComputedDefect, DefectsAnalyzer
+from pymatgen.util.testing import PymatgenTest
 
 file_loc = os.path.join('..', '..', '..', 'test_files')
 
-class ComputedDefectTest(unittest.TestCase):
+class ComputedDefectTest(PymatgenTest):
     def setUp(self):
         entry_file = os.path.join(file_loc, 'vac_cr2o3_struct_entry.json')
         entry = loadfn(entry_file, cls=MontyDecoder)
@@ -52,7 +53,7 @@ class ComputedDefectTest(unittest.TestCase):
             self.assertIsInstance(comp_def, ComputedDefect)
 
 
-class DefectsAnalyzerTest(unittest.TestCase):
+class DefectsAnalyzerTest(PymatgenTest):
     def setUp(self):
         blk_entry_file = os.path.join(file_loc, 'Cr2O3_defects.json')
         blk_entry = loadfn(blk_entry_file, cls=MontyDecoder)
