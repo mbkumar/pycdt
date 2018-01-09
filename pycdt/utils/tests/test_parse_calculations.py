@@ -21,8 +21,10 @@ from pymatgen import __file__ as initfilep
 from pymatgen.io.vasp import Vasprun
 from pycdt.utils.parse_calculations import PostProcess
 
-pmgtestfiles_loc = os.path.join(os.path.split(os.path.split(initfilep)[0])[0], 'test_files')
-file_loc = os.path.abspath(os.path.abspath(os.path.join('..', '..', '..', 'test_files'))) #Pycdt Testfiles
+pmgtestfiles_loc = os.path.join(
+        os.path.split(os.path.split(initfilep)[0])[0], 'test_files')
+file_loc = os.path.abspath(
+        os.path.join(__file__, '..', '..', '..', '..', 'test_files')) #Pycdt Testfiles
 
 class PostProcessTest(unittest.TestCase):
     def test_parse_defect_calculations_AND_compile_all(self):
