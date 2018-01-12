@@ -384,13 +384,6 @@ class FreysoldtCorrection(object):
         else: #all else, do w.r.t defect site
             self._pos=defsite
 
-        ind = []
-        for i in range(3):
-            if axis == i:
-                continue
-            else:
-                ind.append(i)
-
         x = np.array(self._purelocpot.get_axis_grid(axis))  #angstrom
         nx = len(x)
         logging.debug('run Freysoldt potential alignment method')
