@@ -19,8 +19,10 @@ from pycdt.corrections.finite_size_charge_correction import *
 from pycdt.core.defects_analyzer import ComputedDefect
 
 #Paths to locpots we are testing on
-bl_path = os.path.join('..', '..', '..', 'test_files', 'bLOCPOT.gz')
-dl_path = os.path.join('..', '..', '..', 'test_files', 'dLOCPOT.gz')
+bl_path = os.path.abspath(os.path.join(
+    __file__, '..', '..', '..', '..', 'test_files', 'bLOCPOT.gz'))
+dl_path = os.path.abspath(os.path.join(
+    __file__, '..', '..', '..', '..', 'test_files', 'dLOCPOT.gz'))
 
 class FiniteSizeChargeCorrectionTest(unittest.TestCase):
     """

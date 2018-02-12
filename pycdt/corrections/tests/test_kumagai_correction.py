@@ -16,13 +16,17 @@ import unittest
 
 from pymatgen.io.vasp.outputs import Locpot
 from pycdt.corrections.kumagai_correction import *
+from pymatgen.util.testing import PymatgenTest
 
 # Paths to files we are testing on
-bl_path = os.path.join('..', '..', '..', 'test_files', 'bLOCPOT.gz')
-dl_path = os.path.join('..', '..', '..', 'test_files', 'dLOCPOT.gz')
-kad_path = os.path.join('..', '..', '..', 'test_files', 'testKumagaiData.json')
+bl_path = os.path.abspath(os.path.join(
+    __file__, '..', '..', '..', '..', 'test_files', 'bLOCPOT.gz'))
+dl_path = os.path.abspath(os.path.join(
+    __file__, '..', '..', '..', '..', 'test_files', 'dLOCPOT.gz'))
+kad_path = os.path.abspath(os.path.join(
+    __file__, '..', '..', '..', '..', 'test_files', 'testKumagaiData.json'))
 
-class KumagaiBulkInitANDCorrectionTest(unittest.TestCase):
+class KumagaiBulkInitANDCorrectionTest(PymatgenTest):
     #TODO: add test for outcar Kumagai method...
     def setUp(self):
         self.bl = Locpot.from_file(bl_path)
@@ -86,7 +90,7 @@ class KumagaiBulkInitANDCorrectionTest(unittest.TestCase):
         self.assertAlmostEqual(val, 1.5523329679084736)
 
 
-class KumagaiSetupFunctionsTest(unittest.TestCase):
+class KumagaiSetupFunctionsTest(PymatgenTest):
     def setUp(self):
         self.bl = Locpot.from_file(bl_path)
         self.dl = Locpot.from_file(dl_path)

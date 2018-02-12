@@ -14,10 +14,11 @@ import os
 
 from pymatgen.core.structure import PeriodicSite, Structure, Lattice
 from pymatgen.entries.computed_entries import ComputedStructureEntry
+from pymatgen.util.testing import PymatgenTest
 from pycdt.utils.plotter import DefectPlotter
 from pycdt.core.defects_analyzer import ComputedDefect, DefectsAnalyzer
 
-class DefectPlotterTest(unittest.TestCase):
+class DefectPlotterTest(PymatgenTest):
     def setUp(self):
         l = Lattice([[3.52,0.0,2.033], [1.174,3.32,2.033], \
                 [0.0,0.0,4.066]])

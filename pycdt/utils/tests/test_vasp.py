@@ -21,7 +21,8 @@ __email__ = "mbkumar@gmail.com"
 __status__ = "Development"
 __date__ = "May 6, 2015"
 
-file_loc = os.path.join('..', '..', '..', 'test_files')
+file_loc = os.path.abspath(os.path.join(
+    __file__,'..', '..', '..', '..', 'test_files'))
 
 
 class PotcarSingleModTest(unittest.TestCase):

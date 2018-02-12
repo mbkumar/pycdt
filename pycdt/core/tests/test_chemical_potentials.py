@@ -23,7 +23,8 @@ from pymatgen.ext.matproj import MPRester
 from pymatgen.analysis.phase_diagram import PhaseDiagram
 from pymatgen.entries.computed_entries import ComputedEntry
 
-file_loc = os.path.abspath(os.path.join('..', '..', '..', 'test_files'))
+file_loc = os.path.abspath(os.path.join(
+    __file__, '..', '..', '..', '..', 'test_files'))
 
 class ChemPotAnalyzerTest(unittest.TestCase):
     def setUp(self):
@@ -40,7 +41,7 @@ class ChemPotAnalyzerTest(unittest.TestCase):
         pda = pd 
         self.CPA.bulk_ce = bulk_ce
         gaas_cp = self.CPA.get_chempots_from_pda(pda)
-        self.assertEqual([u'As_rich', u'Ga_rich'], gaas_cp.keys())
+        self.assertEqual(set([u'As_rich', u'Ga_rich']), set(gaas_cp.keys()))
         self.assertEqual({u'As': -4.6580705550000001, u'Ga': -3.7317319750000006}, gaas_cp['As_rich'])
         self.assertEqual({u'As': -5.3589730550000008, u'Ga': -3.030829475}, gaas_cp['Ga_rich'])
 
@@ -141,7 +142,7 @@ class MPChemPotAnalyzerTest(unittest.TestCase):
         bulk_comp = Composition("Cr2O3")
         self.MPCPA = MPChemPotAnalyzer() #reinitalize
         cro_cp = self.MPCPA.get_chempots_from_composition(bulk_comp)
-        self.assertEqual([u'CrO2_rich', u'Cr_rich'], cro_cp.keys())
+        self.assertEqual(set([u'CrO2_rich', u'Cr_rich']), set(cro_cp.keys()))
         self.assertAlmostEqual(-14.638073584999995, cro_cp['CrO2_rich']['Cr'])
         self.assertAlmostEqual(-5.5171868950000045, cro_cp['CrO2_rich']['O'])
         self.assertAlmostEqual(-9.6385552600000004, cro_cp['Cr_rich']['Cr'])
@@ -154,7 +155,7 @@ class MPChemPotAnalyzerTest(unittest.TestCase):
         self.MPCPA = MPChemPotAnalyzer(mpid= 'mp-2534')
         self.MPCPA.get_mp_entries()
         ents = self.MPCPA.entries
-        self.assertEqual(['bulk_derived', 'subs_set'], ents.keys())
+        self.assertEqual(set(['bulk_derived', 'subs_set']), set(ents.keys()))
         self.assertEqual(15, len(ents['bulk_derived']))
 
 

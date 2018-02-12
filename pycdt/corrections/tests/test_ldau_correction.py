@@ -15,7 +15,8 @@ import unittest
 
 from pycdt.corrections.ldau_correction import *
 
-test_file_loc = os.path.join('..', '..', '..', 'test_files')
+test_file_loc = os.path.abspath(os.path.join(
+    __file__, '..', '..', '..', '..', 'test_files'))
 
 class LDAUCorrectionTest(unittest.TestCase):
     def setUp(self):

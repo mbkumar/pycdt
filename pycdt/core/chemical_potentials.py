@@ -59,7 +59,7 @@ class ChemPotAnalyzer(object):
                     pd.qhull_entries[j].composition.reduced_composition
                     for j in facet]
                 if redcomp in eltsinfac:
-                    chempots = pda.get_facet_chempots(facet)
+                    chempots = pda._get_facet_chempots(facet)
                     if len(eltsinfac) != 1:
                         eltsinfac.remove(redcomp)
                     limnom = '-'.join(sys.reduced_formula for sys in eltsinfac)
@@ -113,7 +113,7 @@ class ChemPotAnalyzer(object):
 
             # now get chemical potentials
             for facet in facets:
-                mus = pda.get_facet_chempots(facet)
+                mus = pda._get_facet_chempots(facet)
                 eltsinfac = [
                     pd.qhull_entries[j].composition.reduced_composition
                     for j in facet]
