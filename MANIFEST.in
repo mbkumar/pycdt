@@ -1,4 +1,4 @@
 include *.rst LICENSE.rst CHANGES.rst ez_setup.py
-recursive-include pydii *.py
+recursive-include pycdt *.py
 prune */tests
 prune */*/tests
