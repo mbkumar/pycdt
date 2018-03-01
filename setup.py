@@ -27,7 +27,7 @@ setup(
             "Programming Language :: Python :: 2",
             "Programming Language :: Python :: 2.7",
             #"Programming Language :: Python :: 3.4",
-            "Development Status :: 1 - Alpha",
+            #"Development Status :: 1 - Alpha",
             "Intended Audience :: Science/Research",
             "License :: OSI Approved :: MIT License",
             "Operating System :: OS Independent",
