@@ -130,7 +130,7 @@ class DefectsAnalyzerTest(PymatgenTest):
     def test_get_transition_levels(self):
         self.da.add_computed_defect(self.cd)
         self.da.add_computed_defect(self.cd2)
-        self.assertEqual(self.da.get_transition_levels()['vac_1_Cr'].keys(), [(1, 2)])
+        self.assertEqual(list(self.da.get_transition_levels()['vac_1_Cr'].keys()), [(1, 2)])
         self.assertEqual(self.da.get_transition_levels()['vac_1_Cr'][(1, 2)], -0.5)
 
     def test_get_form_energy(self):

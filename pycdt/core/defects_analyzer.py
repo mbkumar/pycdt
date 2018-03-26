@@ -239,9 +239,10 @@ class DefectsAnalyzer(object):
         for dfct_name in y:
             q_ys = y[dfct_name]
             for qpair in combinations(q_ys.keys(), 2):
-                y_absdiff = abs(q_ys[qpair[1]] - q_ys[qpair[0]])
+                qpair_s = tuple(sorted(list(qpair)))
+                y_absdiff = abs(q_ys[qpair_s[1]] - q_ys[qpair_s[0]])
                 if y_absdiff.min() < 0.4:
-                    transit_levels[dfct_name][qpair] = x[np.argmin(y_absdiff)]
+                    transit_levels[dfct_name][qpair_s] = x[np.argmin(y_absdiff)]
         return transit_levels
 
     def _get_form_energy(self, ef, i):

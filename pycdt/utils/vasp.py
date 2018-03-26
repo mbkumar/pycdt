@@ -317,8 +317,8 @@ def make_vasp_defect_files(defects, path_base, user_settings={}, hse=False):
     user_incar_blk.update(user_incar_blk_tmp)
     user_incar_def.update(user_incar_blk_def)
     user_kpoints = user_settings.pop('KPOINTS', {})
-    user_potcar = user_settings.pop('POTCAR', {})
-    potcar_functional = user_potcar.get('functional', 'PBE')
+    potcar_settings = user_settings.pop('POTCAR', {})
+    potcar_functional = potcar_settings.pop('functional', 'PBE')
 
     for defect in comb_defs:
         for charge in defect['charges']:
@@ -334,6 +334,7 @@ def make_vasp_defect_files(defects, path_base, user_settings={}, hse=False):
 
             defect_relax_set = DefectRelaxSet(
                 s['structure'], user_incar_settings=user_incar_def,
+                user_potcar_settings=potcar_settings,
                 potcar_functional=potcar_functional, charge=charge)
 
             path = os.path.join(path_base, defect['name'],
@@ -363,9 +364,10 @@ def make_vasp_defect_files(defects, path_base, user_settings={}, hse=False):
     s = bulk_sys
     dict_transf = {'defect_type': 'bulk', 'supercell': s['size']}
 
-    potcar_functional = user_potcar.get('functional', 'PBE')
+    #potcar_functional = user_potcar.get('functional', 'PBE')
     blk_static_set = DefectStaticSet(s['structure'],
                                      user_incar_settings=user_incar_blk,
+                                     user_potcar_settings=potcar_settings,
                                      potcar_functional=potcar_functional)
     path = os.path.join(path_base, 'bulk')
     blk_static_set.write_input(path)
@@ -553,10 +555,11 @@ def make_vasp_dielectric_files(struct, path=None, user_settings={}, hse=False):
     user_incar.update(user_incar_diel)
     user_kpoints = user_settings.pop('KPOINTS', {})
     grid_density = user_kpoints.get('grid_density', 1000)
-    user_potcar = user_settings.pop('POTCAR', {})
-    potcar_functional = user_potcar.get('functional', 'PBE')
+    potcar_settings = user_settings.pop('POTCAR', {})
+    potcar_functional = potcar_settings.pop('functional', 'PBE')
     dielectric_set = DielectricSet(struct,
                                    user_incar_settings=user_incar,
+                                   user_potcar_settings=potcar_settings,
                                    potcar_functional=potcar_functional)
 
     if not path:
