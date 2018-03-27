@@ -423,6 +423,7 @@ class DefectChargerIonic(DefectCharger):
         elif defect_type == 'interstitial':
             return [-1,0,1]
 
+
 class DefectChargerUserCustom(DefectCharger):
     """
         NOTE from developers:
