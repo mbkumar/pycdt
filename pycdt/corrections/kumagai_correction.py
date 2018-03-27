@@ -718,11 +718,13 @@ class KumagaiCorrection(object):
 
         return energy_pc
 
-    def potalign(self, title=None):
+    def potalign(self, title=None, output_sr=False):
         """
         Potential alignment for Kumagai method
         Args:
             title: Title for the plot. None will not generate the plot
+            output_sr allows for output of the short range potential
+                (Good for delocalization analysis)
         """
         logger = logging.getLogger(__name__)
         logger.info('\nRunning potential alignment (atomic site averaging)')
@@ -833,7 +835,11 @@ class KumagaiCorrection(object):
         logger.info('Potential correction energy: %f eV',
                      -self.q * np.mean(forcorrection))
 
-        return -self.q * np.mean(forcorrection)
+        if output_sr:
+            outpot = {'sampled': forcorrection, 'alldata':potinddict}
+            return ((-self._q * np.mean(forcorrection)), outpot)  #pot align energy correction (eV)
+        else:
+            return (-self._q * np.mean(forcorrection))  #pot align energy correction (eV)
 
     @classmethod
     def plot(cls, forplot, title):
