@@ -334,7 +334,7 @@ class FreysoldtCorrection(object):
 
         return PCfreycorr
 
-    def potalign(self, title=None, widthsample=1.0, axis=None):
+    def potalign(self, title=None, widthsample=1.0, axis=None, output_sr=False):
         """
         For performing planar averaging potential alignment
 
@@ -343,6 +343,8 @@ class FreysoldtCorrection(object):
         widthsample is the width of the region in between defects where the potential alignment correction is averaged
         axis allows you to override the axis setting of class
                 (good for quickly plotting multiple axes without having to reload Locpot)
+        output_sr allows for output of the short range potential in the middle (sampled) region.
+                (Good for delocalization analysis)
         """
         logger = logging.getLogger(__name__)
         if axis is None:
@@ -470,7 +472,9 @@ class FreysoldtCorrection(object):
                 fname = 'FreyAxisData' # Extension is npz
                 plotter.to_datafile(fname)
 
-
-        return (-self._q * C)  #pot align energy correction (eV)
+        if output_sr:
+            return ((-self._q * C), tmppot)  #pot align energy correction (eV)
+        else:
+            return (-self._q * C)  #pot align energy correction (eV)
 
 
