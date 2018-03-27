@@ -337,6 +337,92 @@ class DefectChargerInsulator(DefectCharger):
             return list(range(min_oxi, max_oxi+1))
 
 
+class DefectChargerIonic(DefectCharger):
+    """
+    Charge assignments based on values expected purely from ionic theory, range to zero.
+    Simple but good for first guesses.
+
+    Probably not yet working for substitutions...
+    """
+    def __init__(self, structure):
+        """
+        Args:
+            structure: pymatgen structure object
+        """
+        struct_species = structure.types_of_specie
+        if len(struct_species) == 1:
+            oxi_states = {struct_species[0].symbol: 0}
+        else:
+            vir = VIRE(structure)
+            oxi_states = vir.valences
+        self.oxi_states = {}
+        for key,val in oxi_states.items():
+            strip_key = ''.join([s for s in key if s.isalpha()])
+            self.oxi_states[str2unicode(strip_key)] = val
+
+    def get_charges(self, defect_type, site_specie=None, sub_specie=None):
+        """
+        Based on the type of defect, site and substitution (if any) species
+        the defect charge states are generated.
+        Args:
+            defect_type (str): Options are vacancy, antisite, substitution,
+                               and interstitial
+            site_specie: Specie on the host lattice site
+                         For interstitials, use this
+            sub_specie: Specie that is replacing the site specie.
+                        For antisites and substitution defects
+        """
+        if defect_type == 'vacancy':
+            vac_symbol = get_el_sp(site_specie).symbol
+            vac_oxi_state = self.oxi_states[str2unicode(vac_symbol)]
+            if vac_oxi_state == 0:
+                return [-1,0,1]
+            else:
+                minval = min(-vac_oxi_state,0)
+                maxval = max(-vac_oxi_state,0)
+                return [c for c in range(minval-1,maxval+2)]
+
+        elif defect_type == 'antisite':
+            vac_symbol = get_el_sp(site_specie).symbol
+            vac_oxi_state = self.oxi_states[str2unicode(vac_symbol)]
+            as_symbol = get_el_sp(sub_specie).symbol
+            as_oxi_state = self.oxi_states[str2unicode(as_symbol)]
+            expected_oxi = as_oxi_state - vac_oxi_state
+            if expected_oxi == 0:
+                return [-1,0,1]
+            else:
+                minval = min(expected_oxi,0)
+                maxval = max(expected_oxi,0)
+                return [c for c in range(minval-1,maxval+2)]
+
+        # elif defect_type == 'substitution':
+        #     site_specie = get_el_sp(site_specie)
+        #     vac_symbol = site_specie.symbol
+        #     sub_specie = get_el_sp(sub_specie)
+        #     vac_oxi_state = self.oxi_states[str2unicode(vac_symbol)]
+        #
+        #     max_oxi_sub = max(sub_specie.common_oxidation_states)
+        #     min_oxi_sub = min(sub_specie.common_oxidation_states)
+        #     if vac_oxi_state > 0:
+        #         if max_oxi_sub < 0:
+        #             raise ValueError("Substitution seems not possible")
+        #         else:
+        #             if max_oxi_sub > vac_oxi_state:
+        #                 return list(range(max_oxi_sub - vac_oxi_state + 1))
+        #             else:
+        #                 return [max_oxi_sub - vac_oxi_state]
+        #     else:
+        #         if min_oxi_sub > 0:
+        #             raise ValueError("Substitution seems not possible")
+        #         else:
+        #             if min_oxi_sub < vac_oxi_state:
+        #                 return list(range(min_oxi_sub - vac_oxi_state, 1))
+        #             else:
+        #                 return [min_oxi_sub - vac_oxi_state]
+
+        elif defect_type == 'interstitial':
+            return [-1,0,1]
+
 class DefectChargerUserCustom(DefectCharger):
     """
         NOTE from developers:
@@ -524,6 +610,8 @@ class ChargedDefectsStructures(object):
         elif self.struct_type == 'manual':
             self.defect_charger = DefectChargerUserCustom(self.struct,
                                                           oxi_states=oxi_states)
+        elif self.struct_type == 'ionic':
+            self.defect_charger = DefectChargerIonic(self.struct)
         else:
             raise NotImplementedError
         
