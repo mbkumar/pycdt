@@ -91,7 +91,9 @@ class PostProcessTest(unittest.TestCase):
 
             #now test compile_all quickly...
             ca = pp.compile_all()
-            self.assertEqual(ca.keys(), ['epsilon', 'vbm', 'gap', 'defects', 'bulk_entry', 'mu_range'])
+            lk = sorted(list(ca.keys()))
+            self.assertEqual(len(lk), 6)
+            self.assertEqual(lk, sorted(['epsilon', 'vbm', 'gap', 'defects', 'bulk_entry', 'mu_range']))
             answer = [[521.83587174, -0.00263523, 0.0026437],
                       [-0.00263523, 24.46276268, 5.381848290000001],
                       [0.0026437, 5.381848290000001, 24.42964103]]
