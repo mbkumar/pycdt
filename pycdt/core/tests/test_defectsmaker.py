@@ -160,7 +160,7 @@ class ChargedDefectsStructuresTest(PymatgenTest):
 
         self.assertEqual('as_1_As_on_Ga', CDS.defects['substitutions'][0]['name'])
         self.assertEqual(self.ga_site, CDS.defects['substitutions'][0]['unique_site'])
-        self.assertEqual('as_2_Ga_on_As', CDS.defects['substitutions'][1]['name'])
+        self.assertEqual('as_1_Ga_on_As', CDS.defects['substitutions'][1]['name'])
         self.assertEqual(self.as_site, CDS.defects['substitutions'][1]['unique_site'])
 
 
@@ -175,14 +175,13 @@ class ChargedDefectsStructuresTest(PymatgenTest):
 
 
     def test_subs_and_interstits(self):
-        CDS = ChargedDefectsStructures(self.gaas_struct,
+        CDS = ChargedDefectsStructures(self.gaas_struct, antisites_flag=False,
                                        substitutions={'Ga':['Si','In'], 'As':['Sb']})
-        self.assertEqual('sub_1_Si_on_Ga', CDS.defects['substitutions'][0]['name'])
-        self.assertEqual(self.ga_site, CDS.defects['substitutions'][0]['unique_site'])
-        self.assertEqual('sub_1_In_on_Ga', CDS.defects['substitutions'][1]['name'])
-        self.assertEqual(self.ga_site, CDS.defects['substitutions'][1]['unique_site'])
-        self.assertEqual('sub_2_Sb_on_As', CDS.defects['substitutions'][2]['name'])
-        self.assertEqual(self.as_site, CDS.defects['substitutions'][2]['unique_site'])
+        check_subs = {sub['name']: sub['unique_site'] for sub in CDS.defects['substitutions']}
+        self.assertEqual(3, len(check_subs))
+        self.assertEqual(self.ga_site, check_subs['sub_1_Si_on_Ga'])
+        self.assertEqual(self.ga_site, check_subs['sub_1_In_on_Ga'])
+        self.assertEqual(self.as_site, check_subs['sub_2_Sb_on_As'])
 
         # Test automatic interstitial finding.
         CDS = ChargedDefectsStructures(self.gaas_struct,
@@ -190,7 +189,7 @@ class ChargedDefectsStructuresTest(PymatgenTest):
                                        interstitial_elements=['Mn'])
         self.assertEqual(CDS.get_n_defects_of_type('interstitials'), 2)
         fnames = [i['name'][i['name'].index('M'):] for i in CDS.defects['interstitials']]
-        self.assertEqual(sorted(fnames), sorted(['Mn_tet_As4', 'Mn_tet_Ga4']))
+        self.assertEqual(sorted(fnames), sorted(['Mn_InFiT1_mult1', 'Mn_InFiT2_mult1']))
         nsites = len(CDS.defects['interstitials'][0]['supercell']['structure'].sites)
         self.assertEqual(len(CDS.get_ith_supercell_of_defect_type(
                 0, 'interstitials').sites), nsites)

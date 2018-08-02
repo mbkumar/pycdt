@@ -14,6 +14,7 @@ from itertools import combinations
 
 import numpy as np
 
+from pymatgen.core import Element
 from pymatgen.core.structure import PeriodicSite, Structure
 from pymatgen.entries.computed_entries import ComputedStructureEntry
 from pymatgen.symmetry.analyzer import SpacegroupAnalyzer
@@ -117,7 +118,7 @@ class DefectsAnalyzer(object):
     def as_dict(self):
         d = {'entry_bulk': self._entry_bulk.as_dict(),
              'e_vbm': self._e_vbm,
-             'mu_elts': self._mu_elts,
+             'mu_elts': {k.symbol:v for k,v in self._mu_elts.items()},
              'band_gap': self._band_gap,
              'defects': [d.as_dict() for d in self._defects],
              'formation_energies': self._formation_energies,
@@ -133,7 +134,7 @@ class DefectsAnalyzer(object):
         entry_bulk = ComputedStructureEntry(struct, d['entry_bulk']['energy'])
         analyzer = DefectsAnalyzer(
             entry_bulk, d['e_vbm'], 
-            {el: d['mu_elts'][el] for el in d['mu_elts']}, d['band_gap'])
+            {Element(el): d['mu_elts'][el] for el in d['mu_elts']}, d['band_gap'])
         for ddict in d['defects']:
             analyzer.add_computed_defect(ComputedDefect.from_dict(ddict))
         return analyzer
@@ -189,12 +190,11 @@ class DefectsAnalyzer(object):
             for elt in d.entry.composition.elements:
                 el_def_comp = d.entry.composition[elt] 
                 el_blk_comp = self._entry_bulk.composition[elt]
-                mu_needed_coeffs[elt] = el_blk_comp - el_def_comp
+                mu_needed_coeffs[Element(elt)] = el_blk_comp - el_def_comp
 
             sum_mus = 0.0
             for elt in mu_needed_coeffs:
-                el = elt.symbol
-                sum_mus += mu_needed_coeffs[elt] * self._mu_elts[el]
+                sum_mus += mu_needed_coeffs[elt] * self._mu_elts[elt]
 
             self._formation_energies.append(
                     d.entry.energy - self._entry_bulk.energy + \

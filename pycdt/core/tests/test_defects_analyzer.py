@@ -16,6 +16,7 @@ import unittest
 from monty.serialization import loadfn, dumpfn
 from monty.json import MontyDecoder, MontyEncoder
 from monty.tempfile import ScratchDir
+from pymatgen.core import Element
 from pymatgen.core.sites import PeriodicSite
 from pymatgen.core.lattice import Lattice
 from pymatgen.entries.computed_entries import ComputedStructureEntry
@@ -62,7 +63,7 @@ class DefectsAnalyzerTest(PymatgenTest):
         bulk_energy = -100
         bulk_entry = ComputedStructureEntry(bulk_struct, bulk_energy)
         e_vbm = 0.5
-        mu_elts = {'Cr': -10, 'O': -5}
+        mu_elts = {Element('Cr'): -10, Element('O'): -5}
         bandgap = 3.0
         self.da = DefectsAnalyzer(bulk_entry, e_vbm, mu_elts, bandgap)
 
@@ -144,16 +145,6 @@ class DefectsAnalyzerTest(PymatgenTest):
         self.assertArrayEqual( [list_fe[0]['energy'], list_fe[1]['energy']] , [-2., -3.])
 
     def test_get_defects_concentration(self):
-        self.da.add_computed_defect(self.cd)
-        self.da.add_computed_defect(self.cd2)
-        list_c = self.da.get_defects_concentration(temp=300., ef=0.5)
-        self.assertArrayEqual( [list_c[0]['conc'], list_c[1]['conc']] ,
-                               [2.3075483087087652e+62, 1.453493521232979e+79])
-        list_c = self.da.get_defects_concentration(temp=1000., ef=0.5)
-        self.assertArrayEqual( [list_c[0]['conc'], list_c[1]['conc']] ,
-                               [6.9852762150255027e+38, 7.6553010344336244e+43])
-
-    def test_get_defects_concentration_old(self):
         self.da.add_computed_defect(self.cd)
         self.da.add_computed_defect(self.cd2)
         list_c = self.da.get_defects_concentration(temp=300., ef=0.5)
