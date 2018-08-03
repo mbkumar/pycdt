@@ -12,6 +12,7 @@ __date__ = "July 19, 2017"
 
 import os
 
+from pymatgen.core import Element
 from pymatgen.core.structure import PeriodicSite, Structure, Lattice
 from pymatgen.entries.computed_entries import ComputedStructureEntry
 from pymatgen.util.testing import PymatgenTest
@@ -31,7 +32,8 @@ class DefectPlotterTest(PymatgenTest):
         e_vacAs = 2.0
         entry_bulk = ComputedStructureEntry(s_bulk, e_bulk)
         entry_defect = ComputedStructureEntry(s_vacAs, e_vacAs)
-        self.da = DefectsAnalyzer(entry_bulk, 0.0, {'As': 0,'Ga': 0}, 1.0)
+        self.da = DefectsAnalyzer(entry_bulk, 0.0,
+                                  {Element('As'): 0, Element('Ga'): 0}, 1.0)
         d_vacAs = ComputedDefect(entry_defect, s_bulk[1], multiplicity=1.0, charge=0.0, name='vac_1_As')
         self.da.add_computed_defect(d_vacAs)
         self.dp = DefectPlotter(self.da)

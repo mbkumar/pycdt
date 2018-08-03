@@ -18,6 +18,7 @@ from monty.serialization import dumpfn
 from monty.json import MontyEncoder
 from monty.tempfile import ScratchDir
 from pymatgen import __file__ as initfilep
+from pymatgen.core import Element
 from pymatgen.io.vasp import Vasprun
 from pycdt.utils.parse_calculations import PostProcess
 
@@ -126,9 +127,11 @@ class PostProcessTest(unittest.TestCase):
             copyfile(os.path.join(file_loc, 'vasprun.xml_GaAs'), 'bulk/vasprun.xml')
             pp = PostProcess('.')
             gaas_cp = pp.get_chempot_limits()
-            self.assertEqual(set([u'As_rich', u'Ga_rich']), set(gaas_cp.keys()))
-            self.assertEqual({u'As': -4.6580705550000001, u'Ga': -3.7317319750000006}, gaas_cp['As_rich'])
-            self.assertEqual({u'As': -5.3589730550000008, u'Ga': -3.030829475}, gaas_cp['Ga_rich'])
+            self.assertEqual(set([u'As-GaAs', u'Ga-GaAs']), set(gaas_cp.keys()))
+            self.assertEqual([-4.6580705550000001,  -4.9884807425],
+                             [gaas_cp['As-GaAs'][Element(elt)] for elt in ['As','Ga']])
+            self.assertEqual([-6.609317857500001,  -3.03723344],
+                             [gaas_cp['Ga-GaAs'][Element(elt)] for elt in ['As','Ga']])
 
     def test_dielectric_calculation(self):
         with ScratchDir('.'):
