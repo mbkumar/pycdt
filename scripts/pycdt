@@ -30,6 +30,7 @@ from monty.serialization import dumpfn, loadfn
 from monty.json import MontyEncoder, MontyDecoder
 
 from pymatgen.ext.matproj import MPRester
+from pymatgen.core import Element
 from pymatgen.core.structure import Structure
 from pymatgen.symmetry.analyzer import SpacegroupAnalyzer
 from pymatgen.io.vasp.outputs import Locpot
@@ -168,6 +169,12 @@ def parse_output(args):
 
     # parse results to get defect data and correction terms
     defect_data = PostProcess(root_fldr, mp_id, mapi_key).compile_all()
+
+    # need to doctor up chemical potentials for dumpfn due to issue with
+    # Element not interpretted by MontyEncoder
+    defect_data['mu_range'] = {ckey:{k.symbol:v for k,v in cdict.items()}
+                               for ckey, cdict in defect_data['mu_range'].items()}
+
     dumpfn(defect_data, args.defect_data_file_name, cls=MontyEncoder, indent=2)
 
 
@@ -286,6 +293,10 @@ def compute_formation_energies(args):
     vbm = defect_data['vbm']
     blk_entry = defect_data['bulk_entry']
     mu_range = defect_data['mu_range']
+
+    #doctor up mu_range because of cls Monty Decoder issue with Element
+    mu_range = {ckey:{Element(k):v for k,v in cdict.items()}
+                               for ckey, cdict in mu_range.items()}
 
     for region, mu in mu_range.items():
         da = DefectsAnalyzer(blk_entry, vbm, mu, bandgap)
