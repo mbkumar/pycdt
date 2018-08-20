@@ -597,8 +597,8 @@ class UserChemPotAnalyzer(ChemPotAnalyzer):
                 bulkvr = Vasprun(vr_path)
                 self.bulk_ce = bulkvr.get_computed_entry()
             else:
-                print ('No bulk entry given locally. Phase diagram 
-                        calculations cannot be set up without this')
+                print ('No bulk entry given locally. Phase diagram ' + \
+                       'calculations cannot be set up without this')
                 return
 
         self.bulk_composition = self.bulk_ce.composition
