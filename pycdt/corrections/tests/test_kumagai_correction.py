@@ -113,7 +113,7 @@ class KumagaiSetupFunctionsTest(PymatgenTest):
         tmpinvdiel = [[0.066672308169665628, -0.00051286390899742801, 0.00033336154084832821],
                       [-0.00051286390899742801, 0.076927022030069209, -0.0000025643195449871406],
                       [0.00033336154084832826, -0.0000025643195449871406, 0.050001666807704244]]
-        self.assertAlmostEqual(newinvdiel, tmpinvdiel)
+        np.testing.assert_array_almost_equal(newinvdiel, tmpinvdiel)
 
     def test_real_sum(self):
         a = self.bs.lattice.matrix[0]
@@ -136,7 +136,7 @@ class KumagaiSetupFunctionsTest(PymatgenTest):
 
     def test_disttrans(self):
         nodefpos = disttrans( self.bs, self.ds)
-        self.assertArrayEqual(nodefpos.keys(), [1, 2, 3, 4, 5, 6, 7])
+        self.assertArrayEqual(list(nodefpos.keys()), [1, 2, 3, 4, 5, 6, 7])
         self.assertArrayEqual(nodefpos[3]['cart_reldef'], [ 2.8750915, 2.8750915, 0.])
         self.assertEqual(nodefpos[3]['bulk_site_index'], 3)
         self.assertEqual(nodefpos[3]['dist'], 4.0659933923636054)
