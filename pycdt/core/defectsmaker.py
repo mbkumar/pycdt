@@ -341,8 +341,6 @@ class DefectChargerIonic(DefectCharger):
     """
     Charge assignments based on values expected purely from ionic theory, range to zero.
     Simple but good for first guesses.
-
-    Probably not yet working for substitutions...
     """
     def __init__(self, structure):
         """
@@ -382,7 +380,8 @@ class DefectChargerIonic(DefectCharger):
                 maxval = max(-vac_oxi_state,0)
                 return [c for c in range(minval-1,maxval+2)]
 
-        elif defect_type == 'antisite':
+        elif defect_type in ['antisite', 'substitution']:
+            #TODO: may cause some weird states for substitutions. Worth updating in future.
             vac_symbol = get_el_sp(site_specie).symbol
             vac_oxi_state = self.oxi_states[str2unicode(vac_symbol)]
             as_symbol = get_el_sp(sub_specie).symbol
@@ -394,31 +393,6 @@ class DefectChargerIonic(DefectCharger):
                 minval = min(expected_oxi,0)
                 maxval = max(expected_oxi,0)
                 return [c for c in range(minval-1,maxval+2)]
-
-        # elif defect_type == 'substitution':
-        #     site_specie = get_el_sp(site_specie)
-        #     vac_symbol = site_specie.symbol
-        #     sub_specie = get_el_sp(sub_specie)
-        #     vac_oxi_state = self.oxi_states[str2unicode(vac_symbol)]
-        #
-        #     max_oxi_sub = max(sub_specie.common_oxidation_states)
-        #     min_oxi_sub = min(sub_specie.common_oxidation_states)
-        #     if vac_oxi_state > 0:
-        #         if max_oxi_sub < 0:
-        #             raise ValueError("Substitution seems not possible")
-        #         else:
-        #             if max_oxi_sub > vac_oxi_state:
-        #                 return list(range(max_oxi_sub - vac_oxi_state + 1))
-        #             else:
-        #                 return [max_oxi_sub - vac_oxi_state]
-        #     else:
-        #         if min_oxi_sub > 0:
-        #             raise ValueError("Substitution seems not possible")
-        #         else:
-        #             if min_oxi_sub < vac_oxi_state:
-        #                 return list(range(min_oxi_sub - vac_oxi_state, 1))
-        #             else:
-        #                 return [min_oxi_sub - vac_oxi_state]
 
         elif defect_type == 'interstitial':
             return [-1,0,1]
