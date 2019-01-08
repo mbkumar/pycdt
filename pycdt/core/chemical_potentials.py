@@ -362,22 +362,25 @@ class MPChemPotAnalyzer(ChemPotAnalyzer):
 
 class UserChemPotAnalyzer(ChemPotAnalyzer):
     """
-    Post processing for atomic chemical potentials based on User computed
+    Post processing for atomic chemical potentials based on user computed
     phase diagram entries (possibly supplemented with MP database entries)
     """
     def __init__(self, **kwargs):
         """
         Args:
-            bulk_ce: Pymatgen ComputedStructureEntry object for bulk entry / supercell
-
-            path_base (str): the base path where the 'PhaseDiagram' folder exists
-                defaults to the local folder
-            subs_species (set): set of elemental species that are extrinsic to structure.
-                Default is no subs included
-            entries (dict): pymatgen ComputedEntry objects to build phase diagram
-                The dict contains two keys: 'bulk_derived', and 'subs_set', each contains a list of computed entries
-                bulk_derived entries only have a composition containing elements from the set of elements in the bulk phase
-                subs_set contains elements that are extrinsic to the structure of interest
+            bulk_ce: Pymatgen ComputedStructureEntry object for bulk entry 
+                or supercell
+            path_base (str): the base path where the 'PhaseDiagram' folder 
+                exists defaults to the local folder
+            subs_species (set): set of elemental species that are extrinsic 
+                to structure. Default is no subs included
+            entries (dict): pymatgen ComputedEntry objects to build phase 
+                diagram The dict contains two keys: 'bulk_derived', and 
+                'subs_set', each contains a list of computed entries
+                bulk_derived entries only have a composition containing 
+                elements from the set of elements in the bulk phase 
+                subs_set contains elements that are extrinsic to the 
+                structure of interest
             mapi_key (str): Materials API key to access database
                 (if not in ~/.pmgrc.yaml already)
         """
@@ -387,72 +390,86 @@ class UserChemPotAnalyzer(ChemPotAnalyzer):
         self.entries = kwargs.get('entries', {})
         self.mapi_key = kwargs.get('mapi_key', None)
 
-    def read_phase_diagram_and_chempots(self, full_sub_approach=False, include_mp_entries=True):
+    def read_phase_diagram_and_chempots(self, full_sub_approach=False, 
+                                        include_mp_entries=True):
         """
-        Once phase diagram has been set up and run by user (in a folder called "PhaseDiagram"),
-            this method parses and prints the chemical potentials based
-            on the computed entries.
-            methodology basically identical to that in the analyze_GGA_chempots method.
+        Once phase diagram has been set up and run by user (in a folder 
+        called "PhaseDiagram"), this method parses and prints the chemical 
+        potentials based on the computed entries. The methodology is 
+        basically identical to that in the analyze_GGA_chempots method.
 
-        Will supplement unfinished entries with MP database entries unless no_mp_entries is set to False
+        Will supplement unfinished entries with MP database entries 
+        unless no_mp_entries is set to False
 
         Args:
-            full_sub_approach: same attribute as described at length in the analyze_GGA_chempots method
-                Basically, the user can set this to True if they want to mix extrinsic species in the phase diagram
+            full_sub_approach: same attribute as described at length in 
+                the analyze_GGA_chempots method. Basically, the user can 
+                set this to True if they want to mix extrinsic species 
+                in the phase diagram
 
-            include_mp_entries: if set to True, extra entries from Materials Project will be added to phase diagram
-                according to phases that are stable in the Materials Project database
+            include_mp_entries: if set to True, extra entries from 
+                Materials Project will be added to phase diagram
+                according to phases that are stable in the Materials 
+                Project database
 
         """
         pdfile = os.path.join(self.path_base, 'PhaseDiagram')
         if not os.path.exists(pdfile):
-            print ('Phase diagram file does not exist at ',pdfile)
+            print ('Phase diagram file does not exist at ', pdfile)
             return
 
-        #this is where we read computed entries into a list for parsing...
-        #NOTE TO USER: If not running with VASP need to use another
-        #              pymatgen functionality for importing computed entries below...
+        # this is where we read computed entries into a list for parsing...
+        # NOTE TO USER: If not running with VASP need to use another
+        # pymatgen functionality for importing computed entries below...
         personal_entry_list = []
         for structfile in os.listdir(pdfile):
             if os.path.exists(os.path.join(pdfile, structfile, 'vasprun.xml')):
                 try:
                     print('loading ',structfile)
-                    vr=Vasprun(os.path.join(pdfile, structfile, 'vasprun.xml'), parse_potcar_file=False)
+                    vr = Vasprun(
+                            os.path.join(pdfile, structfile, 'vasprun.xml'), 
+                            parse_potcar_file=False)
                     personal_entry_list.append(vr.get_computed_entry())
                 except:
                     print('Could not load ',structfile)
 
         #add bulk computed entry to phase diagram, and see if it is stable
         if not self.bulk_ce:
-            if os.path.exists(os.path.join(self.path_base, 'bulk', 'vasprun.xml')):
+            vr_path = os.path.join(self.path_base, 'bulk', 'vasprun.xml')
+            if os.path.exists(vr_path):
                 print('loading bulk computed entry')
-                bulkvr=Vasprun(os.path.join(self.path_base, 'bulk', 'vasprun.xml'))
+                bulkvr = Vasprun(vr_path)
                 self.bulk_ce = bulkvr.get_computed_entry()
             else:
-                print ('No bulk entry given locally. Phase diagram calculations cannot be set up without this')
+                print ('No bulk entry given locally. Phase diagram ' + \
+                       'calculations cannot be set up without this')
                 return
 
         self.bulk_composition = self.bulk_ce.composition
         self.redcomp = self.bulk_composition.reduced_composition
 
-        #supplement entries to phase diagram with those from MP database (if desired)
+        # Supplement entries to phase diagram with those from MP database 
         if include_mp_entries:
-            MPcpa = MPChemPotAnalyzer(bulk_ce=self.bulk_ce, sub_species=self.sub_species, mapi_key=self.mapi_key)
-            tempcl = MPcpa.analyze_GGA_chempots(full_sub_approach=full_sub_approach) #doing this populates the MPentries from the MP database
+            mpcpa = MPChemPotAnalyzer(
+                    bulk_ce=self.bulk_ce, sub_species=self.sub_species, 
+                    mapi_key=self.mapi_key)
+            tempcl = mpcpa.analyze_GGA_chempots(
+                    full_sub_approach=full_sub_approach) # Use MPentries 
 
             curr_pd = PhaseDiagram(list(set().union(MPcpa.entries['bulk_derived'], MPcpa.entries['subs_set'])))
             stable_idlist = {i.composition.reduced_composition: [i.energy_per_atom, i.entry_id, i] for i in curr_pd.stable_entries}
             for mpcomp, mplist in stable_idlist.items():
                 matched = False
-                for personalentry in personal_entry_list:
-                    if (personalentry.composition.reduced_composition == mpcomp):
+                for pe in personal_entry_list:
+                    if (pe.composition.reduced_composition == mpcomp):
                         # #USER: uncomment this if you want additional stable phases of identical composition included in your phase diagram
                         # if personalentry.energy_per_atom > mplist[0]:
                         #     print('Adding entry from MP-database:',mpcomp,'(entry-id:',mplist[1])
                         #     personal_entry_list.append(mplist[2])
                         matched = True
                 if not matched:
-                    print('Adding entry from MP-database:',mpcomp,'(entry-id:',mplist[1])
+                    print('Adding entry from MP-database:', mpcomp, 
+                          '(entry-id:', mplist[1])
                     personal_entry_list.append(mplist[2])
         else:
             personal_entry_list.append(self.bulk_ce)
@@ -464,7 +481,7 @@ class UserChemPotAnalyzer(ChemPotAnalyzer):
                     eltcount[pentry.composition.elements[0]] += 1
             for elt, eltnum in eltcount.items():
                 if not eltnum:
-                    s=Structure([[1.,0.,0.],[0.,1.,0.],[0.,0.,1.]], [elt],[[0,0,0]])
+                    s = Structure([[1.,0.,0.],[0.,1.,0.],[0.,0.,1.]], [elt],[[0,0,0]])
                     eltentry = ComputedStructureEntry(s, 0.)
                     print('USER! Note that you have added a fake '+str(elt)+' structure to prevent from breaking the '
                           'Phase Diagram Analyzer.\n As a result DO NOT trust the chemical potential results for regions '
