@@ -15,11 +15,8 @@ __email__ = "mbkumar@gmail.com, geoffroy@uclouvain.be," + \
 __status__ = "Development"
 __date__ = "Janurary 6, 2016"
 
-import copy
 import abc
 import math
-import logging
-from itertools import product
 
 
 from monty.string import str2unicode
@@ -29,7 +26,6 @@ from pymatgen.core.periodic_table import Element, Specie, get_el_sp
 from pymatgen.symmetry.analyzer import SpacegroupAnalyzer
 from pymatgen.analysis.defects.generators import VacancyGenerator, \
     SubstitutionGenerator, InterstitialGenerator
-from pymatgen.analysis.defects.utils import StructureMotifInterstitial
 from pymatgen.analysis.local_env import ValenceIonicRadiusEvaluator as VIRE
 
 
@@ -597,8 +593,7 @@ class ChargedDefectsStructures(object):
                     raise ValueError("invalid interstitial element"
                             " \"{}\"".format(elem_str))
 
-        conv_prim_rat = int(self.struct.num_sites/prim_struct.num_sites)
-        sc_scale = get_optimized_sc_scale(self.struct,cellmax)
+        sc_scale = get_optimized_sc_scale(self.struct, cellmax)
         self.defects = {}
         sc = self.struct.copy()
         sc.make_supercell(sc_scale)
@@ -767,6 +762,7 @@ class ChargedDefectsStructures(object):
             else:
                 print("Searching for interstitial sites (this can take awhile)...")
                 for elt in inter_elems:
+                    #TODO: Add ability to use other interstitial finding methods in pymatgen
                     IG = InterstitialGenerator(self.struct, elt)
                     for i, intersite in enumerate(IG):
                         name = intersite.name
@@ -774,7 +770,8 @@ class ChargedDefectsStructures(object):
                         site_mult = intersite.multiplicity
 
                         #find supercell defect site
-                        poss_deflist = sorted(sc_with_inter.get_sites_in_sphere(sub.site.coords, 2, include_index=True), key=lambda x: x[1])
+                        poss_deflist = sorted(sc_with_inter.get_sites_in_sphere(sub.site.coords, 2, include_index=True),
+                                              key=lambda x: x[1])
                         defindex = poss_deflist[0][2]
                         site_sc = sc_with_inter[defindex]
 
