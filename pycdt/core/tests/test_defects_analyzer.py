@@ -182,29 +182,7 @@ class DefectsAnalyzerTest(PymatgenTest):
         val = self.da._get_qtot(0.1, 300., [1., 2., 3.], [ 4., 5., 6.])
         self.assertEqual( val, 7.6228613357589505e+85)
 
-    def test_get_eq_ef(self): #no unittest until re-organization with real dos integration is available
-        pass
-
-    def test_get_non_eq_ef(self): #no unittest until re-organization with real dos integration is available
-        pass
-
-    def test_get_non_eq_qd(self): #no unittest until re-organization with real dos integration is available
-        pass
-
-    def test_get_non_eq_conc(self): #no unittest until re-organization with real dos integration is available
-        pass
-
-    def test_get_non_eq_qtot(self): #no unittest until re-organization with real dos integration is available
-        pass
-
-    def test_correct_bg(self): #deprecated
-        pass
-
-    def test_get_defect_occupancies(self): #deprecated
-        pass
-
 
 
 if __name__ == '__main__':
-    import unittest
     unittest.main()

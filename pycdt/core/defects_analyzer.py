@@ -21,6 +21,13 @@ from pymatgen.symmetry.analyzer import SpacegroupAnalyzer
 
 from pycdt.utils.units import kb, conv, hbar
 
+import warnings
+warnings.simplefilter('default')
+
+warnings.warn("Replaced PyCDT usage of ComputedDefect objects with "
+              "DefectEntry objects from pymatgen.analysis.defects.core\n"
+              "Will remove ComputedDefect with Version 2.5 of PyCDT.",
+              DeprecationWarning)
 class ComputedDefect(object):
     """
     Holds all the info concerning a defect computation: 
@@ -91,6 +98,10 @@ class ComputedDefect(object):
                 name=d.get('name', None))
 
 
+warnings.warn("Replaced PyCDT usage of DefectsAnalyzer objects with "
+              "DefectPhaseDiagram objects from pymatgen.analysis.defects.thermodynamics\n"
+              "Will remove DefectsAnalyzer with Version 2.5 of PyCDT.",
+              DeprecationWarning)
 class DefectsAnalyzer(object):
     """
     a class aimed at performing standard analysis of defects
