@@ -837,9 +837,9 @@ class KumagaiCorrection(object):
 
         if output_sr:
             outpot = {'sampled': forcorrection, 'alldata':potinddict}
-            return ((-self._q * np.mean(forcorrection)), outpot)  #pot align energy correction (eV)
+            return ((-self.q * np.mean(forcorrection)), outpot)  #pot align energy correction (eV)
         else:
-            return (-self._q * np.mean(forcorrection))  #pot align energy correction (eV)
+            return (-self.q * np.mean(forcorrection))  #pot align energy correction (eV)
 
     @classmethod
     def plot(cls, forplot, title):
