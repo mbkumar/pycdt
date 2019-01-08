@@ -17,7 +17,8 @@ from shutil import copyfile
 
 from monty.tempfile import ScratchDir
 from pymatgen.core import Composition, Element
-from pycdt.core.chemical_potentials import *
+from pycdt.core.chemical_potentials import ChemPotAnalyzer, MPChemPotAnalyzer, \
+    UserChemPotAnalyzer, UserChemPotInputGenerator
 
 from pymatgen.ext.matproj import MPRester
 from pymatgen.analysis.phase_diagram import PhaseDiagram
@@ -132,8 +133,9 @@ class MPChemPotAnalyzerTest(unittest.TestCase):
         self.MPCPA = MPChemPotAnalyzer( bulk_ce=s_cdne_bce)
         cp_fsaf_s_cdne = self.MPCPA.analyze_GGA_chempots(full_sub_approach=False)
         self.assertEqual(set(['Ga2As3-GaAs', 'As-Ga2As3']), set(cp_fsaf_s_cdne.keys()))
-        self.assertEqual([-4.7203949399999985, -3.6694075900000023],
-                         [cp_fsaf_s_cdne['Ga2As3-GaAs'][Element(elt)] for elt in ['As', 'Ga']])
+        for tested, answer in zip([cp_fsaf_s_cdne['Ga2As3-GaAs'][Element(elt)] for elt in ['As', 'Ga']],
+                                  [-4.720394939999998, -3.669407590000002]):
+            self.assertAlmostEqual( answer,tested)
         self.assertEqual([-4.6580705550000001, -3.7628941674999994],
                          [cp_fsaf_s_cdne['As-Ga2As3'][Element(elt)] for elt in ['As', 'Ga']])
 
@@ -173,7 +175,7 @@ class MPChemPotAnalyzerTest(unittest.TestCase):
         self.MPCPA.get_mp_entries()
         ents = self.MPCPA.entries
         self.assertEqual(set(['bulk_derived', 'subs_set']), set(ents.keys()))
-        self.assertEqual(19, len(ents['bulk_derived']))
+        self.assertEqual(18, len(ents['bulk_derived']))
 
 
 class UserChemPotAnalyzerTest(unittest.TestCase):

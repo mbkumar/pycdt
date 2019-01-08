@@ -84,19 +84,21 @@ class MPChemPotAnalyzer(ChemPotAnalyzer):
 
     Makes use of Materials Project pre-computed data to generate
     needed information for chem pots in different growth conditions.
+
+    WARNING: If you plan to use this method, then you better be sure you are
+    using the same settings as MP (same INCAR, POTCARs etc.)
     """
     def __init__(self, **kwargs):
         """
         Args:
             bulk_ce: Pymatgen ComputedStructureEntry object for
                 bulk entry / supercell
-
             subs_species (set): set of elemental species that are extrinsic to structure.
                 Default is no subs included
-            entries (dict): pymatgen ComputedEntry objects to build phase diagram
-                The dict contains two keys: 'bulk_derived', and 'subs_set', each contains a list of computed entries
-                bulk_derived entries only have a composition containing elements from the set of elements in the bulk phase
-                subs_set contains elements that are extrinsic to the structure of interest
+            entries (dict): a dict of pymatgen ComputedEntry objects to build relevant phase diagram
+                The dict contains two keys: 'bulk_derived', and 'subs_set', each contains a list of ComputedEntry objects
+                'bulk_derived' list only has compositions containing elements from the bulk (un-defective) composition
+                'subs_set' list has compositions which contain at least one element that is not in the bulk composition
             mpid (str): Materials Project ID of bulk structure (not required, can use bulk_ce instead);
                 format "mp-X", where X is an integer;
             mapi_key (str): Materials API key to access database
@@ -115,29 +117,30 @@ class MPChemPotAnalyzer(ChemPotAnalyzer):
 
         Args:
             full_sub_approach: generate chemical potentials by looking at
-                full phase diagram (setting to True is really NOT recommended
+                full phase diagram (setting to True is NOT recommended
                 if subs_species set has more than one element in it...)
 
         This code retrieves atomic chempots from Materials
         Project (MP) entries by making use of the pymatgen
         phase diagram (PD) object and computed entries from the MP
         database. There are debug notes that are made based on the stability of
-        the structure of interest w.r.t the phase diagram generated from MP
+        the structure of interest with respect to the phase diagram generated from MP
 
-        Note on full_sub_approach:
-            the default approach for subs is to only consider facets
-            defined by N-2 phases with strictly elements from the BULK
-            composition, and 1 sub_element(+possibly bulk-composition
-            element) derived phases (along with the condition for all
-            chemical potentials to be defined by the bulk entry, creating
-            N equations to be solved for N atomic chemical potentials).
-            This speeds up analysis SIGNFICANTLY when analyzing several
-            substitutional species at once. It is essentially the
-            assumption the majority of the elements in the total
-            composition will be from the native species present rather
-            than the sub species (a good approximation). If you would
-            prefer to consider the full phase diagram (not recommended
-            unless you have 1 or 2 substitutional defects), then set
+        NOTE on 'full_sub_approach':
+            The default approach for substitutional elements (full_sub_approach = False)
+            is to only consider facets defined by at least N-2 phases from the BULK
+            composition, and a maximum of 1 composition with extrinsic species present
+            (this, along with the condition for all chemical potentials to be defined
+            by the bulk entry, creates N equations to be solved for N atomic
+            chemical potentials - see PyCDT paper DOI: 10.1016/j.cpc.2018.01.004).
+
+            This default approach speeds up analysis when analyzing several substitutional
+            species at the same time. It is also a justified approach, as it reflects the fact
+            that substitutional elements are dilute in comparison to the composition of the
+            bulk phase.
+
+            If you prefer to consider the full phase diagram (not recommended
+            unless you have less than 3 substitutional defects), then set
             full_sub_approach to True.
         """
         logger = logging.getLogger(__name__)
@@ -456,7 +459,7 @@ class UserChemPotAnalyzer(ChemPotAnalyzer):
             tempcl = mpcpa.analyze_GGA_chempots(
                     full_sub_approach=full_sub_approach) # Use MPentries 
 
-            curr_pd = PhaseDiagram(list(set().union(MPcpa.entries['bulk_derived'], MPcpa.entries['subs_set'])))
+            curr_pd = PhaseDiagram(list(set().union(mpcpa.entries['bulk_derived'], mpcpa.entries['subs_set'])))
             stable_idlist = {i.composition.reduced_composition: [i.energy_per_atom, i.entry_id, i] for i in curr_pd.stable_entries}
             for mpcomp, mplist in stable_idlist.items():
                 matched = False
