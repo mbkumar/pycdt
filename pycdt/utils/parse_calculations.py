@@ -18,10 +18,14 @@ import logging
 
 from monty.serialization import loadfn, dumpfn
 from monty.json import MontyEncoder, MontyDecoder
+
+from pymatgen.core import PeriodicSite
 from pymatgen.ext.matproj import MPRester
 from pymatgen.io.vasp.outputs import Vasprun
 from pymatgen.io.vasp.inputs import Potcar
 from pymatgen.entries.computed_entries import ComputedStructureEntry
+
+from pymatgen.analysis.defects.core import Vacancy, Substitution, Interstitial, DefectEntry
 
 from pycdt.core.defects_analyzer import ComputedDefect 
 from pycdt.core.chemical_potentials import MPChemPotAnalyzer
@@ -53,8 +57,7 @@ class PostProcess(object):
         """
         logger = logging.getLogger(__name__)
         parsed_defects = []
-        subfolders = glob.glob(os.path.join(self._root_fldr, "bulk"))
-        subfolders += glob.glob(os.path.join(self._root_fldr, "vac_*"))
+        subfolders = glob.glob(os.path.join(self._root_fldr, "vac_*"))
         subfolders += glob.glob(os.path.join(self._root_fldr, "as_*"))
         subfolders += glob.glob(os.path.join(self._root_fldr, "sub_*"))
         subfolders += glob.glob(os.path.join(self._root_fldr, "inter_*"))
@@ -105,85 +108,109 @@ class PostProcess(object):
             encut = max(ptcr_sngl.enmax for ptcr_sngl in potcar)
             return (encut, None)
 
+        # get bulk entry information first
+        fldr = os.path.join(self._root_fldr, "bulk")
+        vr, error_msg = get_vr_and_check_locpot(fldr)
+        if error_msg:
+            logger.error("Abandoning parsing of the calculations")
+            return {}
+        bulk_energy = vr.final_energy
+        bulk_struct = vr.final_structure
+        try:
+            encut = vr.incar['ENCUT']
+        except:  # ENCUT not specified in INCAR. Read from POTCAR
+            encut, error_msg = get_encut_from_potcar(fldr)
+            if error_msg:
+                logger.error("Abandoning parsing of the calculations")
+                return {}
 
+        trans_dict = loadfn(
+            os.path.join(fldr, 'transformation.json'),
+            cls=MontyDecoder)
+        supercell_size = trans_dict['supercell']
+
+        bulk_locpot_path = os.path.abspath(os.path.join(fldr, 'LOCPOT'))
+        bulk_entry = ComputedStructureEntry(
+            bulk_struct, bulk_energy,
+            data={'locpot_path': bulk_locpot_path,
+                  'encut': encut,
+                  'supercell_size': supercell_size})
+
+        # get defect entry information
         for fldr in subfolders:
             fldr_name = os.path.split(fldr)[1]
-            fldr_fields = fldr_name.split("_")
-            if 'bulk' in fldr_fields:
-                vr, error_msg = get_vr_and_check_locpot(fldr)
-                if error_msg:
-                    logger.error("Abandoning parsing of the calculations")
-                    break
-                bulk_energy = vr.final_energy
-                bulk_struct = vr.final_structure
-                try: 
-                    encut = vr.incar['ENCUT'] 
-                except: # ENCUT not specified in INCAR. Read from POTCAR
-                    encut, error_msg = get_encut_from_potcar(fldr)
-                    if error_msg:
-                        logger.error("Abandoning parsing of the calculations")
-                        break
-
+            chrg_fldrs = glob.glob(os.path.join(fldr,'charge*'))
+            for chrg_fldr in chrg_fldrs:
                 trans_dict = loadfn(
-                            os.path.join(fldr, 'transformation.json'),
-                            cls=MontyDecoder)
+                        os.path.join(chrg_fldr, 'transformation.json'),
+                        cls=MontyDecoder)
+                chrg = trans_dict['charge']
                 supercell_size = trans_dict['supercell']
+                vr, error_msg = get_vr_and_check_locpot(chrg_fldr)
+                if error_msg:
+                    logger.warning("Parsing the rest of the calculations")
+                    continue
+                if 'substitution_specie' in trans_dict:
+                    self._substitution_species.add(
+                            trans_dict['substitution_specie'])
+                elif 'inter' in trans_dict['defect_type']:
+                    #added because extrinsic interstitials don't have
+                    # 'substitution_specie' character...
+                    self._substitution_species.add(
+                            trans_dict['defect_site'].specie.symbol)
 
-                bulk_locpot_path = os.path.abspath(os.path.join(fldr, 'LOCPOT'))
-                bulk_entry = ComputedStructureEntry(
-                        bulk_struct, bulk_energy,
-                        data={'locpot_path': bulk_locpot_path,
-                              'encut': encut,
-                              'supercell_size': supercell_size})
-            else:
-                chrg_fldrs = glob.glob(os.path.join(fldr,'charge*'))
-                for chrg_fldr in chrg_fldrs:
-                    trans_dict = loadfn(
-                            os.path.join(chrg_fldr, 'transformation.json'), 
-                            cls=MontyDecoder)
-                    chrg = trans_dict['charge']
-                    supercell_size = trans_dict['supercell']
-                    vr, error_msg = get_vr_and_check_locpot(chrg_fldr)
+                site = trans_dict['defect_supercell_site']
+                defect_type = trans_dict.get('defect_type', None)
+                energy = vr.final_energy
+                struct = vr.final_structure
+                try:
+                    encut = vr.incar['ENCUT']
+                except: # ENCUT not specified in INCAR. Read from POTCAR
+                    encut, error_msg = get_encut_from_potcar(chrg_fldr)
                     if error_msg:
-                        logger.warning("Parsing the rest of the calculations")
+                        logger.warning("Not able to determine ENCUT "
+                                       "in {}".format(fldr_name))
+                        logger.warning("Parsing the rest of the "
+                                       "calculations")
                         continue
-                    if 'substitution_specie' in trans_dict:
-                        self._substitution_species.add(
-                                trans_dict['substitution_specie'])
-                    elif 'inter' in trans_dict['defect_type']:
-                        #added because extrinsic interstitials don't have
-                        # 'substitution_specie' character...
-                        self._substitution_species.add(
-                                trans_dict['defect_site'].specie.symbol)
-                        
-                    site = trans_dict['defect_supercell_site']
-                    multiplicity = trans_dict.get('defect_multiplicity', None)
-                    energy = vr.final_energy
-                    struct = vr.final_structure
-                    try: 
-                        encut = vr.incar['ENCUT'] 
-                    except: # ENCUT not specified in INCAR. Read from POTCAR
-                        encut, error_msg = get_encut_from_potcar(chrg_fldr)
-                        if error_msg:
-                            logger.warning("Not able to determine ENCUT "
-                                           "in {}".format(fldr_name))
-                            logger.warning("Parsing the rest of the "
-                                           "calculations")
-                            continue
 
-                    locpot_path = os.path.abspath(
-                            os.path.join(chrg_fldr, 'LOCPOT'))
-                    comp_data = {'locpot_path': locpot_path, 'encut': encut}
-                    if 'substitution_specie' in trans_dict:
-                        comp_data['substitution_specie'] = \
-                                trans_dict['substitution_specie']
-                    comp_def_entry = ComputedStructureEntry(
-                            struct, energy, data=comp_data)
-                    parsed_defects.append(ComputedDefect(
-                            comp_def_entry, site_in_bulk=site,
-                            multiplicity=multiplicity,
-                            supercell_size=supercell_size,
-                            charge=chrg, name=fldr_name))
+                locpot_path = os.path.abspath(
+                        os.path.join(chrg_fldr, 'LOCPOT'))
+                comp_data = {'locpot_path': locpot_path, 'encut': encut,
+                             'fldr_name': fldr_name, 'supercell_size': supercell_size}
+                if 'substitution_specie' in trans_dict:
+                    comp_data['substitution_specie'] = \
+                            trans_dict['substitution_specie']
+
+                defect_dict = {'structure': struct, 'charge': chrg,
+                               '@module': 'pymatgen.analysis.defects.core'
+                               }
+                defect_site = site
+                if defect_type == 'vacancy':
+                    defect_dict['@class'] = 'Vacancy'
+                elif defect_type in ['antisite', 'substitution']:
+                    defect_dict['@class'] = 'Substitution'
+                    substitution_specie = trans_dict['substitution_specie']
+                    defect_site = PeriodicSite( substitution_specie, defect_site.frac_coords,
+                                                defect_site.lattice, coords_are_cartesian=False)
+                elif defect_type == 'interstitial':
+                    defect_dict['@class'] = 'Interstitial'
+                else:
+                    raise ValueError("defect type {} not recognized...".format(defect_type))
+
+                defect_dict.update( {'defect_site': defect_site})
+                defect = MontyDecoder().process_decoded( defect_dict)
+                parsed_defects.append( DefectEntry( defect, energy - bulk_energy,
+                                                    parameters=comp_data))
+
+                #TODO: confirm not breaking anything by moving to DefectEntry approach above
+                # comp_def_entry = ComputedStructureEntry(
+                #         struct, energy, data=comp_data)
+                # parsed_defects.append(ComputedDefect(
+                #         comp_def_entry, site_in_bulk=site,
+                #         multiplicity=multiplicity,
+                #         supercell_size=supercell_size,
+                #         charge=chrg, name=fldr_name))
 
         try:
             parsed_defects_data = {}
