@@ -3,6 +3,12 @@
 """
 This module is wraparound to sxdefectalign code by Freysoldt
 Applies Freysoldt correction with planar averaged potential method
+
+(NOTE from PyCDT v2.0 transition) This code is not used explicitly
+by PyCDT script, but there are no plans to merge this to pymatgen
+in the future (since equivalent functionality exists there).
+Keeping code here in case someone wants to make use of future
+sxdefectalign functionalities with a python wrapper.
 """
 
 __author__ = "Geoffroy Hautier, Danny Broberg"

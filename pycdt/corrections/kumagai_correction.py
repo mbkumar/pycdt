@@ -26,9 +26,16 @@ from pymatgen.core.lattice import Lattice
 from pycdt.corrections.utils import *
 from pycdt.utils.units import hart_to_ev
 
+import warnings
+
 norm = np.linalg.norm
 
 
+warnings.warn("Replacing PyCDT usage of Kumagai base classes with calls to "
+              "corresponding objects in pymatgen.analysis.defects.corrections\n"
+              "All core Kumagai code will be removed with Version 2.5 of PyCDT."
+              " (note these functions all exist in pymatgen)",
+              DeprecationWarning)
 def kumagai_init(structure, dieltens):
     angset = structure.lattice.get_cartesian_coords(1)
 
@@ -53,6 +60,11 @@ def kumagai_init(structure, dieltens):
     return angset, bohrset, vol, determ, invdiel
 
 
+warnings.warn("Replacing PyCDT usage of Kumagai base classes with calls to "
+              "corresponding objects in pymatgen.analysis.defects.corrections\n"
+              "All core Kumagai code will be removed with Version 2.5 of PyCDT."
+              " (note these functions all exist in pymatgen)",
+              DeprecationWarning)
 def real_sum(a1, a2, a3, r, q, dieltens, gamma, tolerance):
     invdiel = np.linalg.inv(dieltens)
     determ = np.linalg.det(dieltens)
@@ -107,6 +119,11 @@ def real_sum(a1, a2, a3, r, q, dieltens, gamma, tolerance):
     return r_sum
 
 
+warnings.warn("Replacing PyCDT usage of Kumagai base classes with calls to "
+              "corresponding objects in pymatgen.analysis.defects.corrections\n"
+              "All core Kumagai code will be removed with Version 2.5 of PyCDT."
+              " (note these functions all exist in pymatgen)",
+              DeprecationWarning)
 def get_g_sum_at_r(g_sum, structure, dim, r):
     """
     Args:
@@ -124,6 +141,11 @@ def get_g_sum_at_r(g_sum, structure, dim, r):
     return g_sum[i, j, k]
 
 
+warnings.warn("Replacing PyCDT usage of Kumagai base classes with calls to "
+              "corresponding objects in pymatgen.analysis.defects.corrections\n"
+              "All core Kumagai code will be removed with Version 2.5 of PyCDT."
+              " (note these functions all exist in pymatgen)",
+              DeprecationWarning)
 def anisotropic_madelung_potential(structure, dim, g_sum, r, dieltens, q,  
                                    gamma, tolerance):
     """
@@ -157,6 +179,11 @@ def anisotropic_madelung_potential(structure, dim, g_sum, r, dieltens, q,
     return pot
 
 
+warnings.warn("Replacing PyCDT usage of Kumagai base classes with calls to "
+              "corresponding objects in pymatgen.analysis.defects.corrections\n"
+              "All core Kumagai code will be removed with Version 2.5 of PyCDT."
+              " (note these functions all exist in pymatgen)",
+              DeprecationWarning)
 def anisotropic_pc_energy(structure, g_sum, dieltens, q, gamma, tolerance):
     """
     Compute the anistropic periodic point charge interaction energy.
@@ -189,6 +216,11 @@ def anisotropic_pc_energy(structure, g_sum, dieltens, q, gamma, tolerance):
     return pc_energy
 
 
+warnings.warn("Replacing PyCDT usage of Kumagai base classes with calls to "
+              "corresponding objects in pymatgen.analysis.defects.corrections\n"
+              "All core Kumagai code will be removed with Version 2.5 of PyCDT."
+              " (note these functions all exist in pymatgen)",
+              DeprecationWarning)
 def getgridind(structure, dim, r, gridavg=0.0):
     """
     Computes the index of a point, r, in the locpot grid
@@ -253,6 +285,11 @@ def getgridind(structure, dim, r, gridavg=0.0):
     return grdind
 
 
+warnings.warn("Replacing PyCDT usage of Kumagai base classes with calls to "
+              "corresponding objects in pymatgen.analysis.defects.corrections\n"
+              "All core Kumagai code will be removed with Version 2.5 of PyCDT."
+              " (note these functions all exist in pymatgen)",
+              DeprecationWarning)
 def disttrans(struct, defstruct, defpos=None):
     """
     To calculate distance from defect to each atom and finding NGX grid
@@ -344,6 +381,11 @@ def disttrans(struct, defstruct, defpos=None):
     return grid_sites
 
 
+warnings.warn("Replacing PyCDT usage of Kumagai base classes with calls to "
+              "corresponding objects in pymatgen.analysis.defects.corrections\n"
+              "All core Kumagai code will be removed with Version 2.5 of PyCDT."
+              " (note these functions all exist in pymatgen)",
+              DeprecationWarning)
 def wigner_seitz_radius(structure):
     """
     Calculate the Wigner Seitz radius for the given structure.
@@ -361,6 +403,11 @@ def wigner_seitz_radius(structure):
     return wsrad
 
 
+warnings.warn("Replacing PyCDT usage of Kumagai base classes with calls to "
+              "corresponding objects in pymatgen.analysis.defects.corrections\n"
+              "All core Kumagai code will be removed with Version 2.5 of PyCDT."
+              " (note these functions all exist in pymatgen)",
+              DeprecationWarning)
 def read_ES_avg_fromlocpot(locpot):
     """
     Reads Electrostatic potential at each atomic
@@ -387,6 +434,11 @@ def read_ES_avg_fromlocpot(locpot):
     return ES_data
 
 
+warnings.warn("Replacing PyCDT usage of Kumagai base classes with calls to "
+              "corresponding objects in pymatgen.analysis.defects.corrections\n"
+              "All core Kumagai code will be removed with Version 2.5 of PyCDT."
+              " (note these functions all exist in pymatgen)",
+              DeprecationWarning)
 class KumagaiBulkInit(object):
     """
     Compute the anisotropic madelung potential array from the bulk 
@@ -566,6 +618,11 @@ class KumagaiBulkInit(object):
         return r_arr_real
 
 
+warnings.warn("Replacing PyCDT usage of Kumagai base classes with calls to "
+              "corresponding objects in pymatgen.analysis.defects.corrections\n"
+              "All core Kumagai code will be removed with Version 2.5 of PyCDT."
+              " (note these functions all exist in pymatgen)",
+              DeprecationWarning)
 class KumagaiCorrection(object):
     """
     Extended freysoldt correction developed by Kumagai and Oba.

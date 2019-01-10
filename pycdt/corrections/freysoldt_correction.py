@@ -26,6 +26,12 @@ from pycdt.utils.units import hart_to_ev
 
 norm = np.linalg.norm
 
+import warnings
+
+warnings.warn("Replacing PyCDT usage of Freysoldt base classes with calls to "
+              "corresponding objects in pymatgen.analysis.defects.corrections\n"
+              "Will remove QModel with Version 2.5 of PyCDT.",
+              DeprecationWarning)
 class QModel():
     """
     Model for the defect charge distribution.
@@ -74,6 +80,12 @@ class QModel():
         return -2*self.gamma2*self.x - 0.25*self.beta2*(1-self.x)
 
 
+warnings.warn("Replacing PyCDT usage of Freysoldt base classes with calls to "
+              "corresponding objects in pymatgen.analysis.defects.corrections\n"
+              "All plotting functionalities will me moved to pycdt.corrections.correction_plotting"
+              "with Version 2.5 of PyCDT. (Corrections will all come from pymatgen for "
+              "longer term maintenance).",
+              DeprecationWarning)
 class FreysoldtCorrPlotter(object):
     def __init__(self, x, v_R, dft_diff, final_shift, check):
         self.x = x
@@ -139,6 +151,12 @@ class FreysoldtCorrPlotter(object):
             plotter.plot(title)
 
 
+warnings.warn("Replacing PyCDT usage of Freysoldt base classes with calls to "
+              "corresponding objects in pymatgen.analysis.defects.corrections\n"
+              "Will remove pycdt.corrections.freysoldt_correction.FreysoldtCorrection "
+              "with Version 2.5 of PyCDT. (Corrections will all come from pymatgen for "
+              "longer term maintenance).",
+              DeprecationWarning)
 class FreysoldtCorrection(object):
     def __init__(self, axis, dielectricconst, pure_locpot_path,
                  defect_locpot_path, q, energy_cutoff=520,

@@ -19,7 +19,14 @@ import numpy as np
 from pymatgen.io.vasp.outputs import Locpot
 import matplotlib.pyplot as plt
 
+import warnings
 
+
+warnings.warn("All correction plotting functionalities will me moved to "
+              "pycdt.corrections.correction_plotting "
+              "with Version 2.5 of PyCDT. (Corrections will all come from pymatgen for "
+              "longer term maintenance).",
+              DeprecationWarning)
 class FreysoldtPlot(object):
     """
         NOTE from developers:

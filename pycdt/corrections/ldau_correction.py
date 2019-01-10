@@ -10,7 +10,14 @@ __status__ = "Development"
 __date__ = "Aug 22, 2016"
 
 from copy import deepcopy
+import warnings
 
+#TODO: merge this correction (and a unit test) to pymatgen
+
+warnings.warn("Replacing PyCDT usage of extra corrections with calls to "
+              "corresponding objects in pymatgen.analysis.defects.corrections\n"
+              "All core correction code will be removed with Version 2.5 of PyCDT.",
+              DeprecationWarning)
 class LDAUCorrection(object):
     """
     Correction method for defect formation energies and
