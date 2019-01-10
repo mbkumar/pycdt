@@ -711,7 +711,7 @@ class ChargedDefectsStructures(object):
                                 i+1, subspecie_symbol, vac_symbol),
                             'unique_site': sub_site,
                             'bulk_supercell_site': sub_sc_site,
-                            'defect_type':'antisite',
+                            'defect_type':'substitution',
                             'site_specie':vac_symbol,
                             'substitution_specie':subspecie_symbol,
                             'site_multiplicity':site_mult,
