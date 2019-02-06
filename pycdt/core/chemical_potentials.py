@@ -21,6 +21,34 @@ from pymatgen.ext.matproj import MPRester
 from pymatgen.io.vasp.outputs import Vasprun
 from pymatgen.analysis.phase_diagram import PhaseDiagram
 
+def get_mp_chempots_from_dpd(dpd):
+    """
+    Grab Materials Project chemical potentials from a DefectPhaseDiagram object
+    """
+    print("Retrieiving chemical potentials from MP database using dpd object...")
+    bulk_struct = dpd.entries[0].defect.bulk_structure.copy()
+    if 'bulk_energy' not in dpd.entries[0].parameters.keys():
+        print("Grabbing chemical potentials without analyzing stability of bulk structure. "
+              "Ignore any flags raised about stability of structure")
+        bulk_energy = 0.
+    else:
+        bulk_energy = dpd.entries[0].parameters['bulk_energy']
+
+    bulk_ce = ComputedStructureEntry( bulk_struct, bulk_energy)
+    bulk_elt_set = list(dpd.entries[0].bulk_structure.symbol_set)
+
+    sub_species = []
+    for entry in dpd.entries:
+        def_site = entry.defect.site.specie.symbol
+        if def_site not in bulk_elt_set:
+            sub_species.append( def_site)
+
+    sub_species = set(sub_species)
+    print('Bulk symbols = {}, Sub symbols = {}'.format( bulk_elt_set, sub_species))
+    mp_cpa = MPChemPotAnalyzer( bulk_ce = bulk_ce, sub_species = sub_species)
+
+    return mp_cpa.analyze_GGA_chempots()
+
 
 class ChemPotAnalyzer(object):
     """
@@ -194,10 +222,11 @@ class MPChemPotAnalyzer(ChemPotAnalyzer):
 
         pd = PhaseDiagram(entry_list)
         chem_lims = self.get_chempots_from_pd(pd)
+        logger.debug("Bullk Chemical potential facets: {}".format(chem_lims.keys()))
 
         if not full_sub_approach:
-            #NOTE if full_sub_approach was True, then all the sub_entries
-            # were ported into the bulk_derived list
+            # NOTE if full_sub_approach was True, then all the sub_entries
+            # would be ported into the bulk_derived list
             finchem_lims = {}  # this will be final chem_lims dictionary
             for key in chem_lims.keys():
                 face_list = key.split('-')
@@ -242,15 +271,27 @@ class MPChemPotAnalyzer(ChemPotAnalyzer):
 
             #run a check to make sure all facets dominantly defined by bulk species
             overdependent_chempot = False
-            if len(finchem_lims.keys()) != len(self.bulk_species_symbol):
+            facets_to_delete = []
+            for facet_name, cps in finchem_lims.items():
+                if (len(cps.keys()) - 1) != (len(self.bulk_species_symbol) + len(self.sub_species)):
+                    facets_to_delete.append( facet_name)
+                    logger.info("Not using facet {} because insufficient chemical potentials "
+                                   "determined for substituions (dependent on {})."
+                                   "".format( facet_name, cps.get('name-append')))
+            if len(facets_to_delete) == len(chem_lims):
                 overdependent_chempot = True
                 logger.warning(
                 "Determined chemical potentials to be over dependent"
                 " on a substitutional specie. Needing to revert to full_sub_approach. If "
                 "multiple sub species exist this could take a while/break the code...")
+            else:
+                finchem_lims = {k:v for k,v in finchem_lims.items() if k not in facets_to_delete}
 
             if not overdependent_chempot:
-                chem_lims = finchem_lims.copy()
+                chem_lims = {}
+                for orig_facet, fc_cp_dict in finchem_lims.items():
+                    facet_nom = '-'.join([orig_facet, fc_cp_dict['name-append']])
+                    chem_lims[ facet_nom] = {k: v for k, v in fc_cp_dict.items() if k != 'name-append'}
             else:
                 #This is for when overdetermined chempots occur, forcing the full_sub_approach to happen
                 for sub, subentries in self.entries['subs_set'].items():
