@@ -11,7 +11,6 @@ __date__ = "November 4, 2012"
 import numpy as np
 import matplotlib
 matplotlib.use('agg')
-# from pymatgen.util.plotting import pretty_plot
 
 import matplotlib.pyplot as plt
 import matplotlib.cm as cm
@@ -29,7 +28,8 @@ class DefectPlotter(object):
 
         self._dpd = dpd
 
-    def get_plot_form_energy(self, mu_elts, xlim=None, ylim=None):
+    def get_plot_form_energy(self, mu_elts, xlim=None, ylim=None, ax_fontsize=1.3,
+                             lg_fontsize=1., lg_position=None):
         """
         Formation energy vs Fermi energy plot
         Args:
@@ -40,6 +40,15 @@ class DefectPlotter(object):
                 Tuple (min,max) giving the range of the x (fermi energy) axis
             ylim:
                 Tuple (min,max) giving the range for the formation energy axis
+            ax_fontsize:
+                float  multiplier to change axis label fontsize
+            lg_fontsize:
+                float  multiplier to change legend label fontsize
+            lg_position:
+                Tuple (horizontal-position, vertical-position) giving the position
+                to place the legend.
+                Example: (0.5,-0.75) will likely put it below the x-axis.
+
         Returns:
             a matplotlib object
 
@@ -93,7 +102,10 @@ class DefectPlotter(object):
 
         width, height = 12, 8
         plt.clf()
-        colors=cm.Dark2(np.linspace(0, 1, len(xy)))
+        if len(xy) <= 8:
+            colors=cm.Dark2(np.linspace(0, 1, len(xy)))
+        else:
+            colors=cm.gist_rainbow(np.linspace(0, 1, len(xy)))
 
         #plot formation energy lines
         for_legend = []
@@ -104,7 +116,7 @@ class DefectPlotter(object):
         #plot transtition levels
         for cnt, defnom in enumerate(xy.keys()):
             x_trans, y_trans = [], []
-            for x_val, chargeset in self._dpd.transition_level_map[defnom].keys():
+            for x_val, chargeset in self._dpd.transition_level_map[defnom].items():
                 x_trans.append( x_val)
                 for chg_ent in self._dpd.stable_entries[defnom]:
                     if chg_ent.charge == chargeset[0]:
@@ -135,22 +147,22 @@ class DefectPlotter(object):
 
             legends_txt.append( base + sub_str)
 
-        if len(xy.keys())<5:
-            plt.legend(legends_txt, fontsize=1.8*width, loc=8)
+        if not lg_position:
+            plt.legend(legends_txt, fontsize=lg_fontsize*width, loc=0)
         else:
-            plt.legend(legends_txt, fontsize=1.8*width, ncol=3,
-                       loc='lower center', bbox_to_anchor=(.5,-.6))
-            #NOTE TO USER: bbox_to_anchor can be adjusted to put legend where you want it to be
+            plt.legend(legends_txt, fontsize=lg_fontsize*width, ncol=3,
+                       loc='lower center', bbox_to_anchor=lg_position)
 
         if ylim is not None:
             plt.ylim(ylim)
 
+        plt.xlim(xlim)
         plt.plot([xlim[0], xlim[1]], [0, 0], 'k-')  # black dashed line for Eformation = 0
         plt.axvline(x=0.0, linestyle='--', color='k', linewidth=3) # black dashed lines for gap edges
         plt.axvline(x=self._dpd.band_gap, linestyle='--', color='k',
                     linewidth=3)
-        plt.xlabel("Fermi energy (eV)", size=2*width)
-        plt.ylabel("Defect Formation Energy (eV)", size=2*width)
+        plt.xlabel("Fermi energy (eV)", size=ax_fontsize*width)
+        plt.ylabel("Defect Formation\nEnergy (eV)", size=ax_fontsize*width)
 
         return plt
 
@@ -204,3 +216,47 @@ class DefectPlotter(object):
     #     plt.ylim([1e14, 1e22])
     #     plt.semilogy(efs, qi)
     #     return plt
+
+
+class StructureRelaxPlotter(object):
+    """
+    This class plots movement of atomic sites as a function of radius
+
+    relaxation_data is list of [distance to defect, distance atom moved,
+                                index in structure, percentage contribution to total relaxation]
+
+    """
+    def __init__(self, relaxation_data, sampling_radius):
+        rd = relaxation_data[:]
+        rd.sort()
+        self.relaxation_data = np.array(rd)
+        self.sampling_radius = sampling_radius
+
+    def plot(self, title=''):
+
+        plt.figure()
+        plt.clf()
+        fig, ax1 = plt.subplots()
+
+        ax1.set_xlabel('Radius from Defect ($\AA$)', fontsize=20)
+
+        ax1.plot( self.relaxation_data[:,0], self.relaxation_data[:,1], 'k',
+                  marker='o', linestyle='--')
+
+        ax2 = ax1.twinx()
+        ax2.plot( self.relaxation_data[:,0], self.relaxation_data[:,3], 'k',
+                  marker='o', linestyle='--')
+
+        tmpx = [self.sampling_radius, max( self.relaxation_data[:,0])]
+        max_fill = max(self.relaxation_data[:,3])
+        min_fill = min(self.relaxation_data[:,3])
+        plt.fill_between(tmpx, min_fill, max_fill, facecolor='red', alpha=0.15,
+                         label='delocalization region')
+
+        ax1.set_ylabel('Relaxation amount ($\AA$)', color='b', fontsize=15)
+        ax2.set_ylabel('Percentage of total relaxation (%)\n', color='r', fontsize=15)
+        plt.legend(loc=0)
+
+        plt.title(str(title) + ' Atomic Relaxation', fontsize=20)
+
+        return plt

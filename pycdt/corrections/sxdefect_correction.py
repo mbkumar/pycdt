@@ -27,7 +27,7 @@ from pymatgen.io.vasp.outputs import Locpot
 from monty.tempfile import ScratchDir
 
 
-class FreysoldtCorrection(object):
+class SxdefectalignWrapper(object):
     """
         NOTE from developers:
             This code is a python wrapper to sxdefectalign.
