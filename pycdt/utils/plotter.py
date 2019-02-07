@@ -166,57 +166,6 @@ class DefectPlotter(object):
 
         return plt
 
-    # def plot_conc_temp(self, me=[1.0, 1.0, 1.0], mh=[1.0, 1.0, 1.0]):
-    #     """
-    #     plot the concentration of carriers vs temperature both in eq and non-eq after quenching at 300K
-    #     Args:
-    #         me:
-    #             the effective mass for the electrons as a list of 3 eigenvalues
-    #         mh:
-    #             the effective mass for the holes as a list of 3 eigenvalues
-    #     Returns;
-    #         a matplotlib object
-    #
-    #     """
-    #     temps = [i*100 for i in range(3,20)]
-    #     qi = []
-    #     qi_non_eq = []
-    #     for t in temps:
-    #         qi.append(self._analyzer.get_eq_ef(t, me, mh)['Qi']*1e-6)
-    #         qi_non_eq.append(
-    #                 self._analyzer.get_non_eq_ef(t, 300, me, mh)['Qi']*1e-6)
-    #
-    #     plt = pretty_plot(12, 8)
-    #     plt.xlabel("temperature (K)")
-    #     plt.ylabel("carrier concentration (cm$^{-3}$)")
-    #     plt.semilogy(temps, qi, linewidth=3.0)
-    #     plt.semilogy(temps, qi_non_eq, linewidth=3)
-    #     plt.legend(['eq','non-eq'])
-    #     return plt
-    #
-    # def plot_carriers_ef(self, temp=300, me=[1.0, 1.0, 1.0], mh=[1.0, 1.0, 1.0]):
-    #     """
-    #     plot carrier concentrations as a function of the fermi energy
-    #     Args:
-    #         temp:
-    #             temperature
-    #         me:
-    #             the effective mass for the electrons as a list of 3 eigenvalues
-    #         mh:
-    #             the effective mass for the holes as a list of 3 eigenvalues
-    #     Returns:
-    #         a matplotlib object
-    #     """
-    #     plt = pretty_plot(12, 8)
-    #     qi = []
-    #     efs = []
-    #     for ef in [x * 0.01 for x in range(0, 100)]:
-    #         efs.append(ef)
-    #         qi.append(self._analyzer.get_qi(ef, temp, me, mh)*1e-6)
-    #     plt.ylim([1e14, 1e22])
-    #     plt.semilogy(efs, qi)
-    #     return plt
-
 
 class StructureRelaxPlotter(object):
     """

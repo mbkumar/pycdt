@@ -7,6 +7,8 @@ __email__ = 'dbroberg@gmail.com, mbkumar@gmail.com'
 import math
 import numpy as np
 
+import warnings
+
 # Define conversion_constants
 hart_to_ev = 27.2114
 ang_to_bohr = 1.8897
@@ -16,6 +18,10 @@ hbar = 6.58211928e-16  #eV s
 
 conv = math.sqrt((9.1*1e-31)**3) * math.sqrt((1.6*1e-19)**3) / ((1.05*1e-34)**3)
 
+warnings.warn("Replaced PyCDT usage of utils objects with "
+              "objects from pymatgen.analysis.defects\n"
+              "Will remove k_to_eV with Version 2.5 of PyCDT.",
+              DeprecationWarning)
 def k_to_eV(g):
     """
     Convert a k-vector to energy [eV] via hbar*k^2/2m
@@ -28,6 +34,10 @@ def k_to_eV(g):
     return invang_to_ev * np.dot(g,g)
 
 
+warnings.warn("Replaced PyCDT usage of utils objects with "
+              "objects from pymatgen.analysis.defects\n"
+              "Will remove eV_to_k with Version 2.5 of PyCDT.",
+              DeprecationWarning)
 def eV_to_k(energy):
     """
     Convert energy to reciprocal vector magnitude k via hbar*k^2/2m

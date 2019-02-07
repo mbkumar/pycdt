@@ -8,6 +8,7 @@ __email__ = "geoffroy@uclouvain.be, mbkumar@gmail.com"
 __status__ = "Development"
 __date__ = "November 4, 2012"
 
+import os
 from math import sqrt, pi, exp
 from collections import defaultdict 
 from itertools import combinations
@@ -18,11 +19,152 @@ from pymatgen.core import Element
 from pymatgen.core.structure import PeriodicSite, Structure
 from pymatgen.entries.computed_entries import ComputedStructureEntry
 from pymatgen.symmetry.analyzer import SpacegroupAnalyzer
+from pymatgen.io.vasp import Locpot, Outcar, Poscar
+from pymatgen.analysis.defects.core import Vacancy, Substitution, Interstitial
 
 from pycdt.utils.units import kb, conv, hbar
 
 import warnings
 warnings.simplefilter('default')
+
+
+class DefectEntryLoader(object):
+    """
+    This takes a defect entry and loads it up with metadata required for
+    pymatgen corrections, based on the metadata provided in defect_entry
+
+    Very similar to an Emmet Builder
+
+    :param defect_entry: DefectEntry object with parameters required
+    :return:
+    """
+    def __init__(self, defect_entry):
+        self.defect_entry = defect_entry
+        # if isinstance(defect, str):
+        #     self.defect_path = defect
+        #     self.defect_obj = None
+        # else:
+        #     self.defect_obj = defect.copy()
+        #     dpat, tmplocpotnom = os.path.split(locpot_path_def)
+        #     self.defect_path = dpat
+
+    def freysoldt_loader(self, bulk_locpot=None):
+        if not self.defect_entry.charge:
+            #dont need to load locpots if charge is zero
+            return None
+
+        if not bulk_locpot:
+            bulk_locpot_path = os.path.join( self.defect_entry.parameters["bulk_path"],
+                                             "LOCPOT")
+            bulk_locpot = Locpot.from_file( bulk_locpot_path)
+
+        def_locpot_path = os.path.join( self.defect_entry.parameters["defect_path"],
+                                             "LOCPOT")
+
+        def_locpot = Locpot.from_file( def_locpot_path)
+
+        axis_grid = [def_locpot.get_axis_grid(i) for i in range(3)]
+        bulk_planar_averages = [bulk_locpot.get_average_along_axis(i) for i in range(3)]
+        defect_planar_averages = [def_locpot.get_average_along_axis(i) for i in range(3)]
+        bulk_sc_structure = bulk_locpot.structure.copy()
+
+        defect_frac_sc_coords = self.defect_entry.site.frac_coords
+        #TODO -> confirm that this is always correct fractional coordinate site
+
+        self.defect_entry.parameters.update({"axis_grid": axis_grid,
+                                             "bulk_planar_averages": bulk_planar_averages,
+                                             "defect_planar_averages": defect_planar_averages,
+                                             "bulk_sc_structure": bulk_sc_structure,
+                                             "defect_frac_sc_coords": defect_frac_sc_coords
+                                             })
+
+        return bulk_locpot
+
+    def kumagai_loader(self, bulk_outcar=None):
+        if not self.defect_entry.charge:
+            # dont need to load outcars if charge is zero
+            return None
+
+        if not bulk_outcar:
+            bulk_outcar_path = os.path.join( self.defect_entry.parameters["bulk_path"],
+                                             "OUTCAR")
+            bulk_outcar = Outcar( bulk_outcar_path)
+
+        def_outcar_path = os.path.join( self.defect_entry.parameters["defect_path"],
+                                             "OUTCAR")
+        def_outcar = Outcar( def_outcar_path)
+
+        bulk_atomic_site_averages = bulk_outcar.electrostatic_potential
+        defect_atomic_site_averages = def_outcar.electrostatic_potential
+
+        bulk_sc_structure = Poscar.from_file( os.path.join( self.defect_entry.parameters["bulk_path"],
+                                                            "POSCAR")).structure
+
+        initial_defect_structure = Poscar.from_file( os.path.join( self.defect_entry.parameters["defect_path"],
+                                                                   "POSCAR")).structure
+
+        bulksites = [site.frac_coords for site in bulk_sc_structure]
+        initsites = [site.frac_coords for site in initial_defect_structure]
+        distmatrix = initial_defect_structure.lattice.get_all_distances(bulksites,
+                                                                        initsites)  # first index of this list is bulk index
+        min_dist_with_index = [[min(distmatrix[bulk_index]), int(bulk_index),
+                                int(distmatrix[bulk_index].argmin())] for bulk_index in
+                               range(len(distmatrix))]  # list of [min dist, bulk ind, defect ind]
+
+        found_defect = False
+        site_matching_indices = []
+        poss_defect = []
+        if isinstance(self.defect_entry.defect, (Vacancy, Interstitial)):
+            for mindist, bulk_index, defect_index in min_dist_with_index:
+                if mindist < 0.1:
+                    site_matching_indices.append([bulk_index, defect_index])
+                elif isinstance(self.defect_entry.defect, Vacancy):
+                    poss_defect.append([bulk_index, bulksites[bulk_index][:]])
+
+            if isinstance(self.defect_entry.defect, Interstitial):
+                poss_defect = [[ind, fc[:]] for ind, fc in enumerate(initsites) \
+                               if ind not in np.array(site_matching_indices)[:, 1]]
+
+        elif isinstance(self.defect_entry.defect, Substitution):
+            for mindist, bulk_index, defect_index in min_dist_with_index:
+                species_match = bulk_sc_structure[bulk_index].specie == \
+                                initial_defect_structure[defect_index].specie
+                if mindist < 0.1 and species_match:
+                    site_matching_indices.append([bulk_index, defect_index])
+
+                elif not species_match:
+                    poss_defect.append([defect_index, initsites[defect_index][:]])
+
+        if len(poss_defect) == 1:
+            found_defect = True
+            defect_index_sc_coords = poss_defect[0][0]
+            defect_frac_sc_coords = poss_defect[0][1]
+        else:
+            raise ValueError("Found {} possible defect sites when matching bulk and "
+                              "defect structure".format(len(poss_defect)))
+
+        if len(set(np.array(site_matching_indices)[:, 0])) != len(set(np.array(site_matching_indices)[:, 1])):
+            raise ValueError("Error occured in site_matching routine. Double counting of site matching "
+                              "occured:{}\nAdvising against Kumagai parsing.".format(site_matching_indices))
+            found_defect = False
+
+        # user Wigner-Seitz radius for sampling radius
+        wz = initial_defect_structure.lattice.get_wigner_seitz_cell()
+        dist = []
+        for facet in wz:
+            midpt = np.mean(np.array(facet), axis=0)
+            dist.append(np.linalg.norm(midpt))
+        sampling_radius = min(dist)
+
+        parameters.update({'bulk_atomic_site_averages': bulk_atomic_site_averages,
+                           'defect_atomic_site_averages': defect_atomic_site_averages,
+                           'initial_defect_structure': initial_defect_structure,
+                           'site_matching_indices': site_matching_indices,
+                           'sampling_radius': sampling_radius,
+                           'defect_frac_sc_coords': defect_frac_sc_coords,
+                           'defect_index_sc_coords': defect_index_sc_coords})
+
+        return bulk_outcar
 
 warnings.warn("Replaced PyCDT usage of ComputedDefect objects with "
               "DefectEntry objects from pymatgen.analysis.defects.core\n"

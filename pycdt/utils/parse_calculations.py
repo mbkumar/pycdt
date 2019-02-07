@@ -24,10 +24,9 @@ from pymatgen.ext.matproj import MPRester
 from pymatgen.io.vasp.outputs import Vasprun
 from pymatgen.io.vasp.inputs import Potcar
 from pymatgen.entries.computed_entries import ComputedStructureEntry
-
 from pymatgen.analysis.defects.core import Vacancy, Substitution, Interstitial, DefectEntry
 
-from pycdt.core.defects_analyzer import ComputedDefect 
+# from pycdt.core.defects_analyzer import ComputedDefect
 from pycdt.core.chemical_potentials import MPChemPotAnalyzer
 
 class PostProcess(object):
@@ -48,7 +47,6 @@ class PostProcess(object):
         self._mpid = mpid
         self._mapi_key = mapi_key
         self._substitution_species = set()
-        #self._chem_pot_details = None
 
     def parse_defect_calculations(self):
         """
@@ -129,12 +127,12 @@ class PostProcess(object):
             cls=MontyDecoder)
         supercell_size = trans_dict['supercell']
 
-        bulk_locpot_path = os.path.abspath(os.path.join(fldr, 'LOCPOT'))
-        bulk_entry = ComputedStructureEntry(
-            bulk_struct, bulk_energy,
-            data={'locpot_path': bulk_locpot_path,
-                  'encut': encut,
-                  'supercell_size': supercell_size})
+        bulk_file_path = fldr
+        # bulk_entry = ComputedStructureEntry(
+        #     bulk_struct, bulk_energy,
+        #     data={'bulk_path': fldr,
+        #           'encut': encut,
+        #           'supercell_size': supercell_size})
 
         # get defect entry information
         for fldr in subfolders:
@@ -174,9 +172,8 @@ class PostProcess(object):
                                        "calculations")
                         continue
 
-                locpot_path = os.path.abspath(
-                        os.path.join(chrg_fldr, 'LOCPOT'))
-                comp_data = {'locpot_path': locpot_path, 'encut': encut,
+                comp_data = {'bulk_path': bulk_file_path,
+                             'defect_path': chrg_fldr, 'encut': encut,
                              'fldr_name': fldr_name, 'supercell_size': supercell_size}
                 if 'substitution_specie' in trans_dict:
                     comp_data['substitution_specie'] = \
@@ -327,8 +324,6 @@ class PostProcess(object):
         output = self.parse_defect_calculations()
         output['epsilon'] = self.parse_dielectric_calculation()
         output['mu_range'] = self.get_chempot_limits()
-        #entry data from MP query..could print for reducing future queries
-        # output['chem_pot_details'] = self._chem_pot_details
         vbm,gap = self.get_vbm_bandgap()
         output['vbm'] = vbm
         output['gap'] = gap
