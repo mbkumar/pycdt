@@ -10,10 +10,10 @@ schemes.
 
 __author__ = "Nils E. R. Zimmermann, Bharat Medasani, Danny Broberg"
 __copyright__ = "Copyright 2012, The Materials Project"
-__version__ = "1"
-__maintainer__ = "Nils E. R. Zimmermann"
-__email__ = "n.zimmermann@tuhh.de"
-__date__ = "May 1, 2015"
+__version__ = "2.0"
+__maintainer__ = "Danny Broberg"
+__email__ = "ddidjbroberg@gmail.com"
+__date__ = "March 1, 2018"
 
 import argparse
 import os
@@ -35,6 +35,7 @@ from pymatgen.core.structure import Structure
 from pymatgen.symmetry.analyzer import SpacegroupAnalyzer
 from pymatgen.io.vasp.outputs import Locpot
 from pymatgen.io.vasp.inputs import Incar
+from pymatgen.analysis.defects.thermodynamics import DefectPhaseDiagram
 
 from pycdt.core.defectsmaker import ChargedDefectsStructures
 from pycdt.utils.vasp import make_vasp_defect_files, \
@@ -177,9 +178,6 @@ def parse_output(args):
 
 def compute_corrections(args):
     """
-    TODO : Include option for printing pot. plots to defect files,
-            rather than main directory
-    ----------
     Computes corrections for the charged point defects
     Supported: Isotropic Freysoldt method, Extended Freysoldt method (Kumagai)
 
@@ -202,40 +200,43 @@ def compute_corrections(args):
     else:
         epsilon = defect_data['epsilon']
 
-    bulk = defect_data['bulk_entry']
-    bulk_structure = bulk.structure
     defects = defect_data['defects']
     corrections = defaultdict(list)
 
-    formula = bulk.composition.reduced_formula
+    formula = defects[0].bulk_structure.composition.reduced_formula
     initialize_logging(filename=formula+'_correction.log')
 
     #loading locpot object now is useful for both corrections
     bulk_obj = None #store either bulk Locpot or Outcar for saving time
     if correction_method == 'freysoldt':
         for defect in defects:
-            print ('defect_name: ', defect.full_name)
+            print ('defect_name: {} q={}'.format( defect.name, defect.charge))
             print ('-----------------------------------------\n\n')
             def_ent_loader = DefectEntryLoader(defect)
             bulk_obj = def_ent_loader.freysoldt_loader(bulk_locpot=bulk_obj)
 
+            plt_title = os.path.join( defect.parameters["defect_path"],
+                                      "{}_chg_{}".format(defect.name, defect.charge))
             correction = get_correction_freysoldt( def_ent_loader.defect_entry,
                                                    epsilon,
-                                                   title=defect.full_name)
-            corrections[defect.name].append({
-                'charge_correction': correction, 'charge':defect.charge})
+                                                   title=plt_title)
+            corr_key = defect.parameters["defect_path"]
+            corrections[corr_key].append({
+                'charge_correction': correction})
     elif correction_method == 'kumagai':
         for defect in defects:
-            print ('defect_name: ', defect.full_name)
+            print ('defect_name: {} q={}'.format( defect.name, defect.charge))
             print ('-----------------------------------------\n\n')
             def_ent_loader = DefectEntryLoader(defect)
             bulk_obj = def_ent_loader.kumagai_loader(bulk_outcar=bulk_obj)
 
+            plt_title = os.path.join( defect.parameters["defect_path"],
+                                      "{}_chg_{}".format(defect.name, defect.charge))
             correction = get_correction_kumagai( def_ent_loader.defect_entry,
-                                                 epsilon, title = defect.full_name,
-                                                 partflag='All')
-            corrections[defect.name].append({
-                    'charge_correction': correction, 'charge': defect.charge})
+                                                 epsilon, title = plt_title)
+            corr_key = defect.parameters["defect_path"]
+            corrections[corr_key].append({
+                    'charge_correction': correction})
     else:
         print ('Invalid correction method: ',correction_method,'. Select either ' \
                '"freysoldt" or "kumagai"')
@@ -261,19 +262,14 @@ def compute_formation_energies(args):
     defect_data = loadfn(defect_data_file_name, cls=MontyDecoder)
     defects = defect_data['defects']
 
-    formula = defect_data['bulk_entry'].structure.composition.reduced_formula
+    formula = defects[0].bulk_structure.composition.reduced_formula
     initialize_logging(filename=formula+'_formation_energy.log')
 
     if os.path.isfile(corrections_file_name):
         correction_data = loadfn(corrections_file_name)  
         for computed_defect in defects:
-            name_def = computed_defect.name
-            q = computed_defect.charge
-            for entry in correction_data[name_def]:
-                if q == entry['charge']:
-                    correction = entry['charge_correction']
-                    break
-            computed_defect.charge_correction = correction
+            corr_key = computed_defect.parameters["defect_path"]
+            computed_defect.corrections = correction_data[corr_key]
     elif corrections_file_name == "corrections.json":  # Default filename
         pass # Don't bother, the user is not worried about corrections
     else:
@@ -286,20 +282,16 @@ def compute_formation_energies(args):
         bandgap = args.bandgap
 
     vbm = defect_data['vbm']
-    blk_entry = defect_data['bulk_entry']
     mu_range = defect_data['mu_range']
 
     #doctor up mu_range because of cls Monty Decoder issue with Element
     mu_range = {ckey:{Element(k):v for k,v in cdict.items()}
                                for ckey, cdict in mu_range.items()}
-
+    dpd = DefectPhaseDiagram( defects, vbm, bandgap, filter_compatible=False)
+    plotter = DefectPlotter(dpd)
     for region, mu in mu_range.items():
-        da = DefectsAnalyzer(blk_entry, vbm, mu, bandgap)
-        for defect in defects:
-            da.add_computed_defect(defect)
-
         if region == list(mu_range.keys())[0]:
-            da_trans = da.get_transition_levels()
+            da_trans = dpd.transition_level_map()
             if use_yaml:
                 with open('transition_levels.yaml', 'w') as f:
                     yaml.dump(da_trans, f)
@@ -311,8 +303,9 @@ def compute_formation_energies(args):
                     print ("{}: {}".format(qpair, trans_lvl))
 
         if args.plot_results:
-            plotter = DefectPlotter(da)
-            form_en_plot = plotter.get_plot_form_energy()
+            form_en_plot = plotter.get_plot_form_energy(mu,
+                                #USER -> note that all settings below can be changed to make plot prettier
+                                xlim=None, ylim=None, ax_fontsize=1.3, lg_fontsize=1., lg_position=None)
             form_en_plot.savefig(
                     region+'_region_defect_form_energy.'+args.file_format, 
                     bbox_inches='tight')

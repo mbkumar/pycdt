@@ -209,3 +209,47 @@ class StructureRelaxPlotter(object):
         plt.title(str(title) + ' Atomic Relaxation', fontsize=20)
 
         return plt
+
+
+class SingleParticlePlotter(object):
+    """
+    This class plots single particle KS wavefunction as a function of radiusfrom defect
+
+    relaxation_data is list of [distance to defect, distance atom moved,
+                                index in structure, percentage contribution to total relaxation]
+
+    """
+    def __init__(self, defect_ks_delocal_data):
+        self.defect_ks_delocal_data = defect_ks_delocal_data
+        self.nspin = len( defect_ks_delocal_data['localized_band_indices'])
+        lbl_dict = defect_ks_delocal_data['localized_band_indices']
+        self.localized_bands = set([band_index for spin_list in lbl_dict.values() for band_index in spin_list])
+        print("Localized KS wavefunction bands are {}".format( self.localized_bands))
+
+    def plot(self, bandnum, title=''):
+        if bandnum not in self.localized_bands:
+            raise ValueError("{} is not in {}".format( bandnum, self.localized_bands))
+
+        plt.figure()
+        plt.clf()
+        fig, ax1 = plt.subplots()
+
+        final_out = self.defect_ks_delocal_data['followup_wf_parse'][bandnum]
+        dat = final_out['0']['rad_dist_data']['tot']
+
+        plt.clf()
+        fig, ax1 = plt.subplots()
+        ax1.set_xlabel('Radius from Defect ($\AA$)')
+        ax1.plot(dat[0], dat[1], 'b')
+        ax2 = ax1.twinx()
+        ax2.plot(dat[0], 100. * np.array(dat[2]), 'r')
+        if self.nspin == 2:
+            dat = final_out['1']['rad_dist_data']['tot']
+            ax1.plot(dat[0], -1. * np.array(dat[1]), 'b-')
+            ax2.plot(dat[0], -100. * np.array(dat[2]), 'r-')
+
+        ax1.set_ylabel('Occupation', color='b')
+        ax2.set_ylabel('Percentage of electron contained\n', color='r')
+        plt.title(str(title) + ' KS band index '+str(bandnum))
+
+        return plt

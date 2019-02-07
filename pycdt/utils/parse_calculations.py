@@ -113,7 +113,7 @@ class PostProcess(object):
             logger.error("Abandoning parsing of the calculations")
             return {}
         bulk_energy = vr.final_energy
-        bulk_struct = vr.final_structure
+        # bulk_struct = vr.final_structure
         try:
             encut = vr.incar['ENCUT']
         except:  # ENCUT not specified in INCAR. Read from POTCAR
@@ -211,7 +211,7 @@ class PostProcess(object):
 
         try:
             parsed_defects_data = {}
-            parsed_defects_data['bulk_entry'] = bulk_entry
+            # parsed_defects_data['bulk_entry'] = bulk_entry
             parsed_defects_data['defects'] = parsed_defects
             return parsed_defects_data
         except:
