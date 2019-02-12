@@ -305,15 +305,15 @@ class SingleDefectParser(object):
 
         if len(mpid_fit_list) == 1:
             mpid = mpid_fit_list[0]
-            self.logger.debug("Single mp-id found for bulk structure:{}.".format( mpid))
+            print("Single mp-id found for bulk structure:{}.".format( mpid))
         elif len(mpid_fit_list) > 1:
             num_mpid_list = [int(mp.split('-')[1]) for mp in mpid_fit_list]
             num_mpid_list.sort()
             mpid  = 'mp-'+str(num_mpid_list[0])
-            self.logger.debug("Multiple mp-ids found for bulk structure:{}\nWill use lowest number mpid "
+            print("Multiple mp-ids found for bulk structure:{}\nWill use lowest number mpid "
                   "for bulk band structure = {}.".format(str(mpid_fit_list), mpid))
         else:
-            self.logger.debug("Could not find bulk structure in MP database after tying the "
+            print("Could not find bulk structure in MP database after tying the "
                               "following list:\n{}".format( mplist))
             mpid = None
 
