@@ -237,12 +237,11 @@ class SingleParticlePlotter(object):
         final_out = self.defect_ks_delocal_data['followup_wf_parse'][bandnum]
         dat = final_out['0']['rad_dist_data']['tot']
 
-        plt.clf()
-        fig, ax1 = plt.subplots()
         ax1.set_xlabel('Radius from Defect ($\AA$)')
         ax1.plot(dat[0], dat[1], 'b')
         ax2 = ax1.twinx()
         ax2.plot(dat[0], 100. * np.array(dat[2]), 'r')
+
         if self.nspin == 2:
             dat = final_out['1']['rad_dist_data']['tot']
             ax1.plot(dat[0], -1. * np.array(dat[1]), 'b-')
