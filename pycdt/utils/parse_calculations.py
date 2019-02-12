@@ -24,25 +24,20 @@ from pymatgen.core import PeriodicSite
 from pymatgen.ext.matproj import MPRester
 from pymatgen.io.vasp.outputs import Vasprun
 from pymatgen.io.vasp.inputs import Potcar
-from pymatgen.entries.computed_entries import ComputedStructureEntry
+# from pymatgen.entries.computed_entries import ComputedStructureEntry
 from pymatgen.analysis.defects.core import Vacancy, Substitution, Interstitial, DefectEntry
 
 # from pycdt.core.defects_analyzer import ComputedDefect
 from pycdt.core.chemical_potentials import MPChemPotAnalyzer
 
 
+# below here is for single defect parser
 from atomate.vasp.drones import VaspDrone
 
-# from monty.json import MontyDecoder, jsanitize
-
-from pymatgen import Structure, PeriodicSite, MPRester
-from pymatgen.analysis.structure_matcher import StructureMatcher #, PointDefectComparator
-# from pymatgen.electronic_structure.bandstructure import BandStructure
-from pymatgen.analysis.defects.core import Vacancy, Substitution, Interstitial, DefectEntry
-# from pymatgen.analysis.defects.thermodynamics import DefectPhaseDiagram
+from pymatgen import Structure
+from pymatgen.analysis.structure_matcher import StructureMatcher
 from pymatgen.analysis.defects.defect_compatibility import DefectCompatibility
-#
-# from maggma.builder import Builder
+
 
 class SingleDefectParser(object):
 
