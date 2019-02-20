@@ -42,7 +42,7 @@ from pymatgen.analysis.defects.defect_compatibility import DefectCompatibility
 class SingleDefectParser(object):
 
     def __init__(self, path_to_defect, path_to_bulk, dielectric,
-                 defect_charge = None,
+                 defect_charge = None, mpid = None,
                  compatibility=DefectCompatibility()):
         """
         Parse a defect object using many of the features of a standard Defect Builder.
@@ -60,6 +60,7 @@ class SingleDefectParser(object):
         self.defect_site = None
         self.defect_type = None
         self.defect_charge = defect_charge
+        self.mpid = mpid
         self.compatibility = compatibility
 
     def get_defect_entry( self, run_compatibility=False):
@@ -287,40 +288,44 @@ class SingleDefectParser(object):
 
     def get_bulk_gap_data(self, bulk_dict):
         bulk_structure = self.parameters['bulk_sc_structure']
-        try:
-            with MPRester() as mp:
-                tmp_mplist = mp.get_entries_in_chemsys(list(bulk_structure.symbol_set))
-            mplist = [ment.entry_id for ment in tmp_mplist if ment.composition.reduced_composition == \
-                      bulk_structure.composition.reduced_composition]
-        except:
-            raise ValueError("Error with querying MPRester for {}".format( bulk_structure.composition.reduced_formula))
 
-        mpid_fit_list = []
-        for trial_mpid in mplist:
-            with MPRester() as mp:
-                mpstruct = mp.get_structure_by_material_id(trial_mpid)
-            if StructureMatcher(primitive_cell=True, scale=False, attempt_supercell=True,
-                                allow_subset=False).fit(bulk_structure, mpstruct):
-                mpid_fit_list.append( trial_mpid)
+        if not self.mpid:
+            try:
+                with MPRester() as mp:
+                    tmp_mplist = mp.get_entries_in_chemsys(list(bulk_structure.symbol_set))
+                mplist = [ment.entry_id for ment in tmp_mplist if ment.composition.reduced_composition == \
+                          bulk_structure.composition.reduced_composition]
+            except:
+                raise ValueError("Error with querying MPRester for {}".format( bulk_structure.composition.reduced_formula))
 
-        if len(mpid_fit_list) == 1:
-            mpid = mpid_fit_list[0]
-            print("Single mp-id found for bulk structure:{}.".format( mpid))
-        elif len(mpid_fit_list) > 1:
-            num_mpid_list = [int(mp.split('-')[1]) for mp in mpid_fit_list]
-            num_mpid_list.sort()
-            mpid  = 'mp-'+str(num_mpid_list[0])
-            print("Multiple mp-ids found for bulk structure:{}\nWill use lowest number mpid "
-                  "for bulk band structure = {}.".format(str(mpid_fit_list), mpid))
+            mpid_fit_list = []
+            for trial_mpid in mplist:
+                with MPRester() as mp:
+                    mpstruct = mp.get_structure_by_material_id(trial_mpid)
+                if StructureMatcher(primitive_cell=True, scale=False, attempt_supercell=True,
+                                    allow_subset=False).fit(bulk_structure, mpstruct):
+                    mpid_fit_list.append( trial_mpid)
+
+            if len(mpid_fit_list) == 1:
+                self.mpid = mpid_fit_list[0]
+                print("Single mp-id found for bulk structure:{}.".format( self.mpid))
+            elif len(mpid_fit_list) > 1:
+                num_mpid_list = [int(mp.split('-')[1]) for mp in mpid_fit_list]
+                num_mpid_list.sort()
+                self.mpid  = 'mp-'+str(num_mpid_list[0])
+                print("Multiple mp-ids found for bulk structure:{}\nWill use lowest number mpid "
+                      "for bulk band structure = {}.".format(str(mpid_fit_list), self.mpid))
+            else:
+                print("Could not find bulk structure in MP database after tying the "
+                                  "following list:\n{}".format( mplist))
+                self.mpid = None
         else:
-            print("Could not find bulk structure in MP database after tying the "
-                              "following list:\n{}".format( mplist))
-            mpid = None
+            print("Manually fed mpid = {}".format( self.mpid))
 
-        if mpid and not self.parameters['task_level_metadata']['incar_calctype_summary']['LHFCALC']:
+        if self.mpid and not self.parameters['task_level_metadata']['incar_calctype_summary']['LHFCALC']:
             #TODO: NEED to be smarter about use of +U etc in MP gga band structure calculations...
             with MPRester() as mp:
-                bs = mp.get_bandstructure_by_material_id(mpid)
+                bs = mp.get_bandstructure_by_material_id(self.mpid)
 
             self.parameters['task_level_metadata'].update( {'MP_gga_BScalc_data':
                                                            bs.get_band_gap().copy()} ) #contains gap kpt transition
@@ -333,7 +338,7 @@ class SingleDefectParser(object):
             vbm = bulk_dict['output']['vbm']
             gap = bulk_dict['output']['bandgap']
 
-        self.parameters.update( {'mpid': mpid, "cbm": cbm, "vbm": vbm, "gap": gap} )
+        self.parameters.update( {'mpid': self.mpid, "cbm": cbm, "vbm": vbm, "gap": gap} )
 
         return
 
