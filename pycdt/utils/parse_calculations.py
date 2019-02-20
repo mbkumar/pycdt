@@ -492,14 +492,14 @@ class PostProcess(object):
                                '@module': 'pymatgen.analysis.defects.core'
                                }
                 defect_site = site
-                if defect_type == 'vacancy':
+                if 'vac_' in defect_type:
                     defect_dict['@class'] = 'Vacancy'
-                elif defect_type in ['antisite', 'substitution']:
+                elif 'as_' in defect_type or 'sub_' in defect_type:
                     defect_dict['@class'] = 'Substitution'
                     substitution_specie = trans_dict['substitution_specie']
                     defect_site = PeriodicSite( substitution_specie, defect_site.frac_coords,
                                                 defect_site.lattice, coords_are_cartesian=False)
-                elif defect_type == 'interstitial':
+                elif 'int_' in defect_type:
                     defect_dict['@class'] = 'Interstitial'
                 else:
                     raise ValueError("defect type {} not recognized...".format(defect_type))
