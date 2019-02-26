@@ -26,16 +26,24 @@ def get_mp_chempots_from_dpd(dpd):
     Grab Materials Project chemical potentials from a DefectPhaseDiagram object
     """
     print("Retrieiving chemical potentials from MP database using dpd object...")
-    bulk_struct = dpd.entries[0].defect.bulk_structure.copy()
-    if 'bulk_energy' not in dpd.entries[0].parameters.keys():
+    bulk_energy = 0.
+    if ('bulk_energy' in dpd.entries[0].parameters.keys()) and \
+        ('bulk_sc_structure' in dpd.entries[0].parameters.keys()):
+        try:
+            bulk_struct = dpd.entries[0].parameters['bulk_sc_structure'].copy()
+            if type(bulk_struct) != Structure:
+                bulk_struct = Structure.from_dict(bulk_struct)
+            bulk_energy = dpd.entries[0].parameters['bulk_energy']
+        except:
+            print("Failure in grabbing bulk energy and structure for chemical potential parsing.")
+    if not bulk_energy:
         print("Grabbing chemical potentials without analyzing stability of bulk structure. "
               "Ignore any flags raised about stability of structure")
         bulk_energy = 0.
-    else:
-        bulk_energy = dpd.entries[0].parameters['bulk_energy']
+        bulk_struct = dpd.entries[0].defect.bulk_structure.copy()
 
     bulk_ce = ComputedStructureEntry( bulk_struct, bulk_energy)
-    bulk_elt_set = list(dpd.entries[0].bulk_structure.symbol_set)
+    bulk_elt_set = list(bulk_struct.symbol_set)
 
     sub_species = []
     for entry in dpd.entries:
