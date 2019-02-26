@@ -541,29 +541,29 @@ class PostProcess(object):
                 be fetched from the Materials Project database
         """
         logger = logging.getLogger(__name__)
-        if self._mpid is None:
-                logger.warning(
-                    'No mp-id provided, will fetch CBM/VBM details from the '
-                    'bulk calculation.\nNote that it would be better to '
-                    'perform real band structure calculation...')
-                vr = Vasprun(os.path.join(self._root_fldr, 'bulk',
-                                          'vasprun.xml'), parse_potcar_file=False)
-                bandgap = vr.eigenvalue_band_properties[0]
-                vbm = vr.eigenvalue_band_properties[2]
-        else:
+        vbm, bandgap = None, None
+
+        if self._mpid is not None:
             with MPRester(api_key=self._mapi_key) as mp:
                 bs = mp.get_bandstructure_by_material_id(self._mpid)
-            if not bs:
-                logger.error("Could not fetch band structure!")
-                raise ValueError("Could not fetch band structure!")
+            if bs:
+                vbm = bs.get_vbm()['energy']
+                bandgap = bs.get_band_gap()['energy']
 
-            vbm = bs.get_vbm()['energy']
-            if not vbm:
-                try:
-                    vbm = bs.efermi
-                except:
-                    vbm = 0.
-            bandgap = bs.get_band_gap()['energy']
+        if vbm is None or bandgap is None:
+            if self._mpid:
+                logger.warning('Mpid {} was provided, but no bandstructure entry currently exists for it. '
+                               'Reverting to use of bulk calculation.'.format( self._mpid))
+            else:
+                logger.warning(
+                    'No mp-id provided, will fetch CBM/VBM details from the '
+                    'bulk calculation.')
+            logger.warning('Note that it would be better to '
+                           'perform real band structure calculation...')
+            vr = Vasprun(os.path.join(self._root_fldr, 'bulk',
+                                      'vasprun.xml'), parse_potcar_file=False)
+            bandgap = vr.eigenvalue_band_properties[0]
+            vbm = vr.eigenvalue_band_properties[2]
 
         return (vbm, bandgap)
 
