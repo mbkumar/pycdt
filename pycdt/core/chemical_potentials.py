@@ -222,7 +222,7 @@ class MPChemPotAnalyzer(ChemPotAnalyzer):
 
         pd = PhaseDiagram(entry_list)
         chem_lims = self.get_chempots_from_pd(pd)
-        logger.debug("Bullk Chemical potential facets: {}".format(chem_lims.keys()))
+        logger.debug("Bulk Chemical potential facets: {}".format(chem_lims.keys()))
 
         if not full_sub_approach:
             # NOTE if full_sub_approach was True, then all the sub_entries
@@ -254,7 +254,7 @@ class MPChemPotAnalyzer(ChemPotAnalyzer):
                         face_list, sub_el=sub_el)
                     # if one less than number of bulk species then can be
                     # grouped with rest of structures
-                    if len(blk)+1 == len(self.bulk_species_symbol):
+                    if len(blk) == len(self.bulk_species_symbol):
                         if blknom not in finchem_lims.keys():
                             finchem_lims[blknom] = chem_lims[key]
                         else:
