@@ -322,25 +322,37 @@ class SingleDefectParser(object):
         else:
             print("Manually fed mpid = {}".format( self.mpid))
 
-        if self.mpid:
-            #TODO: NEED to be smarter about use of +U or HSE etc in MP gga band structure calculations...
-            with MPRester() as mp:
-                bs = mp.get_bandstructure_by_material_id(self.mpid)
+        vbm, cbm, bandgap = None, None, None
+        if 'task_level_metadata' not in self.parameters.keys():
+            self.parameters['task_level_metadata'] = {}
 
-            if 'task_level_metadata' not in self.parameters.keys():
-                self.parameters['task_level_metadata'] = {}
-            self.parameters['task_level_metadata'].update( {'MP_gga_BScalc_data':
-                                                           bs.get_band_gap().copy()} ) #contains gap kpt transition
-            cbm = bs.get_cbm()['energy']
-            vbm = bs.get_vbm()['energy']
-            gap = bs.get_band_gap()['energy']
-        else:
+        if self.mpid is not None:
+            #TODO: NEED to be smarter about use of +U or HSE etc in MP gga band structure calculations...
+            with MPRester(api_key=self._mapi_key) as mp:
+                bs = mp.get_bandstructure_by_material_id(self._mpid)
+            if bs:
+                cbm = bs.get_cbm()['energy']
+                vbm = bs.get_vbm()['energy']
+                bandgap = bs.get_band_gap()['energy']
+                self.parameters['task_level_metadata'].update({'MP_gga_BScalc_data':
+                                                                   bs.get_band_gap().copy()})  # contains gap kpt transition
+
+        if vbm is None or bandgap is None or cbm is None:
+            if self.mpid:
+                print('WARNING: Mpid {} was provided, but no bandstructure entry currently exists for it. '
+                               'Reverting to use of bulk calculation.'.format( self._mpid))
+            else:
+                print( 'WARNING: No mp-id provided, will fetch CBM/VBM details from the '
+                       'bulk calculation.')
+            print('Note that it would be better to '
+                  'perform real band structure calculation...')
+
             self.parameters['task_level_metadata'].update( {'MP_gga_BScalc_data': None}) #to signal no MP BS is used
             cbm = bulk_dict['output']['cbm']
             vbm = bulk_dict['output']['vbm']
-            gap = bulk_dict['output']['bandgap']
+            bandgap = bulk_dict['output']['bandgap']
 
-        self.parameters.update( {'mpid': self.mpid, "cbm": cbm, "vbm": vbm, "gap": gap} )
+        self.parameters.update( {'mpid': self.mpid, "cbm": cbm, "vbm": vbm, "gap": bandgap} )
 
         return
 
