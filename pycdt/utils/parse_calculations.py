@@ -327,6 +327,8 @@ class SingleDefectParser(object):
             with MPRester() as mp:
                 bs = mp.get_bandstructure_by_material_id(self.mpid)
 
+            if 'task_level_metadata' not in self.parameters.keys():
+                self.parameters['task_level_metadata'] = {}
             self.parameters['task_level_metadata'].update( {'MP_gga_BScalc_data':
                                                            bs.get_band_gap().copy()} ) #contains gap kpt transition
             cbm = bs.get_cbm()['energy']
