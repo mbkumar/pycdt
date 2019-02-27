@@ -322,8 +322,8 @@ class SingleDefectParser(object):
         else:
             print("Manually fed mpid = {}".format( self.mpid))
 
-        if self.mpid and not self.parameters['task_level_metadata']['incar_calctype_summary']['LHFCALC']:
-            #TODO: NEED to be smarter about use of +U etc in MP gga band structure calculations...
+        if self.mpid:
+            #TODO: NEED to be smarter about use of +U or HSE etc in MP gga band structure calculations...
             with MPRester() as mp:
                 bs = mp.get_bandstructure_by_material_id(self.mpid)
 
