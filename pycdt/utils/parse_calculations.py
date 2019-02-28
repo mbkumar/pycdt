@@ -329,7 +329,7 @@ class SingleDefectParser(object):
         if self.mpid is not None:
             #TODO: NEED to be smarter about use of +U or HSE etc in MP gga band structure calculations...
             with MPRester() as mp:
-                bs = mp.get_bandstructure_by_material_id(self._mpid)
+                bs = mp.get_bandstructure_by_material_id(self.mpid)
             if bs:
                 cbm = bs.get_cbm()['energy']
                 vbm = bs.get_vbm()['energy']
@@ -340,7 +340,7 @@ class SingleDefectParser(object):
         if vbm is None or bandgap is None or cbm is None:
             if self.mpid:
                 print('WARNING: Mpid {} was provided, but no bandstructure entry currently exists for it. '
-                               'Reverting to use of bulk calculation.'.format( self._mpid))
+                               'Reverting to use of bulk calculation.'.format( self.mpid))
             else:
                 print( 'WARNING: No mp-id provided, will fetch CBM/VBM details from the '
                        'bulk calculation.')
