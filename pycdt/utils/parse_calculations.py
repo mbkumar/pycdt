@@ -328,7 +328,7 @@ class SingleDefectParser(object):
 
         if self.mpid is not None:
             #TODO: NEED to be smarter about use of +U or HSE etc in MP gga band structure calculations...
-            with MPRester(api_key=self._mapi_key) as mp:
+            with MPRester() as mp:
                 bs = mp.get_bandstructure_by_material_id(self._mpid)
             if bs:
                 cbm = bs.get_cbm()['energy']
