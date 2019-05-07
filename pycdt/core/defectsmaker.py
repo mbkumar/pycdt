@@ -21,9 +21,10 @@ import math
 
 from monty.string import str2unicode
 from monty.serialization import dumpfn
-from pymatgen.core.structure import PeriodicSite
+from pymatgen.core.structure import PeriodicSite, Structure
 from pymatgen.core.periodic_table import Element, Specie, get_el_sp
 from pymatgen.symmetry.analyzer import SpacegroupAnalyzer
+from pymatgen.analysis.defects.core import Interstitial
 from pymatgen.analysis.defects.generators import VacancyGenerator, \
     SubstitutionGenerator, InterstitialGenerator
 from pymatgen.analysis.local_env import ValenceIonicRadiusEvaluator as VIRE
@@ -541,7 +542,8 @@ class ChargedDefectsStructures(object):
                 interstitials.  Note that you still have to set flag
                 include_interstitials to True in order to make use of this
                 manual way of providing interstitial sites.
-                If this is used, then no additional interstitials are generated.
+                If this is used, then no additional interstitials are generated
+                beyond the list that is provided in intersites.
             standardized (bool):
                 If True, use the primitive standard structure as unit cell
                 for generating the defect configurations (default is False).
@@ -607,8 +609,6 @@ class ChargedDefectsStructures(object):
             smat = sc.lattice.matrix
             for intersite in intersites:
                 imat = intersite.lattice.matrix
-                print(str(imat))
-                print(str(smat))
                 for i1 in range(3):
                     for i2 in range(3):
                         if math.fabs(imat[i1][i2]-smat[i1][i2]) > 0.001:
@@ -627,10 +627,15 @@ class ChargedDefectsStructures(object):
             vac_site = vac.site
             vac_symbol = vac.site.specie.symbol
             vac_sc = vac.generate_defect_structure( sc_scale)
-            vac_sc_site = PeriodicSite(vac.site.specie.symbol, vac.site.coords,
-                                vac_sc.lattice,
-                                to_unit_cell=True, coords_are_cartesian=True)
-            site_mult = vac.multiplicity
+
+            #create a trivial defect structure to find where supercell transformation moves the lattice
+            struct_for_defect_site = Structure( vac.bulk_structure.copy().lattice,
+                                                 [vac.site.specie],
+                                                 [vac.site.frac_coords],
+                                                 to_unit_cell=True, coords_are_cartesian=False)
+            struct_for_defect_site.make_supercell(sc_scale)
+            vac_sc_site = struct_for_defect_site[0]
+
             charges_vac = self.defect_charger.get_charges('vacancy',
                                                           vac_symbol)
             vacancies.append({
@@ -639,7 +644,7 @@ class ChargedDefectsStructures(object):
                 'bulk_supercell_site': vac_sc_site,
                 'defect_type': 'vacancy',
                 'site_specie': vac_symbol,
-                'site_multiplicity': site_mult,
+                'site_multiplicity': vac.multiplicity,
                 'supercell': {'size': sc_scale,'structure': vac_sc},
                 'charges': charges_vac})
 
@@ -649,23 +654,25 @@ class ChargedDefectsStructures(object):
                 for i, sub in enumerate(SG):
                     as_symbol = as_specie.symbol
                     as_sc = sub.generate_defect_structure( sc_scale)
-                    site_mult = sub.multiplicity
+
+                    # create a trivial defect structure to find where supercell transformation moves the defect
+                    struct_for_defect_site = Structure( sub.bulk_structure.copy().lattice,
+                                                        [sub.site.specie],
+                                                        [sub.site.frac_coords],
+                                                        to_unit_cell=True, coords_are_cartesian=False)
+                    struct_for_defect_site.make_supercell(sc_scale)
+                    as_sc_site = struct_for_defect_site[0]
 
                     #get bulk_site (non sc)
-                    poss_deflist = sorted(self.struct.get_sites_in_sphere(sub.site.coords, 2, include_index=True), key=lambda x: x[1])
+                    poss_deflist = sorted(sub.bulk_structure.get_sites_in_sphere(sub.site.coords, 0.01, include_index=True), key=lambda x: x[1])
+                    if not len(poss_deflist):
+                        raise ValueError("Could not find substitution site inside bulk structure for {}?".format( sub.name))
                     defindex = poss_deflist[0][2]
-                    as_site = self.struct[defindex]
-
-                    #get bulk_sc_site and find vac_symbol to correctly label defect
-                    sc_bulk_structure = self.struct.copy()
-                    sc_bulk_structure.make_supercell(sc_scale)
-                    poss_deflist = sorted(sc_bulk_structure.get_sites_in_sphere(sub.site.coords, 2, include_index=True), key=lambda x: x[1])
-                    defindex = poss_deflist[0][2]
-                    vac_symbol = sc_bulk_structure[defindex].specie.symbol
-                    as_sc_site = sc_bulk_structure[defindex]
+                    as_site = sub.bulk_structure[defindex]
+                    vac_symbol = as_site.specie
 
                     charges_as = self.defect_charger.get_charges(
-                            'antisite', vac_symbol, as_specie.symbol)
+                            'antisite', vac_symbol, as_symbol)
 
                     as_defs.append({
                         'name': "as_{}_{}_on_{}".format(
@@ -674,8 +681,8 @@ class ChargedDefectsStructures(object):
                         'bulk_supercell_site': as_sc_site,
                         'defect_type': 'antisite',
                         'site_specie': vac_symbol,
-                        'substitution_specie': as_symbol,
-                        'site_multiplicity': site_mult,
+                        'substituting_specie': as_symbol,
+                        'site_multiplicity': sub.multiplicity,
                         'supercell': {'size': sc_scale,'structure': as_sc},
                         'charges': charges_as})
 
@@ -686,7 +693,9 @@ class ChargedDefectsStructures(object):
                     sub_symbol = sub.site.specie.symbol
 
                     #get bulk_site (non sc)
-                    poss_deflist = sorted(self.struct.get_sites_in_sphere(sub.site.coords, 2, include_index=True), key=lambda x: x[1])
+                    poss_deflist = sorted(sub.bulk_structure.get_sites_in_sphere(sub.site.coords, 0.1, include_index=True), key=lambda x: x[1])
+                    if not len(poss_deflist):
+                        raise ValueError("Could not find substitution site inside bulk structure for {}?".format( sub.name))
                     defindex = poss_deflist[0][2]
                     sub_site = self.struct[defindex]
                     this_vac_symbol = sub_site.specie.symbol
@@ -695,14 +704,14 @@ class ChargedDefectsStructures(object):
                         continue
                     else:
                         sub_sc = sub.generate_defect_structure( sc_scale)
-                        site_mult = sub.multiplicity
 
-                        #get bulk_sc_site to correctly label defect
-                        sc_bulk_structure = self.struct.copy()
-                        sc_bulk_structure.make_supercell(sc_scale)
-                        poss_deflist = sorted(sc_bulk_structure.get_sites_in_sphere(sub.site.coords, 2, include_index=True), key=lambda x: x[1])
-                        defindex = poss_deflist[0][2]
-                        sub_sc_site = sc_bulk_structure[defindex]
+                        # create a trivial defect structure to find where supercell transformation moves the defect
+                        struct_for_defect_site = Structure( sub.bulk_structure.copy().lattice,
+                                                            [sub.site.specie],
+                                                            [sub.site.frac_coords],
+                                                            to_unit_cell=True, coords_are_cartesian=False)
+                        struct_for_defect_site.make_supercell(sc_scale)
+                        sub_sc_site = struct_for_defect_site[0]
 
                         charges_sub = self.defect_charger.get_charges(
                                 'substitution', vac_symbol, subspecie_symbol)
@@ -714,7 +723,7 @@ class ChargedDefectsStructures(object):
                             'defect_type':'substitution',
                             'site_specie':vac_symbol,
                             'substitution_specie':subspecie_symbol,
-                            'site_multiplicity':site_mult,
+                            'site_multiplicity': sub.multiplicity,
                             'supercell':{'size':sc_scale,'structure':sub_sc},
                             'charges':charges_sub})
 
@@ -738,23 +747,35 @@ class ChargedDefectsStructures(object):
                 for i, intersite in enumerate(intersites):
                     for elt in inter_elems:
                         name = "inter_{}_{}".format(i+1, elt)
-                        site = PeriodicSite(Element(elt), intersite.frac_coords,
-                                            intersite.lattice)
-                        site_sc = PeriodicSite(
-                                Element(elt), site.coords, sc.lattice,
-                                coords_are_cartesian=True)
-                        sc_with_inter = sc.copy()
-                        sc_with_inter.append(elt, site_sc.frac_coords)
 
+                        if intersite.lattice != self.struct.lattice:
+                            err_msg = "Lattice matching error occurs between provided interstitial and the bulk structure."
+                            if standardized:
+                                err_msg += "\nLikely because the standardized flag was used. Turn this flag off or reset " \
+                                           "your interstitial PeriodicSite to match the standardized form of the bulk structure."
+                            raise ValueError(err_msg)
+                        else:
+                            intersite_object = Interstitial( self.struct, intersite)
+
+                        # create a trivial defect structure to find where supercell transformation moves the defect site
+                        struct_for_defect_site = Structure(intersite_object.bulk_structure.copy().lattice,
+                                                           [intersite_object.site.specie],
+                                                           [intersite_object.site.frac_coords],
+                                                           to_unit_cell=True, coords_are_cartesian=False)
+                        struct_for_defect_site.make_supercell(sc_scale)
+                        site_sc = struct_for_defect_site[0]
+
+                        sc_with_inter = intersite_object.generate_defect_structure( sc_scale)
                         charges_inter = self.defect_charger.get_charges(
                                 'interstitial', elt)
 
                         interstitials.append({
                                 'name': name,
-                                'unique_site': site,
+                                'unique_site': intersite_object.site,
                                 'bulk_supercell_site': site_sc,
                                 'defect_type': 'interstitial',
-                                'site_specie': Element(elt),
+                                'site_specie': intersite_object.site.specie.symbol,
+                                'site_multiplicity': intersite_object.multiplicity,
                                 'supercell': {'size': sc_scale,
                                               'structure': sc_with_inter},
                                 'charges': charges_inter})
@@ -764,27 +785,28 @@ class ChargedDefectsStructures(object):
                 for elt in inter_elems:
                     #TODO: Add ability to use other interstitial finding methods in pymatgen
                     IG = InterstitialGenerator(self.struct, elt)
-                    for i, intersite in enumerate(IG):
-                        name = intersite.name
-                        sc_with_inter = intersite.generate_defect_structure( sc_scale)
-                        site_mult = intersite.multiplicity
+                    for i, intersite_object in enumerate(IG):
+                        name = intersite_object.name
 
-                        #find supercell defect site
-                        poss_deflist = sorted(sc_with_inter.get_sites_in_sphere(sub.site.coords, 2, include_index=True),
-                                              key=lambda x: x[1])
-                        defindex = poss_deflist[0][2]
-                        site_sc = sc_with_inter[defindex]
+                        # create a trivial defect structure to find where supercell transformation moves the defect site
+                        struct_for_defect_site = Structure(intersite_object.bulk_structure.copy().lattice,
+                                                           [intersite_object.site.specie],
+                                                           [intersite_object.site.frac_coords],
+                                                           to_unit_cell=True, coords_are_cartesian=False)
+                        struct_for_defect_site.make_supercell(sc_scale)
+                        site_sc = struct_for_defect_site[0]
 
+                        sc_with_inter = intersite_object.generate_defect_structure( sc_scale)
                         charges_inter = self.defect_charger.get_charges(
                                 'interstitial', elt)
 
                         interstitials.append({
                                 'name': name,
-                                'unique_site': intersite.site,
+                                'unique_site': intersite_object.site,
                                 'bulk_supercell_site': site_sc,
                                 'defect_type': 'interstitial',
-                                'site_specie': Element(elt),
-                                'site_multiplicity': site_mult,
+                                'site_specie': intersite_object.site.specie.symbol,
+                                'site_multiplicity': intersite_object.multiplicity,
                                 'supercell': {'size': sc_scale,
                                               'structure': sc_with_inter},
                                 'charges': charges_inter})
@@ -805,54 +827,7 @@ class ChargedDefectsStructures(object):
                     tottmp += len(lis['charges'])
         print("Total (non dielectric) jobs created = {}\n".format(tottmp))
 
-    def make_interstitial(self, target_site, sc_scale):
-        """
-        Function to generate a supercell that contains an
-        interstitial site.
-        Args:
-            target_site (PeriodicSite): interstitial site
-                to be inserted into a supercell of a
-                copy of self.struct.
-            sc_scale (3x3 matrix): supercell scaling matrix
-                to be applied on the copy of self.struct.
-        Returns:
-            sc (Structure): supercell containing an
-                interstitial site.
-        """
-        sc = self.struct.copy()
-        sc.make_supercell(sc_scale)
-        sc.append(target_site.specie, target_site.frac_coords)
-
-        return sc
-
     def to(self, outfile):
         dumpfn(self.defects, outfile)
-
-    def get_n_defects_of_type(self, defect_type):
-        """
-        Get the number of defects of the given type.
-        Args:
-            defect_type (str): defect type (vacancies,
-                interstitials, substitutions).
-        Returns:
-            n_defects (int): number of defects of given type.
-        """
-        try:
-            return len(self.defects[defect_type])
-        except:
-            return 0
-
-    def get_ith_supercell_of_defect_type(self, i, defect_type):
-        """
-        Get the (i-1)-th defect supercell with the given defect type.
-        Args:
-            i (int): index (starting from 0) of target supercell.
-            defect_type (str): defect type (vacancies,
-                interstitials, substitutions).
-        Returns:
-            sc (Structure): copy of the defect supercell.
-        """
-        return self.defects[defect_type][i]['supercell'][
-            'structure'].copy()
 
 

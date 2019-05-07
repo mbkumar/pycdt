@@ -107,16 +107,17 @@ def get_correction_freysoldt( defect_entry, epsilon, title = None,
         for ax_key, ax_title in ax_list:
             fp = FreysoldtPlotter.from_dict( corr_class.metadata["pot_plot_data"][ax_key])
             p = fp.plot( title=ax_title)
-            p.savefig(title + '_' + ax_title + '_freysoldtplot.pdf')
+            p.savefig(title + '_' + ax_title + '_freysoldtplot.pdf',
+                      bbox_inches='tight')
 
     if partflag in ['AllSplit', 'All']:
-        freyval = np.sum(f_corr_summ.values())
+        freyval = np.sum( list(f_corr_summ.values()))
     elif partflag == 'pc':
         freyval = f_corr_summ['freysoldt_electrostatic']
     elif partflag == 'potalign':
         freyval = f_corr_summ['freysoldt_potential_alignment']
 
-    print('\n Final Freysoldt {} value is {}'.format( partflag, freyval))
+    print('\n Final Freysoldt correction is {}'.format( freyval))
 
     if partflag == 'AllSplit':
         freyval = [f_corr_summ['freysoldt_electrostatic'],
@@ -172,16 +173,17 @@ def get_correction_kumagai( defect_entry, epsilon, title = None,
              }
         kp = KumagaiPlotter.from_dict(d)
         p = kp.plot(title=title)
-        p.savefig(title + '_kumagaiplot.pdf')
+        p.savefig(title + '_kumagaiplot.pdf',
+                  bbox_inches='tight')
 
     if partflag in ['AllSplit', 'All']:
-        kumagai_val = np.sum(k_corr_summ.values())
+        kumagai_val = np.sum( list(k_corr_summ.values()))
     elif partflag == 'pc':
         kumagai_val = k_corr_summ['kumagai_electrostatic']
     elif partflag == 'potalign':
         kumagai_val = k_corr_summ['kumagai_potential_alignment']
 
-    print('\n Final Kumagai {} value is {}'.format(partflag, kumagai_val))
+    print('\n Final Kumagai correction is {}'.format( kumagai_val))
 
     if partflag == 'AllSplit':
         kumagai_val = [k_corr_summ['kumagai_electrostatic'],
