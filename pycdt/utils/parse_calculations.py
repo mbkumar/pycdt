@@ -20,39 +20,103 @@ import numpy as np
 from monty.serialization import loadfn, dumpfn
 from monty.json import MontyEncoder, MontyDecoder
 
-from pymatgen.core import PeriodicSite
+from pymatgen.core import PeriodicSite, Structure
 from pymatgen.ext.matproj import MPRester
 from pymatgen.io.vasp.outputs import Vasprun
 from pymatgen.io.vasp.inputs import Potcar
-# from pymatgen.entries.computed_entries import ComputedStructureEntry
+from pymatgen.entries.computed_entries import ComputedStructureEntry
 from pymatgen.analysis.defects.core import Vacancy, Substitution, Interstitial, DefectEntry
+from pymatgen.analysis.defects.defect_compatibility import DefectCompatibility
+from pymatgen.analysis.structure_matcher import StructureMatcher
 
-# from pycdt.core.defects_analyzer import ComputedDefect
 from pycdt.core.chemical_potentials import MPChemPotAnalyzer
 
 
-# below here is for single defect parser
-from atomate.vasp.drones import VaspDrone
+try:
+    from atomate.vasp.drones import VaspDrone
+    atomate_exists = True
+except:
+    atomate_exists = False
 
-from pymatgen import Structure
-from pymatgen.analysis.structure_matcher import StructureMatcher
-from pymatgen.analysis.defects.defect_compatibility import DefectCompatibility
+
+
+def convert_cd_to_de( cd, b_cse):
+    """
+    As of pymatgen v2.0, ComputedDefect objects were deprecated in favor
+    of DefectEntry objects in pymatgen.analysis.defects.core
+    This function takes a ComputedDefect (either as a dict or object) and
+    converts it into a DefectEntry object in order to handle legacy
+    PyCDT creation within the current paradigm of PyCDT.
+
+    :param cd (dict or ComputedDefect object): ComputedDefect as an object or as a dictionary
+    :params b_cse (dict or ComputedStructureEntry object): ComputedStructureEntry of bulk entry
+        associated with the ComputedDefect.
+    :return: de (DefectEntry): Resulting DefectEntry object
+    """
+    if type(cd) != dict:
+        cd = cd.as_dict()
+    if type(b_cse) != dict:
+        b_cse = b_cse.as_dict()
+
+    bulk_sc_structure = Structure.from_dict( b_cse['structure'])
+
+    #modify defect_site as required for Defect object, confirming site exists in bulk structure
+    site_cls = cd['site']
+    defect_site = PeriodicSite.from_dict( site_cls)
+    def_nom = cd['name'].lower()
+    if 'sub_' in def_nom or 'as_' in def_nom:
+        #modify site object for substitution site of Defect object
+        site_cls['species'][0]['element'] = cd['name'].split('_')[-1]
+        defect_site = PeriodicSite.from_dict( site_cls)
+
+    poss_deflist = sorted(
+        bulk_sc_structure.get_sites_in_sphere(defect_site.coords, 0.1, include_index=True), key=lambda x: x[1])
+    if len(poss_deflist) != 1:
+        raise ValueError("ComputedDefect to DefectEntry conversion failed. "
+                         "Could not determine periodic site position in bulk supercell.")
+
+    # create defect object
+    if 'vac_' in def_nom:
+        defect_obj = Vacancy(bulk_sc_structure, defect_site, charge=cd['charge'])
+    elif 'as_' in def_nom or 'sub_' in def_nom:
+        defect_obj = Substitution(bulk_sc_structure, defect_site, charge=cd['charge'])
+    elif 'int_' in def_nom:
+        defect_obj = Interstitial(bulk_sc_structure, defect_site, charge=cd['charge'])
+    else:
+        raise ValueError("Could not recognize defect type for {}".format( cd['name']))
+
+
+    # assign proper energy and parameter metadata
+    uncorrected_energy = cd['entry']['energy'] - b_cse['energy']
+    def_path = os.path.split( cd['entry']['data']['locpot_path'])[0]
+    bulk_path = os.path.split( cd['data']['locpot_path'])[0]
+    p = {'defect_path': def_path,
+         'bulk_path': bulk_path,
+         'encut': cd['entry']['data']['encut']}
+
+    de = DefectEntry( defect_obj, uncorrected_energy, parameters = p)
+
+    return de
 
 
 class SingleDefectParser(object):
 
     def __init__(self, path_to_defect, path_to_bulk, dielectric,
-                 defect_charge = None, mpid = None,
-                 compatibility=DefectCompatibility()):
+                 defect_charge, mpid = None, compatibility=DefectCompatibility()):
         """
-        Parse a defect object using many of the features of a standard Defect Builder.
+        Parse a defect object using many of the features of a standard DefectBuilder object (emmet).
+        Also allows use of DefectCompatibility object within pymatgen
+
+        NOTE: requires atomate python package to work
 
         :param path_to_defect (str): path to defect file of interest
         :param path_to_bulk (str): path to bulk file of interest
         :param dielectric (float or 3x3 matrix): ionic + static contributions to dielectric constant
-        :param defect_charge (int): Can specify defect charge. If not specified, with attempt to find
-            charge based on standard Potcar settings, but this can sometimes lead to failure.
         """
+        if not atomate_exists:
+            raise ValueError("Cannot use SingleDefectParser because atomate is not available. "
+                             "Please pip install atomate and try SingleDefectParser again.")
+
         self.path_to_defect = path_to_defect
         self.path_to_bulk = path_to_bulk
         self.dielectric = dielectric
@@ -184,10 +248,6 @@ class SingleDefectParser(object):
             raise ValueError("Could not identify defec type just from number of sites in structure: "
                              "{} in bulk vs. {} in defect?".format( num_ids, num_bulk ))
 
-        if self.defect_charge is None:
-            #TODO: run guessing routine for NELECT using POTCAR information in parameters metadata
-            raise ValueError("Have not implemented defect charge routine yet")
-
         bulksites = [site.frac_coords for site in bulk_sc_structure]
         initsites = [site.frac_coords for site in initial_defect_structure]
         distmatrix = initial_defect_structure.lattice.get_all_distances(bulksites,
@@ -280,9 +340,10 @@ class SingleDefectParser(object):
         self.parameters.update({'eigenvalues': eigenvalues,
                                 'kpoint_weights': kpoint_weights})
 
-        # grab ks_delocalization information
-        self.parameters.update({'defect_ks_delocal_data':
-                                    defect_dict['calcs_reversed'][0]['output']['defect'].copy()})
+        # grab ks_delocalization information if available
+        if 'defect' in defect_dict['calcs_reversed'][0]['output'].keys():
+            self.parameters.update({'defect_ks_delocal_data':
+                                        defect_dict['calcs_reversed'][0]['output']['defect'].copy()})
 
         return
 
@@ -366,7 +427,7 @@ class PostProcess(object):
             root_fldr (str): path (relative) to directory
                 in which data of charged point-defect calculations for
                 a particular system are to be found;
-            mpid (str): Materials Project ID of bulk structure; 
+            mpid (str): Materials Project ID of bulk structure;
                 format "mp-X", where X is an integer;
             mapi_key (str): Materials API key to access database.
 
@@ -378,7 +439,8 @@ class PostProcess(object):
 
     def parse_defect_calculations(self):
         """
-        Parses the defect calculations as ComputedDefects.
+        Parses the defect calculations as DefectEntry objects,
+        from a PyCDT root_fldr file structure.
         Charge correction is missing in the first run.
         """
         logger = logging.getLogger(__name__)
@@ -441,7 +503,7 @@ class PostProcess(object):
             logger.error("Abandoning parsing of the calculations")
             return {}
         bulk_energy = vr.final_energy
-        # bulk_struct = vr.final_structure
+        bulk_sc_struct = vr.final_structure
         try:
             encut = vr.incar['ENCUT']
         except:  # ENCUT not specified in INCAR. Read from POTCAR
@@ -456,11 +518,11 @@ class PostProcess(object):
         supercell_size = trans_dict['supercell']
 
         bulk_file_path = fldr
-        # bulk_entry = ComputedStructureEntry(
-        #     bulk_struct, bulk_energy,
-        #     data={'bulk_path': fldr,
-        #           'encut': encut,
-        #           'supercell_size': supercell_size})
+        bulk_entry = ComputedStructureEntry(
+            bulk_sc_struct, bulk_energy,
+            data={'bulk_path': bulk_file_path,
+                  'encut': encut,
+                  'supercell_size': supercell_size})
 
         # get defect entry information
         for fldr in subfolders:
@@ -471,24 +533,24 @@ class PostProcess(object):
                         os.path.join(chrg_fldr, 'transformation.json'),
                         cls=MontyDecoder)
                 chrg = trans_dict['charge']
-                supercell_size = trans_dict['supercell']
                 vr, error_msg = get_vr_and_check_locpot(chrg_fldr)
                 if error_msg:
                     logger.warning("Parsing the rest of the calculations")
                     continue
-                if 'substitution_specie' in trans_dict:
+                if 'substitution_specie' in trans_dict and \
+                        trans_dict['substitution_specie'] not in bulk_sc_struct.symbol_set:
                     self._substitution_species.add(
                             trans_dict['substitution_specie'])
-                elif 'inter' in trans_dict['defect_type']:
-                    #added because extrinsic interstitials don't have
+                elif 'inter' in trans_dict['defect_type'] and \
+                        trans_dict['defect_site'].specie.symbol not in bulk_sc_struct.symbol_set:
+                    # added because extrinsic interstitials don't have
                     # 'substitution_specie' character...
+                    trans_dict['substitution_specie'] = trans_dict['defect_site'].specie.symbol
                     self._substitution_species.add(
                             trans_dict['defect_site'].specie.symbol)
 
-                site = trans_dict['defect_supercell_site']
                 defect_type = trans_dict.get('defect_type', None)
                 energy = vr.final_energy
-                struct = vr.final_structure
                 try:
                     encut = vr.incar['ENCUT']
                 except: # ENCUT not specified in INCAR. Read from POTCAR
@@ -507,10 +569,11 @@ class PostProcess(object):
                     comp_data['substitution_specie'] = \
                             trans_dict['substitution_specie']
 
-                defect_dict = {'structure': struct, 'charge': chrg,
+                # create Defect Object as dict, then load to DefectEntry object
+                defect_dict = {'structure': bulk_sc_struct, 'charge': chrg,
                                '@module': 'pymatgen.analysis.defects.core'
                                }
-                defect_site = site
+                defect_site = trans_dict['defect_supercell_site']
                 if 'vac_' in defect_type:
                     defect_dict['@class'] = 'Vacancy'
                 elif 'as_' in defect_type or 'sub_' in defect_type:
@@ -528,18 +591,9 @@ class PostProcess(object):
                 parsed_defects.append( DefectEntry( defect, energy - bulk_energy,
                                                     parameters=comp_data))
 
-                #TODO: confirm not breaking anything by moving to DefectEntry approach above
-                # comp_def_entry = ComputedStructureEntry(
-                #         struct, energy, data=comp_data)
-                # parsed_defects.append(ComputedDefect(
-                #         comp_def_entry, site_in_bulk=site,
-                #         multiplicity=multiplicity,
-                #         supercell_size=supercell_size,
-                #         charge=chrg, name=fldr_name))
-
         try:
             parsed_defects_data = {}
-            # parsed_defects_data['bulk_entry'] = bulk_entry
+            parsed_defects_data['bulk_entry'] = bulk_entry
             parsed_defects_data['defects'] = parsed_defects
             return parsed_defects_data
         except:
@@ -612,7 +666,7 @@ class PostProcess(object):
 
     def parse_dielectric_calculation(self):
         """
-        Parses the "vasprun.xml" file in subdirectory "dielectric" of 
+        Parses the "vasprun.xml" file in subdirectory "dielectric" of
         root directory root_fldr and returns the average of the trace
         of the dielectric tensor.
 

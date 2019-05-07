@@ -405,7 +405,7 @@ class DefectChargerUserCustom(DefectCharger):
             However, we are keeping function here to allow for
             current users to make use of it...
 
-    Determine oxidation states from bond valence method 
+    Determine oxidation states from bond valence method
     (unless oxidation states specified)
     Then ask user what charges they want
     """
@@ -473,10 +473,10 @@ class DefectChargerUserCustom(DefectCharger):
 
         if defect_type == 'vacancy':
             if not sitechg:
-                print (site_specie, defect_type, 
+                print (site_specie, defect_type,
                        'charge suggestion unknown (specify oxidation states to get suggestion)')
             else:
-                print (site_specie, defect_type, 'has charge =', -sitechg, 
+                print (site_specie, defect_type, 'has charge =', -sitechg,
                        'according to Simple Ionic Theory')
         elif defect_type in ['antisite','substitution']:
             nom = sub_specie+'_on_'+site_specie
@@ -501,10 +501,10 @@ class ChargedDefectsStructures(object):
     and vacancies are generated.  Interstitial finding is also implemented
     (optional).
     """
-    def __init__(self, structure,  max_min_oxi=None, substitutions=None, 
+    def __init__(self, structure,  max_min_oxi=None, substitutions=None,
                  oxi_states=None, cellmax=128, antisites_flag=True,
                  include_interstitials=False, interstitial_elements=None,
-                 intersites=None, standardized=False, 
+                 intersites=None, standardized=False,
                  struct_type='semiconductor'):
         """
         Args:
@@ -550,10 +550,10 @@ class ChargedDefectsStructures(object):
                 The primitive standard structure is obtained from the
                 SpacegroupAnalyzer class with a symprec of 0.01.
             struct_type (string):
-                Options are 'semiconductor' and 'insulator'. If semiconductor 
+                Options are 'semiconductor' and 'insulator'. If semiconductor
                 is selected, charge states based on database of semiconductors
-                is used to assign defect charges. For insulators, defect 
-                charges are conservatively assigned. 
+                is used to assign defect charges. For insulators, defect
+                charges are conservatively assigned.
         """
         max_min_oxi = max_min_oxi if max_min_oxi is not None else {}
         substitutions = substitutions if substitutions is not None else {}
@@ -588,7 +588,7 @@ class ChargedDefectsStructures(object):
             self.defect_charger = DefectChargerIonic(self.struct)
         else:
             raise NotImplementedError
-        
+
         if include_interstitials and interstitial_elements:
             for elem_str in interstitial_elements:
                 if not Element.is_valid_symbol(elem_str):
@@ -606,16 +606,12 @@ class ChargedDefectsStructures(object):
         # If interstitials are provided as a list of PeriodicSites,
         # make sure that the lattice has not changed.
         if include_interstitials and intersites:
-            smat = sc.lattice.matrix
-            for intersite in intersites:
-                imat = intersite.lattice.matrix
-                for i1 in range(3):
-                    for i2 in range(3):
-                        if math.fabs(imat[i1][i2]-smat[i1][i2]) > 0.001:
-                            raise RuntimeError("Discrepancy between lattices"
-                                    " underlying the input interstitials and"
-                                    " the bulk structure; possibly because of"
-                                    " standardizing the input structure.")
+            for intersite in intersites: #list of PeriodicSite objects
+                if intersite.lattice != self.struct.lattice:
+                    raise RuntimeError("Discrepancy between lattices"
+                            " underlying the input interstitials and"
+                            " the bulk structure; possibly because of"
+                            " standardizing the input structure.")
 
         vacancies = []
         as_defs = []
@@ -727,7 +723,7 @@ class ChargedDefectsStructures(object):
                             'supercell':{'size':sc_scale,'structure':sub_sc},
                             'charges':charges_sub})
 
-        self.defects['vacancies'] = vacancies 
+        self.defects['vacancies'] = vacancies
         self.defects['substitutions'] = sub_defs
         self.defects['substitutions'] += as_defs
 
@@ -829,5 +825,32 @@ class ChargedDefectsStructures(object):
 
     def to(self, outfile):
         dumpfn(self.defects, outfile)
+
+    def get_n_defects_of_type(self, defect_type):
+        """
+        Get the number of defects of the given type.
+        Args:
+            defect_type (str): defect type (vacancies,
+                interstitials, substitutions).
+        Returns:
+            n_defects (int): number of defects of given type.
+        """
+        try:
+            return len(self.defects[defect_type])
+        except:
+            return 0
+
+    def get_ith_supercell_of_defect_type(self, i, defect_type):
+        """
+        Get the (i-1)-th defect supercell with the given defect type.
+        Args:
+            i (int): index (starting from 0) of target supercell.
+            defect_type (str): defect type (vacancies,
+                interstitials, substitutions).
+        Returns:
+            sc (Structure): copy of the defect supercell.
+        """
+        return self.defects[defect_type][i]['supercell'][
+            'structure'].copy()
 
 

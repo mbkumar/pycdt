@@ -11,7 +11,6 @@ __status__ = "Development"
 __date__ = "June 6, 2016"
 
 import os
-import unittest
 
 from pymatgen.core.structure import Structure
 from pymatgen.core import PeriodicSite
@@ -175,6 +174,7 @@ class ChargedDefectsStructuresTest(PymatgenTest):
 
 
     def test_subs_and_interstits(self):
+        # test manual subtitution specification
         CDS = ChargedDefectsStructures(self.gaas_struct, antisites_flag=False,
                                        substitutions={'Ga':['Si','In'], 'As':['Sb']})
         check_subs = {sub['name']: sub['unique_site'] for sub in CDS.defects['substitutions']}
@@ -200,10 +200,13 @@ class ChargedDefectsStructuresTest(PymatgenTest):
 
         # Test manual interstitial specification.
         isite = PeriodicSite('Mn',
-                CDS.defects['interstitials'][0]['supercell']['structure'][nsites-1].frac_coords,
-                CDS.defects['interstitials'][0]['supercell']['structure'][0].lattice)
+                CDS.defects['interstitials'][0]['supercell']['structure'][nsites-1].coords,
+                             self.gaas_struct.lattice)
         cds2 = ChargedDefectsStructures(self.gaas_struct,
                                         include_interstitials=True,
+                                        standardized=False,
+                                        # standardized = False is required when manually specifying interstitial,
+                                        # because dont want base structure lattice to change
                                         intersites=(isite,))
         self.assertEqual(cds2.get_n_defects_of_type('interstitials'), 2)
         fnames = [i['name'][i['name'].index('_')+3:] for i in cds2.defects['interstitials']]
@@ -213,6 +216,9 @@ class ChargedDefectsStructuresTest(PymatgenTest):
                 0, 'interstitials').sites), nsites)
         cds3 = ChargedDefectsStructures(self.gaas_struct,
                                         include_interstitials=True,
+                                        standardized=False,
+                                        # standardized = False is required when manually specifying interstitial,
+                                        # because dont want base structure lattice to change
                                         interstitial_elements=['Mn'],
                                         intersites=(isite,))
         self.assertEqual(cds3.get_n_defects_of_type('interstitials'), 1)

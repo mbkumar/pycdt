@@ -38,7 +38,7 @@ from pymatgen.analysis.defects.thermodynamics import DefectPhaseDiagram
 from pycdt.core.defectsmaker import ChargedDefectsStructures
 from pycdt.utils.vasp import make_vasp_defect_files, \
                               make_vasp_dielectric_files
-from pycdt.utils.parse_calculations import PostProcess
+from pycdt.utils.parse_calculations import PostProcess, ComputedDefect, convert_cd_to_de
 from pycdt.utils.log_util import initialize_logging
 from pycdt.core.defects_analyzer import DefectEntryLoader
 from pycdt.corrections.finite_size_charge_correction import \
@@ -197,6 +197,10 @@ def compute_corrections(args):
         epsilon = defect_data['epsilon']
 
     defects = defect_data['defects']
+    for def_ind in range(len(defects)):
+        if type(defects[def_ind]) == ComputedDefect:
+            print("Encountered legacy ComputedDefect object. Converting to DefectEntry type for PyCDT v2.0...")
+            defects[def_ind] = convert_cd_to_de(defects[def_ind], defect_data['bulk'])
     corrections = defaultdict(list)
 
     formula = defects[0].bulk_structure.composition.reduced_formula
@@ -255,6 +259,10 @@ def compute_formation_energies(args):
     # parse results to get defect data and correction terms
     defect_data = loadfn(defect_data_file_name, cls=MontyDecoder)
     defects = defect_data['defects']
+    for def_ind in range(len(defects)):
+        if type(defects[def_ind]) == ComputedDefect:
+            print("Encountered legacy ComputedDefect object. Converting to DefectEntry type for PyCDT v2.0...")
+            defects[def_ind] = convert_cd_to_de(defects[def_ind], defect_data['bulk'])
 
     formula = defects[0].bulk_structure.composition.reduced_formula
     initialize_logging(filename=formula+'_formation_energy.log')
