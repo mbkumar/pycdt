@@ -23,7 +23,7 @@ from pymatgen.analysis.phase_diagram import PhaseDiagram
 
 def get_mp_chempots_from_dpd(dpd):
     """
-    Grab Materials Project chemical potentials from a DefectPhaseDiagram object
+    Grab Materials Project chemical potentials from a pymatgen DefectPhaseDiagram object
     """
     print("Retrieiving chemical potentials from MP database using dpd object...")
     bulk_energy = 0.
@@ -164,19 +164,15 @@ class MPChemPotAnalyzer(ChemPotAnalyzer):
 
         NOTE on 'full_sub_approach':
             The default approach for substitutional elements (full_sub_approach = False)
-            is to only consider facets defined by at least N-2 phases from the BULK
-            composition, and a maximum of 1 composition with extrinsic species present
-            (this, along with the condition for all chemical potentials to be defined
-            by the bulk entry, creates N equations to be solved for N atomic
-            chemical potentials - see PyCDT paper DOI: 10.1016/j.cpc.2018.01.004).
+            is to only consider facets which have a maximum of 1 composition with
+            the extrinsic species present
+            (see PyCDT paper for chemical potential methodology DOI: 10.1016/j.cpc.2018.01.004).
 
             This default approach speeds up analysis when analyzing several substitutional
-            species at the same time. It is also a justified approach, as it reflects the fact
-            that substitutional elements are dilute in comparison to the composition of the
-            bulk phase.
+            species at the same time.
 
             If you prefer to consider the full phase diagram (not recommended
-            unless you have less than 3 substitutional defects), then set
+            when you have more than 2 substitutional defects), then set
             full_sub_approach to True.
         """
         logger = logging.getLogger(__name__)
@@ -260,13 +256,14 @@ class MPChemPotAnalyzer(ChemPotAnalyzer):
                     face_list = key.split('-')
                     blk, blknom, subnom = self.diff_bulk_sub_phases(
                         face_list, sub_el=sub_el)
-                    # if one less than number of bulk species then can be
-                    # grouped with rest of structures
+                    # if number of facets from bulk phase diagram is
+                    # equal to bulk species then full_sub_approach says this
+                    # can be grouped with rest of structures
                     if len(blk) == len(self.bulk_species_symbol):
                         if blknom not in finchem_lims.keys():
                             finchem_lims[blknom] = chem_lims[key]
                         else:
-                            finchem_lims[blknom][sub_el] = \
+                            finchem_lims[blknom][Element(sub_el)] = \
                                 chem_lims[key][Element(sub_el)]
                         if 'name-append' not in finchem_lims[blknom].keys():
                             finchem_lims[blknom]['name-append'] = subnom
@@ -276,12 +273,12 @@ class MPChemPotAnalyzer(ChemPotAnalyzer):
                         # if chem pots determined by two (or more) sub-specie
                         # containing phases, skip this facet!
                         continue
-
             #run a check to make sure all facets dominantly defined by bulk species
             overdependent_chempot = False
             facets_to_delete = []
             for facet_name, cps in finchem_lims.items():
-                if len(cps.keys()) != (len(self.bulk_species_symbol) + len(self.sub_species)):
+                cp_key_num = (len(cps.keys()) - 1) if 'name-append' in cps else len(cps.keys())
+                if cp_key_num != (len(self.bulk_species_symbol) + len(self.sub_species)):
                     facets_to_delete.append( facet_name)
                     logger.info("Not using facet {} because insufficient number of bulk facets for "
                                 "bulk set {} with sub_species set {}. (only dependent on {})."
@@ -302,7 +299,10 @@ class MPChemPotAnalyzer(ChemPotAnalyzer):
                     if 'name-append' not in fc_cp_dict:
                         facet_nom = orig_facet
                     else:
-                        facet_nom = '-'.join([orig_facet, fc_cp_dict['name-append']])
+                        full_facet_list = orig_facet.split('-')
+                        full_facet_list.extend( fc_cp_dict['name-append'].split('-'))
+                        full_facet_list.sort()
+                        facet_nom = '-'.join(full_facet_list)
                     chem_lims[ facet_nom] = {k: v for k, v in fc_cp_dict.items() if k != 'name-append'}
             else:
                 #This is for when overdetermined chempots occur, forcing the full_sub_approach to happen
@@ -311,7 +311,6 @@ class MPChemPotAnalyzer(ChemPotAnalyzer):
                         entry_list.append(subentry)
                 pd = PhaseDiagram(entry_list)
                 chem_lims = self.get_chempots_from_pd( pd)
-
 
         return chem_lims
 

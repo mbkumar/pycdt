@@ -26,8 +26,6 @@ __email__ = 'dbroberg@gmail.com, mbkumar@gmail.com'
 import numpy as np
 
 from pycdt.corrections.sxdefect_correction import SxdefectalignWrapper as SXD
-from pycdt.corrections.correction_plotting import FreysoldtPlotter, KumagaiPlotter
-
 from pymatgen.analysis.defects.corrections import FreysoldtCorrection, KumagaiCorrection
 
 
@@ -35,6 +33,8 @@ def get_correction_freysoldt( defect_entry, epsilon, title = None,
                               partflag='All', axis=None):
     """
     Function to compute the isotropic freysoldt correction for each defect.
+    If this correction is used, please reference Freysoldt's original paper.
+    doi: 10.1103/PhysRevLett.102.016402
     Args:
         defect_entry: DefectEntry object with the following
             keys stored in defect.parameters:
@@ -69,7 +69,7 @@ def get_correction_freysoldt( defect_entry, epsilon, title = None,
         epsilon (float or 3x3 matrix): Dielectric constant for the structure
         title: decides whether to plot electrostatic potential plots or not...
             if None, no plot is printed, if a string,
-            then the plot will include that string in it's label
+            then the plot will be saved using the string
         partflag: four options for correction output:
                'pc' for just point charge correction, or
                'potalign' for just potalign correction, or
@@ -105,8 +105,7 @@ def get_correction_freysoldt( defect_entry, epsilon, title = None,
             ax_list = [[axis, "axis"+str(axis+1)]]
 
         for ax_key, ax_title in ax_list:
-            fp = FreysoldtPlotter.from_dict( corr_class.metadata["pot_plot_data"][ax_key])
-            p = fp.plot( title=ax_title)
+            p = corr_class.plot( ax_key, title=ax_title, saved=False)
             p.savefig(title + '_' + ax_title + '_freysoldtplot.pdf',
                       bbox_inches='tight')
 
@@ -142,7 +141,7 @@ def get_correction_kumagai( defect_entry, epsilon, title = None,
         epsilon (float or 3x3 matrix): Dielectric constant for the structure
         title: decides whether to plot electrostatic potential plots or not...
             if None, no plot is printed, if a string,
-            then the plot will include that string in it's label
+            then the plot will be saved using the string
         partflag: four options for correction output:
                'pc' for just point charge correction, or
                'potalign' for just potalign correction, or
@@ -167,12 +166,7 @@ def get_correction_kumagai( defect_entry, epsilon, title = None,
     k_corr_summ = corr_class.get_correction( template_defect)
 
     if title:
-        d = {'site_dict': corr_class.metadata["pot_plot_data"],
-             'sampling_radius': corr_class.metadata["sampling_radius"],
-             'potalign': template_defect.parameters["potalign"] #this gets created during correction class
-             }
-        kp = KumagaiPlotter.from_dict(d)
-        p = kp.plot(title=title)
+        p = corr_class.plot( title="Kumagai", saved=False)
         p.savefig(title + '_kumagaiplot.pdf',
                   bbox_inches='tight')
 

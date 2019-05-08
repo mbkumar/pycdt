@@ -21,11 +21,10 @@ import matplotlib.pyplot as plt
 
 import warnings
 
-
-warnings.warn("All correction plotting functionalities will me moved to "
-              "pycdt.corrections.correction_plotting "
-              "with Version 2.5 of PyCDT. (Corrections will all come from pymatgen for "
-              "longer term maintenance).",
+warnings.warn("Replacing PyCDT usage of Freysoldt base classes with calls to "
+              "corresponding objects in pymatgen.analysis.defects.corrections\n"
+              "All correction plotting functionalities exist within pymatgen v2019.5.1."
+              "Version 2.5 of PyCDT will remove pycdt.corrections.freysoldt_plotter.FreysoldtPlot.",
               DeprecationWarning)
 class FreysoldtPlot(object):
     """

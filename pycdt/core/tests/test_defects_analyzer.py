@@ -12,19 +12,62 @@ __date__ = "May 6, 2015"
 
 import os
 import unittest
+from shutil import copyfile
 
 from monty.serialization import loadfn, dumpfn
 from monty.json import MontyDecoder, MontyEncoder
 from monty.tempfile import ScratchDir
+
+from pymatgen import __file__ as initfilep
 from pymatgen.core import Element
 from pymatgen.core.sites import PeriodicSite
 from pymatgen.core.lattice import Lattice
 from pymatgen.entries.computed_entries import ComputedStructureEntry
-from pycdt.core.defects_analyzer import ComputedDefect, DefectsAnalyzer
+from pymatgen.io.vasp.outputs import Vasprun
 from pymatgen.util.testing import PymatgenTest
 
+from pycdt.core.defects_analyzer import ComputedDefect, DefectsAnalyzer, \
+    freysoldt_correction_from_paths, kumagai_correction_from_paths
+
+pmgtestfiles_loc = os.path.join(
+        os.path.split(os.path.split(initfilep)[0])[0], 'test_files')
 file_loc = os.path.abspath(os.path.join(
     __file__, '..', '..', '..', '..', 'test_files'))
+
+class FilePathCorrectionsTest(PymatgenTest):
+    def test_freysoldt_and_kumagai(self):
+        # testing both parsing charge corrections, because they require
+        # with ScratchDir('.'):
+        #     # make a fake file structure to parse vaspruns and locpot paths
+        #     os.mkdir('bulk')
+        #     copyfile(os.path.join(pmgtestfiles_loc, 'vasprun.xml'), 'bulk/vasprun.xml')
+        #     os.mkdir('bulk/LOCPOT')  # locpot path just needs to exist..doesnt need to be real locpot file...
+        #     bulktrans = {"supercell": [3, 3, 3], "defect_type": "bulk"}
+        #     dumpfn(bulktrans, 'bulk/transformation.json', cls=MontyEncoder)
+        #
+        #     vrobj = Vasprun(os.path.join(pmgtestfiles_loc, 'vasprun.xml'))
+        #
+        #     os.mkdir('vac_1_As/charge_-1')
+        #     copyfile(os.path.join(pmgtestfiles_loc, 'vasprun.xml'), 'vac_1_As/charge_-1/vasprun.xml')
+        #     os.mkdir('vac_1_As/charge_-1/LOCPOT')  # locpot path just needs to exist
+        #     transchgm1 = {'charge': -1, 'supercell': [3, 3, 3], 'defect_type': 'vacancy',
+        #                   'defect_supercell_site': vrobj.final_structure.sites[0]}
+        #     dumpfn(transchgm1, 'vac_1_As/charge_-1/transformation.json', cls=MontyEncoder)
+        #
+        #     f_cc = freysoldt_correction_from_paths('vac_1_As/charge_-1/', 'bulk/',
+        #                                            [[12., 0, 0], [0, 12., 0], [0, 0, 12.]],
+        #                                            -1, plot=True)
+        #     self.assertEqual( f_cc[''])
+        #     self.assertTrue( os.path.exists( 'vac_1_As/charge_-1/'))
+        #
+        #
+        #     k_cc = kumagai_correction_from_paths('vac_1_As/charge_-1/', 'bulk/',
+        #                                            [[12., 0, 0], [0, 12., 0], [0, 0, 12.]],
+        #                                            -1, plot=True)
+
+        #TODO: make this unit test work
+
+        pass
 
 class ComputedDefectTest(PymatgenTest):
     def setUp(self):

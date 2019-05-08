@@ -36,11 +36,11 @@ from pymatgen.io.vasp.inputs import Incar
 from pymatgen.analysis.defects.thermodynamics import DefectPhaseDiagram
 
 from pycdt.core.defectsmaker import ChargedDefectsStructures
+from pycdt.core.defects_analyzer import ComputedDefect
 from pycdt.utils.vasp import make_vasp_defect_files, \
                               make_vasp_dielectric_files
-from pycdt.utils.parse_calculations import PostProcess, ComputedDefect, convert_cd_to_de
+from pycdt.utils.parse_calculations import PostProcess, convert_cd_to_de, SingleDefectParser
 from pycdt.utils.log_util import initialize_logging
-from pycdt.core.defects_analyzer import DefectEntryLoader
 from pycdt.corrections.finite_size_charge_correction import \
         get_correction_freysoldt, get_correction_kumagai
 
@@ -212,7 +212,7 @@ def compute_corrections(args):
         for defect in defects:
             print ('defect_name: {} q={}'.format( defect.name, defect.charge))
             print ('-----------------------------------------\n\n')
-            def_ent_loader = DefectEntryLoader(defect)
+            def_ent_loader = SingleDefectParser( defect)
             bulk_obj = def_ent_loader.freysoldt_loader(bulk_locpot=bulk_obj)
 
             plt_title = os.path.join( defect.parameters["defect_path"],
@@ -226,7 +226,7 @@ def compute_corrections(args):
         for defect in defects:
             print ('defect_name: {} q={}'.format( defect.name, defect.charge))
             print ('-----------------------------------------\n\n')
-            def_ent_loader = DefectEntryLoader(defect)
+            def_ent_loader = SingleDefectParser( defect)
             bulk_obj = def_ent_loader.kumagai_loader(bulk_outcar=bulk_obj)
 
             plt_title = os.path.join( defect.parameters["defect_path"],

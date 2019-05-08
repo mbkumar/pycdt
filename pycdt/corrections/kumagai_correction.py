@@ -618,7 +618,7 @@ class KumagaiBulkInit(object):
         return r_arr_real
 
 
-warnings.warn("Replacing PyCDT usage of Kumagai base classes with calls to "
+warnings.warn("Replacing PyCDT usage of Kumagai base classes and plotting with calls to "
               "corresponding objects in pymatgen.analysis.defects.corrections\n"
               "All core Kumagai code will be removed with Version 2.5 of PyCDT."
               " (note these functions all exist in pymatgen)",

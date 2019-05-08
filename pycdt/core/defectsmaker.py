@@ -16,7 +16,6 @@ __status__ = "Development"
 __date__ = "Janurary 6, 2016"
 
 import abc
-import math
 
 
 from monty.string import str2unicode

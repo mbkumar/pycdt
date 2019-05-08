@@ -82,9 +82,8 @@ class QModel():
 
 warnings.warn("Replacing PyCDT usage of Freysoldt base classes with calls to "
               "corresponding objects in pymatgen.analysis.defects.corrections\n"
-              "All plotting functionalities will me moved to pycdt.corrections.correction_plotting"
-              "with Version 2.5 of PyCDT. (Corrections will all come from pymatgen for "
-              "longer term maintenance).",
+              "All correction plotting functionalities exist within pymatgen v2019.5.1."
+              "Version 2.5 of PyCDT will remove pycdt.corrections.freysoldt_correction.FreysoldtCorrPlotter.",
               DeprecationWarning)
 class FreysoldtCorrPlotter(object):
     def __init__(self, x, v_R, dft_diff, final_shift, check):

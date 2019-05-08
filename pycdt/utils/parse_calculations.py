@@ -22,7 +22,7 @@ from monty.json import MontyEncoder, MontyDecoder
 
 from pymatgen.core import PeriodicSite, Structure
 from pymatgen.ext.matproj import MPRester
-from pymatgen.io.vasp.outputs import Vasprun
+from pymatgen.io.vasp.outputs import Vasprun, Locpot, Outcar, Poscar
 from pymatgen.io.vasp.inputs import Potcar
 from pymatgen.entries.computed_entries import ComputedStructureEntry
 from pymatgen.analysis.defects.core import Vacancy, Substitution, Interstitial, DefectEntry
@@ -30,14 +30,6 @@ from pymatgen.analysis.defects.defect_compatibility import DefectCompatibility
 from pymatgen.analysis.structure_matcher import StructureMatcher
 
 from pycdt.core.chemical_potentials import MPChemPotAnalyzer
-
-
-try:
-    from atomate.vasp.drones import VaspDrone
-    atomate_exists = True
-except:
-    atomate_exists = False
-
 
 
 def convert_cd_to_de( cd, b_cse):
@@ -98,178 +90,265 @@ def convert_cd_to_de( cd, b_cse):
 
     return de
 
-
 class SingleDefectParser(object):
 
-    def __init__(self, path_to_defect, path_to_bulk, dielectric,
-                 defect_charge, mpid = None, compatibility=DefectCompatibility()):
+    def __init__(self, defect_entry, compatibility=DefectCompatibility(),
+                 defect_vr = None, bulk_vr = None):
         """
-        Parse a defect object using many of the features of a standard DefectBuilder object (emmet).
-        Also allows use of DefectCompatibility object within pymatgen
+        Parse a defect object using features that resemble that of a standard
+        DefectBuilder object (emmet), but without the requirement of atomate.
+        Also allows for use of DefectCompatibility object within pymatgen
 
-        NOTE: requires atomate python package to work
+        :param defect_entry (DefectEntry): DefectEntry of interest
+            NOTE: to make use of methods within the class, bulk_path and and defect_path
+            must exist within the defect_entry parameters class.
+        :param compatibility (DefectCompatibility): Compatibility class instance for
+            performing compatibility analysis on defect entry.
+        :param defect_vr (Vasprun):
+        :param bulk_vr (Vasprun):
+
+        """
+        self.defect_entry = defect_entry
+        self.compatibility = compatibility
+        self.defect_vr = defect_vr
+        self.bulk_vr = bulk_vr
+
+    @staticmethod
+    def from_paths( path_to_defect, path_to_bulk, dielectric, defect_charge, mpid = None,
+                    compatibility=DefectCompatibility()):
+        """
+        Identify defect object based on file paths. Minimal parsing performing for
+        instantiating the SingleDefectParser class.
 
         :param path_to_defect (str): path to defect file of interest
         :param path_to_bulk (str): path to bulk file of interest
         :param dielectric (float or 3x3 matrix): ionic + static contributions to dielectric constant
-        """
-        if not atomate_exists:
-            raise ValueError("Cannot use SingleDefectParser because atomate is not available. "
-                             "Please pip install atomate and try SingleDefectParser again.")
+        :param defect_charge (int):
+        :param mpid (str):
+        :param compatibility (DefectCompatibility): Compatibility class instance for
+            performing compatibility analysis on defect entry.
 
-        self.path_to_defect = path_to_defect
-        self.path_to_bulk = path_to_bulk
-        self.dielectric = dielectric
-        self.parameters = {}
-        self.defect_site = None
-        self.defect_type = None
-        self.defect_charge = defect_charge
-        self.mpid = mpid
-        self.compatibility = compatibility
-
-    def get_defect_entry( self, run_compatibility=False):
+        Return:
+            Instance of the SingleDefectParser class.
         """
-        :return: DefectEntry object with all possible defect meta data loaded
-        """
-        bulk_drone = VaspDrone( bandstructure_mode="auto", defect_wf_parsing=None)
-        print("Parsing bulk file path")
-        bulk_dict = bulk_drone.assimilate( self.path_to_bulk)
-        print("Starting defect parsing...")
-        defect_dict = bulk_drone.assimilate( self.path_to_defect) #just for grabbing initial structure
-        print("\tInitial assimilation complete. Now run parser for "
-              "defect-relevant metadata...")
+        parameters = {'bulk_path': path_to_bulk, 'defect_path': path_to_defect,
+                      "dielectric": dielectric, 'mpid': mpid}
 
         # add bulk simple properties
-        bulk_energy = bulk_dict['output']['energy']
-        bulk_sc_structure = Structure.from_dict( bulk_dict['input']['structure'])
-        self.parameters.update({"dielectric": self.dielectric,
-            'bulk_energy': bulk_energy, 'bulk_sc_structure': bulk_sc_structure})
+        bulk_vr = Vasprun( os.path.join(path_to_bulk, 'vasprun.xml'))
+        bulk_energy = bulk_vr.final_energy
+        bulk_sc_structure = bulk_vr.initial_structure.copy()
 
-        # add bulk data required for corrections and localization analysis
-        bulklpt = bulk_dict['calcs_reversed'][0]['output']['locpot']
-        axes = list(bulklpt.keys())
-        axes.sort()
-        self.parameters.update({'bulk_planar_averages': [bulklpt[ax] for ax in axes]})
+        # add defect simple properties
+        defect_vr = Vasprun( os.path.join(path_to_defect, 'vasprun.xml'))
+        defect_energy = defect_vr.final_energy
+        initial_defect_structure = defect_vr.initial_structure.copy()
 
-        bulkoutcar = bulk_dict['calcs_reversed'][0]['output']['outcar']
-        bulk_atomic_site_averages = bulkoutcar['electrostatic_potential']
-        self.parameters.update({'bulk_atomic_site_averages': bulk_atomic_site_averages})
-
-        # get functional / INCAR metadata
-        self.get_stdrd_metadata( bulk_dict.copy(), defect_dict.copy())
-
-        # identify defect site, structural information, and charge
-        self.identify_defect_info( defect_dict.copy())
-
-        # create initial defect object
-        for_monty_defect = {"@module": "pymatgen.analysis.defects.core",
-                            "@class": self.defect_type,
-                            "charge": self.defect_charge,
-                            "structure": self.parameters["bulk_sc_structure"].copy(),
-                            "defect_site": self.defect_site}
-        defect = MontyDecoder().process_decoded( for_monty_defect)
-        test_defect_structure = defect.generate_defect_structure()
-        if not StructureMatcher(primitive_cell=False, scale=False, attempt_supercell=False,
-                                allow_subset=False).fit( test_defect_structure,
-                                                         self.parameters['initial_defect_structure']):
-            #NOTE: this does not insure that cartesian coordinates or indexing are identical
-            raise ValueError("Error in defect matching!")
-
-        # rerun parser with site information (initialized by identify_defect)
-        defect_drone = VaspDrone( bandstructure_mode="auto", defect_wf_parsing=self.defect_site)
-        defect_dict = defect_drone.assimilate( self.path_to_defect)
-
-        # grab all additional metadata required for
-        self.get_defect_metadata( defect_dict.copy())
-
-        # get bulk bulk metadata
-        self.get_bulk_gap_data( bulk_dict.copy())
-
-        defect_entry = DefectEntry( defect, self.parameters['defect_energy'] - self.parameters['bulk_energy'],
-                                    corrections = {}, parameters = self.parameters)
-
-        if run_compatibility:
-            print("Running compatibility...")
-            defect_entry = self.compatibility.process_entry( defect_entry)
-
-        return defect_entry
-
-    def get_stdrd_metadata(self, bulk_dict, defect_dict):
-        run_metadata = {}
-        dincar = defect_dict["calcs_reversed"][0]["input"]["incar"]
-        bincar = bulk_dict["calcs_reversed"][0]["input"]["incar"]
-        d_kpoints = defect_dict['calcs_reversed'][0]['input']['kpoints']
-        b_kpoints = bulk_dict['calcs_reversed'][0]['input']['kpoints']
-        run_metadata.update( {"defect_incar": dincar, "bulk_incar": bincar, "defect_kpoints": d_kpoints,
-                              "bulk_kpoints": b_kpoints})
-        run_metadata.update( {"incar_calctype_summary":
-                                  {k: dincar.get(k, None) if dincar.get(k) not in ['None', 'False', False] else None
-                                   for k in ["LHFCALC", "HFSCREEN", "IVDW", "LUSE_VDW", "LDAU", "METAGGA"]
-                                   }
-                              }
-                             )
-        run_metadata.update({"potcar_summary":
-                                 {'pot_spec': [potelt["titel"] for potelt in defect_dict['input']['potcar_spec']],
-                                  'pot_labels': defect_dict['input']['pseudo_potential']['labels'][:],
-                                  'pot_type': defect_dict['input']['pseudo_potential']['pot_type'],
-                                  'functional': defect_dict['input']['pseudo_potential']['functional']}
-                             })
-        self.parameters.update({"run_metadata": run_metadata})
-
-        return
-
-    def identify_defect_info(self, defect_dict):
-        bulk_sc_structure = self.parameters['bulk_sc_structure'].copy()
-
-        # get defect structures (before and after)
-        final_defect_structure = defect_dict['output']['structure']
-        if type(final_defect_structure) != Structure:
-            final_defect_structure = Structure.from_dict(final_defect_structure)
-
-        # build initial_defect_structure from very first ionic relaxation step (ensures they are indexed the same]
-        initial_defect_structure = Structure.from_dict(
-            defect_dict['calcs_reversed'][-1]['output']['ionic_steps'][0]['structure'])
-        if type(initial_defect_structure) != Structure:
-            initial_defect_structure = Structure.from_dict(initial_defect_structure)
-
-        self.parameters.update({'final_defect_structure': final_defect_structure,
-                                'initial_defect_structure': initial_defect_structure})
-
-        # get defect site and object information
+        # identify defect site, structural information, and create defect object
         num_ids = len(initial_defect_structure)
         num_bulk = len(bulk_sc_structure)
         if num_ids == num_bulk - 1:
-            self.defect_type = "Vacancy"
+            defect_type = "Vacancy"
         elif num_ids == num_bulk + 1:
-            self.defect_type = "Interstitial"
+            defect_type = "Interstitial"
         elif num_ids == num_bulk:
-            self.defect_type = "Substitution"
+            defect_type = "Substitution"
         else:
-            raise ValueError("Could not identify defec type just from number of sites in structure: "
+            raise ValueError("Could not identify defect type just from number of sites in structure: "
                              "{} in bulk vs. {} in defect?".format( num_ids, num_bulk ))
+
+        defect_index_sc_coords = None
+        transformation_path = os.path.join( path_to_defect, "transformation.json")
+        if os.path.exists( transformation_path):
+            tf = loadfn( transformation_path)
+            site = tf["defect_supercell_site"]
+            if defect_type == "Vacancy":
+                poss_deflist = sorted(
+                    bulk_sc_structure.get_sites_in_sphere(site.coords, 0.1, include_index=True), key=lambda x: x[1])
+            else:
+                poss_deflist = sorted(
+                    initial_defect_structure.get_sites_in_sphere(site.coords, 0.1, include_index=True), key=lambda x: x[1])
+            if not len(poss_deflist):
+                raise ValueError("{} specified defect site {}, but could not find it in bulk_supercell."
+                                 " Abandoning parsing".format( transformation_path, site))
+            else:
+                defect_index_sc_coords = poss_deflist[0][2]
+        else:
+            print("No transformation file exists at {}.\nCalculating defect index manually"
+                  " (proceed with caution)".format( transformation_path))
+
+        # IF not transformation file exists, the defect_index_sc_coords will not be identified in previous routine,
+        # proceed by identifying the defect site through a comparison of bulk sites and initial defect structure sites.
+        # WARNING: this can cause issues if intial_defect_structure is slightly different than
+        # bulk_sc_structure (as a result of multiple relaxation steps, for example)
+        if defect_index_sc_coords is None:
+            bulksites = [site.frac_coords for site in bulk_sc_structure]
+            initsites = [site.frac_coords for site in initial_defect_structure]
+            distmatrix = initial_defect_structure.lattice.get_all_distances(bulksites,
+                                                                            initsites)
+            min_dist_with_index = [[min(distmatrix[bulk_index]), int(bulk_index),
+                                    int(distmatrix[bulk_index].argmin())] for bulk_index in
+                                   range(len(distmatrix))]  # list of [min dist, bulk ind, defect ind]
+
+            site_matching_indices = []
+            poss_defect = []
+            if defect_type in ["Vacancy", "Interstitial"]:
+                for mindist, bulk_index, defect_index in min_dist_with_index:
+                    if mindist < 0.1:
+                        site_matching_indices.append([bulk_index, defect_index])
+                    elif defect_type == "Vacancy":
+                        poss_defect.append([bulk_index, bulksites[bulk_index][:]])
+
+                if defect_type == "Interstitial":
+                    poss_defect = [[ind, fc[:]] for ind, fc in enumerate(initsites) \
+                                   if ind not in np.array(site_matching_indices)[:, 1]]
+
+            elif defect_type == "Substitution":
+                for mindist, bulk_index, defect_index in min_dist_with_index:
+                    species_match = bulk_sc_structure[bulk_index].specie == \
+                                    initial_defect_structure[defect_index].specie
+                    if mindist < 0.1 and species_match:
+                        site_matching_indices.append([bulk_index, defect_index])
+
+                    elif not species_match:
+                        poss_defect.append([defect_index, initsites[defect_index][:]])
+
+            if len(poss_defect) != 1:
+                defect_index_sc_coords = poss_defect[0][0]
+            else:
+                raise ValueError("Found {} possible defect sites when matching bulk and "
+                                 "defect structure".format(len(poss_defect)))
+
+            if len(set(np.array(site_matching_indices)[:, 0])) != len(set(np.array(site_matching_indices)[:, 1])):
+                raise ValueError("Error occured in site_matching routine. Double counting of site matching "
+                                  "occured:{}\nAbandoning structure parsing.".format(site_matching_indices))
+
+        if defect_type == "Vacancy":
+            defect_site = bulk_sc_structure[ defect_index_sc_coords]
+        else:
+            defect_site = initial_defect_structure[ defect_index_sc_coords]
+
+
+        for_monty_defect = {"@module": "pymatgen.analysis.defects.core",
+                            "@class": defect_type,
+                            "charge": defect_charge,
+                            "structure": bulk_sc_structure,
+                            "defect_site": defect_site}
+        defect = MontyDecoder().process_decoded(for_monty_defect)
+        test_defect_structure = defect.generate_defect_structure()
+        if not StructureMatcher(primitive_cell=False, scale=False, attempt_supercell=False,
+                                allow_subset=False).fit(test_defect_structure,
+                                                        defect_vr.initial_structure):
+            # NOTE: this does not insure that cartesian coordinates or indexing are identical
+            raise ValueError("Error in defect object matching!")
+
+
+        defect_entry = DefectEntry(defect, defect_energy - bulk_energy,
+                                   corrections={}, parameters=parameters)
+
+        return SingleDefectParser( defect_entry, compatibility=compatibility,
+                                   defect_vr=defect_vr, bulk_vr=bulk_vr)
+
+
+    def freysoldt_loader(self, bulk_locpot=None):
+        """Load metadata required for performing Freysoldt correction
+        requires 'bulk_path' and 'defect_path' to be loaded to DefectEntry parameters dict.
+
+        Args:
+            bulk_locpot (Locpot): Add bulk Locpot object for expedited parsing.
+                If None, will load from file path variable bulk_path
+        Return:
+            bulk_locpot object for reuse by another defect entry (for expedited parsing)
+        """
+        if not self.defect_entry.charge:
+            #dont need to load locpots if charge is zero
+            return None
+
+        if not bulk_locpot:
+            bulk_locpot_path = os.path.join( self.defect_entry.parameters["bulk_path"],
+                                             "LOCPOT")
+            bulk_locpot = Locpot.from_file( bulk_locpot_path)
+
+        def_locpot_path = os.path.join( self.defect_entry.parameters["defect_path"],
+                                             "LOCPOT")
+
+        def_locpot = Locpot.from_file( def_locpot_path)
+
+        axis_grid = [def_locpot.get_axis_grid(i) for i in range(3)]
+        bulk_planar_averages = [bulk_locpot.get_average_along_axis(i) for i in range(3)]
+        defect_planar_averages = [def_locpot.get_average_along_axis(i) for i in range(3)]
+
+        defect_frac_sc_coords = self.defect_entry.site.frac_coords
+
+        self.defect_entry.parameters.update({"axis_grid": axis_grid,
+                                             "bulk_planar_averages": bulk_planar_averages,
+                                             "defect_planar_averages": defect_planar_averages,
+                                             "initial_defect_structure": def_locpot.structure,
+                                             "defect_frac_sc_coords": defect_frac_sc_coords
+                                             })
+
+        return bulk_locpot
+
+    def kumagai_loader(self, bulk_outcar=None):
+        """Load metadata required for performing Kumagai correction
+        requires 'bulk_path' and 'defect_path' to be loaded to DefectEntry parameters dict.
+
+        Args:
+            bulk_outcar (Outcar): Add bulk Outcar object for expedited parsing.
+                If None, will load from file path variable bulk_path
+        Return:
+            bulk_outcar object for reuse by another defect entry (for expedited parsing)
+        """
+        if not self.defect_entry.charge:
+            # dont need to load outcars if charge is zero
+            return None
+
+        if not bulk_outcar:
+            bulk_outcar_path = os.path.join( self.defect_entry.parameters["bulk_path"],
+                                             "OUTCAR")
+            bulk_outcar = Outcar( bulk_outcar_path)
+
+        def_outcar_path = os.path.join( self.defect_entry.parameters["defect_path"],
+                                             "OUTCAR")
+        def_outcar = Outcar( def_outcar_path)
+
+        bulk_atomic_site_averages = bulk_outcar.electrostatic_potential
+        defect_atomic_site_averages = def_outcar.electrostatic_potential
+
+        bulk_sc_structure = Poscar.from_file( os.path.join( self.defect_entry.parameters["bulk_path"],
+                                                            "POSCAR")).structure
+
+        if os.path.exists( os.path.join( self.defect_entry.parameters["defect_path"], "POSCAR")):
+            initial_defect_structure = Poscar.from_file( os.path.join( self.defect_entry.parameters["defect_path"],
+                                                                       "POSCAR")).structure
+        elif self.defect_vr:
+            initial_defect_structure = self.defect_vr.initial_structure
+        else:
+            initial_defect_structure = Vasprun( os.path.join( self.defect_entry.parameters["defect_path"],
+                                                                       "vasprun.xml")).initial_structure
 
         bulksites = [site.frac_coords for site in bulk_sc_structure]
         initsites = [site.frac_coords for site in initial_defect_structure]
         distmatrix = initial_defect_structure.lattice.get_all_distances(bulksites,
-                                                                        initsites)
+                                                                        initsites)  # first index of this list is bulk index
         min_dist_with_index = [[min(distmatrix[bulk_index]), int(bulk_index),
                                 int(distmatrix[bulk_index].argmin())] for bulk_index in
                                range(len(distmatrix))]  # list of [min dist, bulk ind, defect ind]
 
         site_matching_indices = []
         poss_defect = []
-        if self.defect_type in ["Vacancy", "Interstitial"]:
+        if isinstance(self.defect_entry.defect, (Vacancy, Interstitial)):
             for mindist, bulk_index, defect_index in min_dist_with_index:
                 if mindist < 0.1:
                     site_matching_indices.append([bulk_index, defect_index])
-                elif self.defect_type == "Vacancy":
+                elif isinstance(self.defect_entry.defect, Vacancy):
                     poss_defect.append([bulk_index, bulksites[bulk_index][:]])
 
-            if self.defect_type == "Interstitial":
+            if isinstance(self.defect_entry.defect, Interstitial):
                 poss_defect = [[ind, fc[:]] for ind, fc in enumerate(initsites) \
                                if ind not in np.array(site_matching_indices)[:, 1]]
 
-        elif self.defect_type == "Substitution":
+        elif isinstance(self.defect_entry.defect, Substitution):
             for mindist, bulk_index, defect_index in min_dist_with_index:
                 species_match = bulk_sc_structure[bulk_index].specie == \
                                 initial_defect_structure[defect_index].specie
@@ -284,137 +363,156 @@ class SingleDefectParser(object):
             defect_frac_sc_coords = poss_defect[0][1]
         else:
             raise ValueError("Found {} possible defect sites when matching bulk and "
-                             "defect structure".format(len(poss_defect)))
+                              "defect structure".format(len(poss_defect)))
 
         if len(set(np.array(site_matching_indices)[:, 0])) != len(set(np.array(site_matching_indices)[:, 1])):
             raise ValueError("Error occured in site_matching routine. Double counting of site matching "
-                              "occured:{}\nAbandoning structure parsing.".format(site_matching_indices))
+                              "occured:{}\nAdvising against Kumagai parsing.".format(site_matching_indices))
 
-        if self.defect_type == "Vacancy":
-            self.defect_site = bulk_sc_structure[ defect_index_sc_coords]
-        else:
-            self.defect_site = initial_defect_structure[ defect_index_sc_coords]
-
-
-        self.parameters.update( {'site_matching_indices': site_matching_indices,
-                                 'defect_frac_sc_coords': defect_frac_sc_coords,
-                                 'defect_index_sc_coords': defect_index_sc_coords})
-
-        return
-
-    def get_defect_metadata(self, defect_dict):
-
-        defect_energy = defect_dict['output']['energy']
-        self.parameters.update({'defect_energy': defect_energy})
-
-        deflpt = defect_dict['calcs_reversed'][0]['output']['locpot']
-        axes = list(deflpt.keys())
-        axes.sort()
-        defect_planar_averages = [deflpt[ax] for ax in axes]
-        abc = self.parameters['initial_defect_structure'].lattice.abc
-        axis_grid = []
-        for ax in range(3):
-            num_pts = len(defect_planar_averages[ax])
-            axis_grid.append([i / num_pts * abc[ax] for i in range(num_pts)])
-        self.parameters.update({'axis_grid': axis_grid,
-                                'defect_planar_averages': defect_planar_averages})
-
-        # grab Kumagai metadata (note that site matching was pulled during identify_defect_info)
-        defoutcar = defect_dict['calcs_reversed'][0]['output']['outcar']
-        defect_atomic_site_averages = defoutcar['electrostatic_potential']
-
-        wz = self.parameters["initial_defect_structure"].lattice.get_wigner_seitz_cell()
+        # user Wigner-Seitz radius for sampling radius
+        wz = initial_defect_structure.lattice.get_wigner_seitz_cell()
         dist = []
         for facet in wz:
             midpt = np.mean(np.array(facet), axis=0)
             dist.append(np.linalg.norm(midpt))
         sampling_radius = min(dist)
 
-        self.parameters.update( {'defect_atomic_site_averages': defect_atomic_site_averages,
-                                 'sampling_radius': sampling_radius}
-                                )
+        self.defect_entry.parameters.update({'bulk_atomic_site_averages': bulk_atomic_site_averages,
+                                           'defect_atomic_site_averages': defect_atomic_site_averages,
+                                           'initial_defect_structure': initial_defect_structure,
+                                           'site_matching_indices': site_matching_indices,
+                                           'sampling_radius': sampling_radius,
+                                           'defect_frac_sc_coords': defect_frac_sc_coords,
+                                           'defect_index_sc_coords': defect_index_sc_coords})
 
-        # grab eigenvalue information for Band filling and localization analysis
-        eigenvalues = defect_dict['calcs_reversed'][0]['output']['vr_eigenvalue_dict']['eigenvalues']
-        kpoint_weights = defect_dict['calcs_reversed'][0]['output']['vr_eigenvalue_dict']['kpoint_weights']
-        self.parameters.update({'eigenvalues': eigenvalues,
-                                'kpoint_weights': kpoint_weights})
+        return bulk_outcar
 
-        # grab ks_delocalization information if available
-        if 'defect' in defect_dict['calcs_reversed'][0]['output'].keys():
-            self.parameters.update({'defect_ks_delocal_data':
-                                        defect_dict['calcs_reversed'][0]['output']['defect'].copy()})
+    def get_stdrd_metadata(self):
+
+        if not self.bulk_vr:
+            path_to_bulk = self.defect_entry.parameters['bulk_path']
+            self.bulk_vr = Vasprun( os.path.join(path_to_bulk, 'vasprun.xml'))
+
+        if not self.defect_vr:
+            path_to_defect = self.defect_entry.parameters['defect_path']
+            self.defect_vr = Vasprun( os.path.join(path_to_defect, 'vasprun.xml'))
+
+        # standard bulk metadata
+        bulk_energy = self.bulk_vr.final_energy
+        bulk_sc_structure = self.bulk_vr.initial_structure
+        self.defect_entry.parameters.update( {'bulk_energy': bulk_energy,
+                                              'bulk_sc_structure': bulk_sc_structure})
+
+        # standard run metadata
+        run_metadata = {}
+        run_metadata.update( {"defect_incar": self.defect_vr.incar, "bulk_incar": self.bulk_vr.incar,
+                              "defect_kpoints": self.defect_vr.kpoints, "bulk_kpoints": self.bulk_vr.kpoints})
+        run_metadata.update( {"incar_calctype_summary":
+                                  {k: self.defect_vr.incar.get(k, None) \
+                                  if self.defect_vr.incar.get(k) not in ['None', 'False', False] else None \
+                                   for k in ["LHFCALC", "HFSCREEN", "IVDW", "LUSE_VDW", "LDAU", "METAGGA"]
+                                   }
+                              }
+                             )
+        run_metadata.update({"potcar_summary":
+                                 {'pot_spec': [potelt["titel"] for potelt in self.defect_vr.potcar_spec],
+                                  'pot_labels': self.defect_vr.potcar_spec,
+                                  'pot_type': self.defect_vr.run_type}
+                             })
+
+        self.defect_entry.parameters.update( {"run_metadata": run_metadata.copy()})
+
+        # standard defect run metadata
+        self.defect_entry.parameters.update({'final_defect_structure': self.defect_vr.final_structure,
+                                             'initial_defect_structure': self.defect_vr.initial_structure,
+                                             'defect_energy': self.defect_vr.final_energy})
+
+        # grab defect energy and eigenvalue information for band filling and localization analysis
+        eigenvalues =  {spincls.value: eigdict.copy() for spincls, eigdict in self.defect_vr.eigenvalues.items()}
+        kpoint_weights = self.defect_vr.actual_kpoints_weights[:]
+        self.defect_entry.parameters.update({'eigenvalues': eigenvalues,
+                                             'kpoint_weights': kpoint_weights})
+
+        # get bulk bandgap metadata
+        self.get_bulk_gap_data()
 
         return
 
-    def get_bulk_gap_data(self, bulk_dict):
-        bulk_structure = self.parameters['bulk_sc_structure']
+    def get_bulk_gap_data(self):
 
-        if not self.mpid:
+        if not self.bulk_vr:
+            path_to_bulk = self.defect_entry.parameters['bulk_path']
+            self.bulk_vr = Vasprun( os.path.join(path_to_bulk, 'vasprun.xml'))
+
+        bulk_sc_structure = self.bulk_vr.initial_structure
+        mpid = self.defect_entry.parameters["mpid"]
+
+        if not mpid:
             try:
                 with MPRester() as mp:
-                    tmp_mplist = mp.get_entries_in_chemsys(list(bulk_structure.symbol_set))
+                    tmp_mplist = mp.get_entries_in_chemsys(list(bulk_sc_structure.symbol_set))
                 mplist = [ment.entry_id for ment in tmp_mplist if ment.composition.reduced_composition == \
-                          bulk_structure.composition.reduced_composition]
+                          bulk_sc_structure.composition.reduced_composition]
             except:
-                raise ValueError("Error with querying MPRester for {}".format( bulk_structure.composition.reduced_formula))
+                raise ValueError("Error with querying MPRester for {}"
+                                 "".format( bulk_sc_structure.composition.reduced_formula))
 
             mpid_fit_list = []
             for trial_mpid in mplist:
                 with MPRester() as mp:
                     mpstruct = mp.get_structure_by_material_id(trial_mpid)
                 if StructureMatcher(primitive_cell=True, scale=False, attempt_supercell=True,
-                                    allow_subset=False).fit(bulk_structure, mpstruct):
+                                    allow_subset=False).fit(bulk_sc_structure, mpstruct):
                     mpid_fit_list.append( trial_mpid)
 
             if len(mpid_fit_list) == 1:
-                self.mpid = mpid_fit_list[0]
-                print("Single mp-id found for bulk structure:{}.".format( self.mpid))
+                mpid = mpid_fit_list[0]
+                print("Single mp-id found for bulk structure:{}.".format( mpid))
             elif len(mpid_fit_list) > 1:
                 num_mpid_list = [int(mp.split('-')[1]) for mp in mpid_fit_list]
                 num_mpid_list.sort()
-                self.mpid  = 'mp-'+str(num_mpid_list[0])
+                mpid  = 'mp-'+str(num_mpid_list[0])
                 print("Multiple mp-ids found for bulk structure:{}\nWill use lowest number mpid "
-                      "for bulk band structure = {}.".format(str(mpid_fit_list), self.mpid))
+                      "for bulk band structure = {}.".format(str(mpid_fit_list), mpid))
             else:
                 print("Could not find bulk structure in MP database after tying the "
                                   "following list:\n{}".format( mplist))
-                self.mpid = None
+                mpid = None
         else:
-            print("Manually fed mpid = {}".format( self.mpid))
+            print("Manually fed mpid = {}".format( mpid))
 
         vbm, cbm, bandgap = None, None, None
-        if 'task_level_metadata' not in self.parameters.keys():
-            self.parameters['task_level_metadata'] = {}
-
-        if self.mpid is not None:
+        gap_parameters = {}
+        if mpid is not None:
             #TODO: NEED to be smarter about use of +U or HSE etc in MP gga band structure calculations...
             with MPRester() as mp:
-                bs = mp.get_bandstructure_by_material_id(self.mpid)
+                bs = mp.get_bandstructure_by_material_id( mpid)
             if bs:
                 cbm = bs.get_cbm()['energy']
                 vbm = bs.get_vbm()['energy']
                 bandgap = bs.get_band_gap()['energy']
-                self.parameters['task_level_metadata'].update({'MP_gga_BScalc_data':
-                                                                   bs.get_band_gap().copy()})  # contains gap kpt transition
+                gap_parameters.update({'MP_gga_BScalc_data': bs.get_band_gap().copy()})  # contains gap kpt transition
 
         if vbm is None or bandgap is None or cbm is None:
-            if self.mpid:
+            if mpid:
                 print('WARNING: Mpid {} was provided, but no bandstructure entry currently exists for it. '
-                               'Reverting to use of bulk calculation.'.format( self.mpid))
+                               'Reverting to use of bulk supercell calculation for band edge extrema.'.format( mpid))
             else:
                 print( 'WARNING: No mp-id provided, will fetch CBM/VBM details from the '
                        'bulk calculation.')
             print('Note that it would be better to '
                   'perform real band structure calculation...')
 
-            self.parameters['task_level_metadata'].update( {'MP_gga_BScalc_data': None}) #to signal no MP BS is used
-            cbm = bulk_dict['output']['cbm']
-            vbm = bulk_dict['output']['vbm']
-            bandgap = bulk_dict['output']['bandgap']
+            gap_parameters.update( {'MP_gga_BScalc_data': None}) #to signal no MP BS is used
+            bandgap, cbm, vbm, _ = self.bulk_vr.eigenvalue_band_properties
 
-        self.parameters.update( {'mpid': self.mpid, "cbm": cbm, "vbm": vbm, "gap": bandgap} )
+        gap_parameters.update( {'mpid': mpid, "cbm": cbm, "vbm": vbm, "gap": bandgap} )
+        self.defect_entry.parameters.update( gap_parameters)
 
+        return
+
+    def run_compatibility(self):
+        self.defect_entry = self.compatibility.process_entry(self.defect_entry)
         return
 
 
@@ -711,4 +809,3 @@ class PostProcess(object):
         output['gap'] = gap
 
         return output
-

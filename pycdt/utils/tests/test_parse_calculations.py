@@ -17,9 +17,12 @@ from shutil import copyfile
 from monty.serialization import dumpfn
 from monty.json import MontyEncoder
 from monty.tempfile import ScratchDir
+
 from pymatgen import __file__ as initfilep
 from pymatgen.core import Element
 from pymatgen.io.vasp import Vasprun
+from pymatgen.util.testing import PymatgenTest
+
 from pycdt.utils.parse_calculations import PostProcess
 
 pmgtestfiles_loc = os.path.join(
@@ -27,7 +30,39 @@ pmgtestfiles_loc = os.path.join(
 file_loc = os.path.abspath(
         os.path.join(__file__, '..', '..', '..', '..', 'test_files')) #Pycdt Testfiles
 
-class PostProcessTest(unittest.TestCase):
+
+class LegacyConversionTest(PymatgenTest):
+    def test_convert_cd_to_de(self):
+        #TODO: make this unit test
+        pass
+
+class SingleDefectParserTest(PymatgenTest):
+    def test_from_paths(self):
+        #TODO: make this unit test
+        pass
+
+    def test_freysoldt_loader(self):
+        #TODO: make this unit test
+        pass
+
+    def test_kumagai_loader(self):
+        #TODO: make this unit test
+        pass
+
+    def test_get_stdrd_metadata(self):
+        #TODO: make this unit test
+        pass
+
+    def test_identify_defect_info(self):
+        #TODO: make this unit test
+        pass
+
+    def test_get_bulk_gap_data(self):
+        #TODO: make this unit test
+        pass
+
+
+class PostProcessTest(PymatgenTest):
     def test_parse_defect_calculations_AND_compile_all(self):
         #testing both parse defect_calculatiosn And the compile all methods because they both require a file structure...
         with ScratchDir('.'):
@@ -47,7 +82,7 @@ class PostProcessTest(unittest.TestCase):
             os.mkdir('vac_1_As/charge_0')
             copyfile(os.path.join(pmgtestfiles_loc, 'vasprun.xml'), 'vac_1_As/charge_0/vasprun.xml')
             os.mkdir('vac_1_As/charge_0/LOCPOT') #locpot path just needs to exist
-            transchg0 = {'charge': 0, 'supercell': [3, 3, 3], 'defect_type': 'vacancy',
+            transchg0 = {'charge': 0, 'supercell': [3, 3, 3], 'defect_type': 'vac_1_As',
                          'defect_supercell_site': vrobj.final_structure.sites[0]}
             dumpfn(transchg0, 'vac_1_As/charge_0/transformation.json', cls=MontyEncoder)
 
@@ -55,7 +90,7 @@ class PostProcessTest(unittest.TestCase):
             copyfile(os.path.join(pmgtestfiles_loc, 'vasprun.xml.dfpt.unconverged'), #make this one unconverged...
                                     'vac_1_As/charge_-1/vasprun.xml')
             os.mkdir('vac_1_As/charge_-1/LOCPOT') #locpot path just needs to exist
-            transchgm1 = {'charge': -1, 'supercell': [3, 3, 3], 'defect_type': 'vacancy',
+            transchgm1 = {'charge': -1, 'supercell': [3, 3, 3], 'defect_type': 'vac_1_As',
                          'defect_supercell_site': vrobj.final_structure.sites[0]}
             dumpfn(transchgm1, 'vac_1_As/charge_-1/transformation.json', cls=MontyEncoder)
 
@@ -63,7 +98,7 @@ class PostProcessTest(unittest.TestCase):
             os.mkdir('sub_1_Cs_on_As/charge_2')
             copyfile(os.path.join(pmgtestfiles_loc, 'vasprun.xml'), 'sub_1_Cs_on_As/charge_2/vasprun.xml')
             os.mkdir('sub_1_Cs_on_As/charge_2/LOCPOT') #locpot path just needs to exist
-            transchg2 = {'charge': 0, 'supercell': [3, 3, 3], 'defect_type': 'substitution',
+            transchg2 = {'charge': 0, 'supercell': [3, 3, 3], 'defect_type': 'sub_1_Cs_on_As',
                          'defect_supercell_site': vrobj.final_structure.sites[1], 'substitution_specie': 'Cs'}
             dumpfn(transchg2, 'sub_1_Cs_on_As/charge_2/transformation.json', cls=MontyEncoder)
 
@@ -72,14 +107,14 @@ class PostProcessTest(unittest.TestCase):
             pdd = pp.parse_defect_calculations()
             self.assertEqual(pdd['bulk_entry'].energy, vrobj.final_energy)
             self.assertEqual(len(pdd['bulk_entry'].structure), 25)
-            self.assertEqual(pdd['bulk_entry'].data['locpot_path'], os.path.abspath('bulk/LOCPOT'))
+            self.assertEqual(pdd['bulk_entry'].data['bulk_path'], './bulk')
             self.assertEqual(pdd['bulk_entry'].data['supercell_size'], [3, 3, 3])
 
             self.assertEqual(len(pdd['defects']), 2)
             self.assertEqual(pdd['defects'][0].energy, 0.)
             self.assertEqual(len(pdd['defects'][0].bulk_structure), 25)
-            self.assertEqual(pdd['defects'][0].parameters['locpot_path'],
-                             os.path.abspath('vac_1_As/charge_0/LOCPOT'))
+            self.assertEqual(pdd['defects'][0].parameters['defect_path'],
+                             './vac_1_As/charge_0')
             self.assertEqual(pdd['defects'][0].parameters['fldr_name']+'_'+str(pdd['defects'][0].charge),
                              'vac_1_As_0')
             self.assertEqual(pdd['defects'][0].multiplicity, 1)
@@ -146,10 +181,5 @@ class PostProcessTest(unittest.TestCase):
                       [0.0026437, 5.381848290000001, 24.42964103]]
             self.assertEqual(eps, answer)
 
-    def test_compile_all(self):
-        #this function calls all the other functions...to save time, using the first test to look at this test
-        pass
-
-import unittest
 if __name__ == '__main__':
     unittest.main()
