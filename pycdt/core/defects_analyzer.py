@@ -385,9 +385,6 @@ class DefectsAnalyzer(object):
         for d in self._defects:
             df_coords = d.site.frac_coords
             target_site=None
-            #TODO make a better check this large tol. is weird
-            #TODO: Get the equivalent sites from the defect class, because
-            #TODO: this method is not designed with interstitials in mind.
             for s in struct.sites:
                 sf_coords = s.frac_coords
                 if abs(s.frac_coords[0]-df_coords[0]) < 0.1 \

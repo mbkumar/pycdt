@@ -12,6 +12,7 @@ __date__ = "May 6, 2015"
 
 import os
 import unittest
+import tarfile
 from shutil import copyfile
 
 from monty.serialization import loadfn, dumpfn
@@ -23,7 +24,7 @@ from pymatgen.core import Element
 from pymatgen.core.sites import PeriodicSite
 from pymatgen.core.lattice import Lattice
 from pymatgen.entries.computed_entries import ComputedStructureEntry
-from pymatgen.io.vasp.outputs import Vasprun
+from pymatgen.io.vasp import Locpot
 from pymatgen.util.testing import PymatgenTest
 
 from pycdt.core.defects_analyzer import ComputedDefect, DefectsAnalyzer, \
@@ -36,38 +37,33 @@ file_loc = os.path.abspath(os.path.join(
 
 class FilePathCorrectionsTest(PymatgenTest):
     def test_freysoldt_and_kumagai(self):
-        # testing both parsing charge corrections, because they require
-        # with ScratchDir('.'):
-        #     # make a fake file structure to parse vaspruns and locpot paths
-        #     os.mkdir('bulk')
-        #     copyfile(os.path.join(pmgtestfiles_loc, 'vasprun.xml'), 'bulk/vasprun.xml')
-        #     os.mkdir('bulk/LOCPOT')  # locpot path just needs to exist..doesnt need to be real locpot file...
-        #     bulktrans = {"supercell": [3, 3, 3], "defect_type": "bulk"}
-        #     dumpfn(bulktrans, 'bulk/transformation.json', cls=MontyEncoder)
-        #
-        #     vrobj = Vasprun(os.path.join(pmgtestfiles_loc, 'vasprun.xml'))
-        #
-        #     os.mkdir('vac_1_As/charge_-1')
-        #     copyfile(os.path.join(pmgtestfiles_loc, 'vasprun.xml'), 'vac_1_As/charge_-1/vasprun.xml')
-        #     os.mkdir('vac_1_As/charge_-1/LOCPOT')  # locpot path just needs to exist
-        #     transchgm1 = {'charge': -1, 'supercell': [3, 3, 3], 'defect_type': 'vacancy',
-        #                   'defect_supercell_site': vrobj.final_structure.sites[0]}
-        #     dumpfn(transchgm1, 'vac_1_As/charge_-1/transformation.json', cls=MontyEncoder)
-        #
-        #     f_cc = freysoldt_correction_from_paths('vac_1_As/charge_-1/', 'bulk/',
-        #                                            [[12., 0, 0], [0, 12., 0], [0, 0, 12.]],
-        #                                            -1, plot=True)
-        #     self.assertEqual( f_cc[''])
-        #     self.assertTrue( os.path.exists( 'vac_1_As/charge_-1/'))
-        #
-        #
-        #     k_cc = kumagai_correction_from_paths('vac_1_As/charge_-1/', 'bulk/',
-        #                                            [[12., 0, 0], [0, 12., 0], [0, 0, 12.]],
-        #                                            -1, plot=True)
+        # create scratch directory with files....
+        # having to do it all at once to minimize amount of time copying over to Scratch Directory
+        with ScratchDir("."):
+            # setup with fake Locpot object copied over
+            copyfile( os.path.join( file_loc, "test_path_files.tar.gz"), "./test_path_files.tar.gz")
+            tar = tarfile.open("test_path_files.tar.gz")
+            tar.extractall()
+            tar.close()
+            blocpot = Locpot.from_file( os.path.join( file_loc, "bLOCPOT.gz"))
+            blocpot.write_file("test_path_files/bulk/LOCPOT")
+            dlocpot = Locpot.from_file( os.path.join( file_loc, "dLOCPOT.gz"))
+            dlocpot.write_file("test_path_files/sub_1_Sb_on_Ga/charge_2/LOCPOT")
 
-        #TODO: make this unit test work
+            fcc = freysoldt_correction_from_paths( "test_path_files/sub_1_Sb_on_Ga/charge_2/",
+                                                   "test_path_files/bulk/",
+                                                   18.12, 2, plot=True)
+            self.assertEqual( fcc, -1.2435280589593547 )
+            self.assertTrue( os.path.exists(
+                "test_path_files/sub_1_Sb_on_Ga/charge_2/Sub_Sb_on_Ga_mult32_chg_2_axis1_freysoldtplot.pdf"))
 
-        pass
+            kcc = kumagai_correction_from_paths( "test_path_files/sub_1_Sb_on_Ga/charge_2/",
+                                                 "test_path_files/bulk/",
+                                                 18.12, 2, plot=True)
+            self.assertEqual( kcc, 0.6387768530616106 )
+            self.assertTrue( os.path.exists(
+                "test_path_files/sub_1_Sb_on_Ga/charge_2/Sub_Sb_on_Ga_mult32_chg_2_kumagaiplot.pdf"))
+
 
 class ComputedDefectTest(PymatgenTest):
     def setUp(self):
