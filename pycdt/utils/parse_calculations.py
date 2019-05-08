@@ -433,9 +433,6 @@ class SingleDefectParser(object):
         self.defect_entry.parameters.update({"eigenvalues": eigenvalues,
                                              "kpoint_weights": kpoint_weights})
 
-        # get bulk bandgap metadata
-        self.get_bulk_gap_data()
-
         return
 
     def get_bulk_gap_data(self):

@@ -597,7 +597,7 @@ class UserChemPotAnalyzer(ChemPotAnalyzer):
                         face_list, sub_el=sub_el)
                     # if one less than number of bulk species then can be
                     # grouped with rest of structures
-                    if len(blk)+1 == len(self.bulk_species_symbol):
+                    if len(blk) == len(self.bulk_species_symbol):
                         if blknom not in finchem_lims.keys():
                             finchem_lims[blknom] = chem_lims[key]
                         else:
@@ -611,7 +611,45 @@ class UserChemPotAnalyzer(ChemPotAnalyzer):
                         # if chem pots determined by two (or more) sub-specie
                         # containing phases, skip this facet!
                         continue
-            chem_lims = finchem_lims.copy()
+
+            # run a check to make sure all facets dominantly defined by bulk species
+            overdependent_chempot = False
+            facets_to_delete = []
+            for facet_name, cps in finchem_lims.items():
+                cp_key_num = (len(cps.keys()) - 1) if 'name-append' in cps else len(cps.keys())
+                if cp_key_num != (len(self.bulk_species_symbol) + len(self.sub_species)):
+                    facets_to_delete.append(facet_name)
+                    print("Not using facet {} because insufficient number of bulk facets for "
+                                "bulk set {} with sub_species set {}. (only dependent on {})."
+                                "".format(facet_name, self.bulk_species_symbol, self.sub_species,
+                                          cps.get('name-append')))
+            if len(facets_to_delete) == len(finchem_lims):
+                overdependent_chempot = True
+                print(
+                    "Determined chemical potentials to be over dependent"
+                    " on a substitutional specie. Needing to revert to full_sub_approach. If "
+                    "multiple sub species exist this could take a while/break the code...")
+            else:
+                finchem_lims = {k: v for k, v in finchem_lims.items() if k not in facets_to_delete}
+
+            if not overdependent_chempot:
+                chem_lims = {}
+                for orig_facet, fc_cp_dict in finchem_lims.items():
+                    if 'name-append' not in fc_cp_dict:
+                        facet_nom = orig_facet
+                    else:
+                        full_facet_list = orig_facet.split('-')
+                        full_facet_list.extend(fc_cp_dict['name-append'].split('-'))
+                        full_facet_list.sort()
+                        facet_nom = '-'.join(full_facet_list)
+                    chem_lims[facet_nom] = {k: v for k, v in fc_cp_dict.items() if k != 'name-append'}
+            else:
+                # This is for when overdetermined chempots occur, forcing the full_sub_approach to happen
+                for sub, subentries in self.entries['subs_set'].items():
+                    for subentry in subentries:
+                        entry_list.append(subentry)
+                pd = PhaseDiagram(entry_list)
+                chem_lims = self.get_chempots_from_pd(pd)
 
         return chem_lims
 
