@@ -135,9 +135,28 @@ def get_correction_kumagai( defect_entry, epsilon, title = None,
         defect_entry: DefectEntry object with the following
             keys stored in defect.parameters:
                 required:
-                    ???
+                    bulk_atomic_site_averages (list):  list of bulk structure"s atomic site averaged ESPs * charge,
+                        in same order as indices of bulk structure
+                        note this is list given by VASP's OUTCAR (so it is multiplied by a test charge of -1)
+
+                    defect_atomic_site_averages (list):  list of defect structure"s atomic site averaged ESPs * charge,
+                        in same order as indices of defect structure
+                        note this is list given by VASP's OUTCAR (so it is multiplied by a test charge of -1)
+
+                    site_matching_indices (list):  list of corresponding site index values for
+                        bulk and defect site structures EXCLUDING the defect site itself
+                        (ex. [[bulk structure site index, defect structure"s corresponding site index], ... ]
+
+                    initial_defect_structure (Structure): Pymatgen Structure object representing un-relaxed defect structure
+
+                    defect_frac_sc_coords (array): Defect Position in fractional coordinates of the supercell
+                        given in bulk_structure
                 optional:
-                    ???
+                    gamma (float): Ewald parameter, Default is to determine it based on convergence of
+                        brute summation tolerance
+                    sampling_radius (float):r adius (in Angstrom) which sites must be outside of to be included
+                        in the correction. Publication by Kumagai advises to use Wigner-Seitz radius of
+                        defect supercell, so this is default value.
         epsilon (float or 3x3 matrix): Dielectric constant for the structure
         title: decides whether to plot electrostatic potential plots or not...
             if None, no plot is printed, if a string,

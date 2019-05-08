@@ -212,7 +212,7 @@ class SxdefectalignWrapper(object):
         for when planar average varies by more than 0.2 eV around far region
         """
         if not self._charge: #don't need charge correction if charge is zero
-            return [[0,0,0],[0,0,0]] # why is it an double triplet?
+            return [[0,0,0],[0,0,0]]
         #correction from output (should include alignment once alignment 
         # has been done)
         result = []   
