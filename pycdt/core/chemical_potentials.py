@@ -15,11 +15,47 @@ __date__ = "Sep 14, 2014"
 import os
 import logging
 
-from pymatgen import Structure
+from pymatgen import Structure, Element
 from pymatgen.entries.computed_entries import ComputedStructureEntry
 from pymatgen.ext.matproj import MPRester
 from pymatgen.io.vasp.outputs import Vasprun
 from pymatgen.analysis.phase_diagram import PhaseDiagram
+
+def get_mp_chempots_from_dpd(dpd):
+    """
+    Grab Materials Project chemical potentials from a pymatgen DefectPhaseDiagram object
+    """
+    print("Retrieiving chemical potentials from MP database using dpd object...")
+    bulk_energy = 0.
+    if ('bulk_energy' in dpd.entries[0].parameters.keys()) and \
+        ('bulk_sc_structure' in dpd.entries[0].parameters.keys()):
+        try:
+            bulk_struct = dpd.entries[0].parameters['bulk_sc_structure'].copy()
+            if type(bulk_struct) != Structure:
+                bulk_struct = Structure.from_dict(bulk_struct)
+            bulk_energy = dpd.entries[0].parameters['bulk_energy']
+        except:
+            print("Failure in grabbing bulk energy and structure for chemical potential parsing.")
+    if not bulk_energy:
+        print("Grabbing chemical potentials without analyzing stability of bulk structure. "
+              "Ignore any flags raised about stability of structure")
+        bulk_energy = 0.
+        bulk_struct = dpd.entries[0].defect.bulk_structure.copy()
+
+    bulk_ce = ComputedStructureEntry( bulk_struct, bulk_energy)
+    bulk_elt_set = list(bulk_struct.symbol_set)
+
+    sub_species = []
+    for entry in dpd.entries:
+        def_site = entry.defect.site.specie.symbol
+        if def_site not in bulk_elt_set:
+            sub_species.append( def_site)
+
+    sub_species = set(sub_species)
+    print('Bulk symbols = {}, Sub symbols = {}'.format( bulk_elt_set, sub_species))
+    mp_cpa = MPChemPotAnalyzer( bulk_ce = bulk_ce, sub_species = sub_species)
+
+    return mp_cpa.analyze_GGA_chempots()
 
 
 class ChemPotAnalyzer(object):
@@ -35,93 +71,24 @@ class ChemPotAnalyzer(object):
         """
         self.bulk_ce = kwargs.get('bulk_ce', None)
 
-    def get_chempots_from_pda(self, pda, common_approach=True):
-        # pass in a phase diagram Analyzer object and output chemical potentials
-        # common_approach=True assumes that the bulk_entry exists while
-        # common_approach = False determines chemical potentials based on the
-        # facets that would contain the composition of interest
+    def get_chempots_from_pd(self, pd):
         logger = logging.getLogger(__name__)
 
         if not self.bulk_ce:
             msg = "No bulk entry supplied. " \
-                  "Cannot compute atomic chempots without know the bulk entry of interest."
+                  "Cannot compute atomic chempots without knowing the bulk entry of interest."
             logger.warning(msg)
             raise ValueError(msg)
         else:
             bulk_composition = self.bulk_ce.composition
             redcomp = bulk_composition.reduced_composition
 
-        chem_lims = {}
-        pd = pda 
-        if common_approach:
-            for facet in pd.facets: 
-                eltsinfac = [
-                    pd.qhull_entries[j].composition.reduced_composition
-                    for j in facet]
-                if redcomp in eltsinfac:
-                    chempots = pda._get_facet_chempots(facet)
-                    if len(eltsinfac) != 1:
-                        eltsinfac.remove(redcomp)
-                    limnom = '-'.join(sys.reduced_formula for sys in eltsinfac)
-                    if len(eltsinfac) == 1:
-                        limnom += '_rich'
-                    chemdict = {
-                        el.symbol: chempots[el] for el in pd.elements}
-                    chem_lims[limnom] = chemdict
-        else:
-            # this uses basic form of creation of facets from initialization
-            # of phase diagram object to find which facets of phase diagram
-            # contain the composition of interest
-            from scipy.spatial import ConvexHull
-            tmpnew_qdata = list(pd.qhull_data)
-            del tmpnew_qdata[-1]
-            new_qdata = [[val[i] for i in range(len(val)-1)]
-                         for val in tmpnew_qdata]
+            #append bulk_ce to phase diagram
+            entries = pd.all_entries
+            entries.append(self.bulk_ce)
+            pd = PhaseDiagram( entries)
 
-            tmp_elts = [e for e in pd.elements]
-            del tmp_elts[0]
-            unstable_qdata_elt = [
-                bulk_composition.get_atomic_fraction(el)
-                for el in tmp_elts]
-
-            if len(new_qdata[0]) == 1:
-                #if only 2elts in phase diagram then cant use the ConvexHull construction...
-                under_ind = 0
-                over_ind = 0
-                for indcount, facet in enumerate(new_qdata):
-                    if (facet[0] < unstable_qdata_elt[0]) and (new_qdata[under_ind][0] < facet[0]):
-                        under_ind = indcount
-                    if (facet[0] > unstable_qdata_elt[0]) and (new_qdata[over_ind][0] < facet[0]):
-                        over_ind = indcount
-                facets = []
-                for facet in pd.facets:
-                    if set(facet)==set([under_ind,over_ind]):
-                        facets.append(facet)
-            else:
-                new_qdata.append(unstable_qdata_elt)
-                # take facets of composition space and see if the new
-                # composition changes volume of facet
-                facets = []
-                for facet in pd.facets:
-                    tmp_facet = [new_qdata[e] for e in facet]
-                    prev_vol = ConvexHull(
-                        tmp_facet, qhull_options="QJ i").volume
-                    tmp_facet.append(new_qdata[-1])
-                    new_vol = ConvexHull(tmp_facet, qhull_options="QJ i").volume
-                    if abs(prev_vol-new_vol) < 0.0001:
-                        facets.append(facet)
-
-            # now get chemical potentials
-            for facet in facets:
-                mus = pda._get_facet_chempots(facet)
-                eltsinfac = [
-                    pd.qhull_entries[j].composition.reduced_composition
-                    for j in facet]
-                limnom = '-'.join(sys.reduced_formula for sys in eltsinfac)
-                if len(eltsinfac) == 1:
-                    limnom += '_rich'
-                chemdict = {el.symbol: mus[el] for el in pd.elements}
-                chem_lims[limnom] = chemdict
+        chem_lims = pd.get_all_chempots(redcomp)
 
         return chem_lims
 
@@ -153,19 +120,21 @@ class MPChemPotAnalyzer(ChemPotAnalyzer):
 
     Makes use of Materials Project pre-computed data to generate
     needed information for chem pots in different growth conditions.
+
+    WARNING: If you plan to use this method, then you better be sure you are
+    using the same settings as MP (same INCAR, POTCARs etc.)
     """
     def __init__(self, **kwargs):
         """
         Args:
             bulk_ce: Pymatgen ComputedStructureEntry object for
                 bulk entry / supercell
-
             subs_species (set): set of elemental species that are extrinsic to structure.
                 Default is no subs included
-            entries (dict): pymatgen ComputedEntry objects to build phase diagram
-                The dict contains two keys: 'bulk_derived', and 'subs_set', each contains a list of computed entries
-                bulk_derived entries only have a composition containing elements from the set of elements in the bulk phase
-                subs_set contains elements that are extrinsic to the structure of interest
+            entries (dict): a dict of pymatgen ComputedEntry objects to build relevant phase diagram
+                The dict contains two keys: 'bulk_derived', and 'subs_set', each contains a list of ComputedEntry objects
+                'bulk_derived' list only has compositions containing elements from the bulk (un-defective) composition
+                'subs_set' list has compositions which contain at least one element that is not in the bulk composition
             mpid (str): Materials Project ID of bulk structure (not required, can use bulk_ce instead);
                 format "mp-X", where X is an integer;
             mapi_key (str): Materials API key to access database
@@ -184,47 +153,26 @@ class MPChemPotAnalyzer(ChemPotAnalyzer):
 
         Args:
             full_sub_approach: generate chemical potentials by looking at
-                full phase diagram (setting to True is really NOT recommended
+                full phase diagram (setting to True is NOT recommended
                 if subs_species set has more than one element in it...)
 
-        Outline for how this code retrieves atomic chempots from Materials
-        Project (MP) entries in a phase diagram (PD) object:
-          1) check stability of computed entry w.r.t phase diagram
-                generated from MP
-          2) If stable with respect to phase diagram, then:
-             i) if mp-id given and it is in the stable entry list,
-                proceed normally ("common approach")
-             ii) if mp-id not given, prints message to user about possibility
-                for manual submission page on MP website, then
-                manually inserts the computed object into the local PD.
-                Generate chempots from this PD (note at this point there
-                is no gurantee that the structure is actually unique, as
-                it could be a computational error in the DFT energy which
-                is slightly lower than MP calculated values)
-          3) If not-stable with respect to phase diagram, then:
-             i) check to see if composition exists among the structures
-                in the stable list of the PD
-             ii) if a stable and identical composition exists in PD
-                then print warning but continue as if it were stable
-                (chem pots will depend on the stable phase)
-             iii) if no stable and identical composition exists in PD,
-                then print warning and find facets that the bulk composition
-                exists inside of
+        This code retrieves atomic chempots from Materials
+        Project (MP) entries by making use of the pymatgen
+        phase diagram (PD) object and computed entries from the MP
+        database. There are debug notes that are made based on the stability of
+        the structure of interest with respect to the phase diagram generated from MP
 
-        Note on full_sub_approach:
-            the default approach for subs is to only consider facets
-            defined by N-2 phases with strictly elements from the BULK
-            composition, and 1 sub_element(+possibly bulk-composition
-            element) derived phases (along with the condition for all
-            chemical potentials to be defined by the bulk entry, creating
-            N equations to be solved for N atomic chemical potentials).
-            This speeds up analysis SIGNFICANTLY when analyzing several
-            substitutional species at once. It is essentially the
-            assumption the majority of the elements in the total
-            composition will be from the native species present rather
-            than the sub species (a good approximation). If you would
-            prefer to consider the full phase diagram (not recommended
-            unless you have 1 or 2 substitutional defects), then set
+        NOTE on 'full_sub_approach':
+            The default approach for substitutional elements (full_sub_approach = False)
+            is to only consider facets which have a maximum of 1 composition with
+            the extrinsic species present
+            (see PyCDT paper for chemical potential methodology DOI: 10.1016/j.cpc.2018.01.004).
+
+            This default approach speeds up analysis when analyzing several substitutional
+            species at the same time.
+
+            If you prefer to consider the full phase diagram (not recommended
+            when you have more than 2 substitutional defects), then set
             full_sub_approach to True.
         """
         logger = logging.getLogger(__name__)
@@ -236,105 +184,61 @@ class MPChemPotAnalyzer(ChemPotAnalyzer):
         # based on phase diagram
         entry_list = self.entries['bulk_derived']
         pd = PhaseDiagram(entry_list)
-        pda = pd 
-        full_idlist = [i.entry_id for i in pd.qhull_entries]
-        stable_idlist = [i.entry_id for i in pd.stable_entries]
 
-        if self.mpid:
-            if (self.mpid in full_idlist) and (self.mpid in stable_idlist):
-                logger.debug("Verified that mp-id is stable within Materials "
-                             "Project {} phase diagram".format('-'.join(
-                                self.bulk_species_symbol)))
-                common_approach = True
-            elif (self.mpid in full_idlist) and not (self.mpid in stable_idlist):
-                common_approach = False
-                for i in pd.stable_entries:
-                    if i.composition.reduced_composition == self.redcomp:
-                        logger.warning(
-                            "Input mp-id {} is unstable. Stable "
-                            "composition mp-id found to be {}".format(
-                                self.mpid, i.entry_id))
-                        logger.warning(
-                            "Proceeding with atomic chemical potentials "
-                            "with respect to stable phase.")
-                        common_approach = True
-                if not common_approach:
-                    logger.warning(
-                        "Input mp-id {} is unstable. No stable structure "
-                        "with same composition exists".format(self.mpid))
-                    logger.warning(
-                        "Proceeding with atomic chemical potentials "
-                        "according to composition position within phase "
-                        "diagram.")
-            else:
-                logger.warning(
-                    "Specified mp-id {} not found in MP phase "
-                    "diagram. Reverting to assumption that mp-id is not "
-                    "known.".format(self.mpid))
-                self.mpid = None
+        decomp_en = round(pd.get_decomp_and_e_above_hull(
+                          self.bulk_ce, allow_negative=True)[1],4)
 
-        if not self.mpid:
-            decomp_en = round(pda.get_decomp_and_e_above_hull(
-                              self.bulk_ce, allow_negative=True)[1],4)
-            stable_composition_exists = False
-            for i in pd.stable_entries:
-                if i.composition.reduced_composition == self.redcomp:
-                    stable_composition_exists = True
+        stable_composition_exists = False
+        for i in pd.stable_entries:
+            if i.composition.reduced_composition == self.redcomp:
+                stable_composition_exists = True
 
-            if (decomp_en <= 0) and stable_composition_exists:
-                # then stable and can proceed as normal
-                logger.debug(
-                    "Bulk Computed Entry found to be stable with respect "
-                    "to MP Phase Diagram. No mp-id specified, but found "
-                    "stable MP composition to exist.")
-                common_approach = True
-            elif (decomp_en <= 0) and not stable_composition_exists:
-                logger.info(
-                    "Bulk Computed Entry found to be stable with respect "
-                    "to MP Phase Diagram.\nHowever, no stable entry with "
-                    "this composition exists in the MP database!\nPlease "
-                    "consider submitting the POSCAR to the MP xtaltoolkit,"
-                    " so future users will know about this structure:"
-                    " https://materialsproject.org/#apps/xtaltoolkit\n"
-                    "Manually inserting structure into phase diagram and "
-                    "proceeding as normal.")
-                entry_list.append(self.bulk_ce)
-                # pd = PhaseDiagram(self.entries)
-                common_approach = True
-            elif stable_composition_exists:
-                logger.warning(
-                    "Bulk Computed Entry not stable with respect to MP "
-                    "Phase Diagram (e_above_hull = %f eV/atom), but found "
-                    "stable MP composition to exist.\nProducing chemical "
-                    "potentials with respect to stable phase.", decomp_en)
-                common_approach = True
-            else:
-                logger.warning(
-                    "Bulk Computed Entry not stable with respect to MP "
-                    "Phase Diagram (e_above_hull = %f eV/atom) and no "
-                    "stable structure with this composition exists in the "
-                    "MP database.\nProceeding with atomic chemical "
-                    "potentials according to composition position within "
-                    "phase diagram.", decomp_en)
-                common_approach = False
+        if (decomp_en <= 0) and stable_composition_exists:
+            logger.debug(
+                "Bulk Computed Entry found to be stable with respect "
+                "to MP Phase Diagram (e_above_hull = {} eV/atom).".format(decomp_en))
+        elif (decomp_en <= 0) and not stable_composition_exists:
+            logger.info(
+                "Bulk Computed Entry found to be stable with respect "
+                "to MP Phase Diagram (e_above_hull = {} eV/atom).\n"
+                "However, no stable entry with this composition exists "
+                "in the MP database!\nPlease consider submitting the "
+                "POSCAR to the MP xtaltoolkit, so future users will "
+                "know about this structure:"
+                " https://materialsproject.org/#apps/xtaltoolkit\n"
+                "Manually inserting structure into phase diagram and "
+                "proceeding as normal.".format(decomp_en))
+            entry_list.append(self.bulk_ce)
+        elif stable_composition_exists:
+            logger.warning(
+                "Bulk Computed Entry not stable with respect to MP "
+                "Phase Diagram (e_above_hull = {} eV/atom), but found "
+                "stable MP composition to exist.\nProducing chemical "
+                "potentials with respect to stable phase.".format( decomp_en))
+        else:
+            logger.warning(
+                "Bulk Computed Entry not stable with respect to MP "
+                "Phase Diagram (e_above_hull = {} eV/atom) and no "
+                "stable structure with this composition exists in the "
+                "MP database.\nProceeding with atomic chemical "
+                "potentials according to composition position within "
+                "phase diagram.".format( decomp_en))
 
         pd = PhaseDiagram(entry_list)
-        pda = pd 
-        chem_lims = self.get_chempots_from_pda(
-            pda, common_approach=common_approach)
+        chem_lims = self.get_chempots_from_pd(pd)
+        logger.debug("Bulk Chemical potential facets: {}".format(chem_lims.keys()))
 
-        if not full_sub_approach: #NOTE if full_sub_approach was True, then all the sub_entries were ported into the bulk_associated list
+        if not full_sub_approach:
+            # NOTE if full_sub_approach was True, then all the sub_entries
+            # would be ported into the bulk_derived list
             finchem_lims = {}  # this will be final chem_lims dictionary
             for key in chem_lims.keys():
-                # TODO: Pretty sure this splitting up of strings was
-                # TODO: neccessary earlier on, but probably can do this
-                # TODO: in a prettier way now...
                 face_list = key.split('-')
                 blk, blknom, subnom = self.diff_bulk_sub_phases(face_list)
                 finchem_lims[blknom] = {}
                 finchem_lims[blknom] = chem_lims[key]
 
-            # Now consider adding single elements to extend the phase diagram,
+            # Now add single elements to extend the phase diagram,
             # adding new additions to chemical potentials ONLY for the cases
             # where the phases in equilibria are those from the bulk phase
             # diagram. This is essentially the assumption that the majority of
@@ -346,22 +250,21 @@ class MPChemPotAnalyzer(ChemPotAnalyzer):
                     sub_specie_entries.append(entry)
 
                 pd = PhaseDiagram(sub_specie_entries)
-                pda = pd 
-                chem_lims = self.get_chempots_from_pda(pda)
-
+                chem_lims = self.get_chempots_from_pd(pd)
 
                 for key in chem_lims.keys():
                     face_list = key.split('-')
                     blk, blknom, subnom = self.diff_bulk_sub_phases(
                         face_list, sub_el=sub_el)
-                    # if one less than number of bulk species then can be
-                    # grouped with rest of structures
-                    if len(blk)+1 == len(self.bulk_species_symbol):
+                    # if number of facets from bulk phase diagram is
+                    # equal to bulk species then full_sub_approach says this
+                    # can be grouped with rest of structures
+                    if len(blk) == len(self.bulk_species_symbol):
                         if blknom not in finchem_lims.keys():
                             finchem_lims[blknom] = chem_lims[key]
                         else:
-                            finchem_lims[blknom][sub_el] = \
-                                chem_lims[key][sub_el]
+                            finchem_lims[blknom][Element(sub_el)] = \
+                                chem_lims[key][Element(sub_el)]
                         if 'name-append' not in finchem_lims[blknom].keys():
                             finchem_lims[blknom]['name-append'] = subnom
                         else:
@@ -370,30 +273,44 @@ class MPChemPotAnalyzer(ChemPotAnalyzer):
                         # if chem pots determined by two (or more) sub-specie
                         # containing phases, skip this facet!
                         continue
-
             #run a check to make sure all facets dominantly defined by bulk species
             overdependent_chempot = False
-            if len(finchem_lims.keys()) > len(self.bulk_species_symbol):
-                for facetbase in finchem_lims.keys():
-                    if "_rich" in facetbase:
-                        overdependent_chempot = True
-                        logger.warning(
-                        "Determined chemical potential to be over dependent"
-                        " on a substitutional specie. Needing to revert to full_sub_approach. If "
-                        "multiple sub species exist this could take a while/break the code...")
+            facets_to_delete = []
+            for facet_name, cps in finchem_lims.items():
+                cp_key_num = (len(cps.keys()) - 1) if 'name-append' in cps else len(cps.keys())
+                if cp_key_num != (len(self.bulk_species_symbol) + len(self.sub_species)):
+                    facets_to_delete.append( facet_name)
+                    logger.info("Not using facet {} because insufficient number of bulk facets for "
+                                "bulk set {} with sub_species set {}. (only dependent on {})."
+                                "".format( facet_name, self.bulk_species_symbol, self.sub_species,
+                                           cps.get('name-append')))
+            if len(facets_to_delete) == len(finchem_lims):
+                overdependent_chempot = True
+                logger.warning(
+                "Determined chemical potentials to be over dependent"
+                " on a substitutional specie. Needing to revert to full_sub_approach. If "
+                "multiple sub species exist this could take a while/break the code...")
+            else:
+                finchem_lims = {k:v for k,v in finchem_lims.items() if k not in facets_to_delete}
 
             if not overdependent_chempot:
-                chem_lims = finchem_lims.copy()
+                chem_lims = {}
+                for orig_facet, fc_cp_dict in finchem_lims.items():
+                    if 'name-append' not in fc_cp_dict:
+                        facet_nom = orig_facet
+                    else:
+                        full_facet_list = orig_facet.split('-')
+                        full_facet_list.extend( fc_cp_dict['name-append'].split('-'))
+                        full_facet_list.sort()
+                        facet_nom = '-'.join(full_facet_list)
+                    chem_lims[ facet_nom] = {k: v for k, v in fc_cp_dict.items() if k != 'name-append'}
             else:
                 #This is for when overdetermined chempots occur, forcing the full_sub_approach to happen
                 for sub, subentries in self.entries['subs_set'].items():
                     for subentry in subentries:
                         entry_list.append(subentry)
                 pd = PhaseDiagram(entry_list)
-                pda = pd 
-                chem_lims = self.get_chempots_from_pda(
-                    pda, common_approach=common_approach)
-
+                chem_lims = self.get_chempots_from_pd( pd)
 
         return chem_lims
 
@@ -417,28 +334,10 @@ class MPChemPotAnalyzer(ChemPotAnalyzer):
             with MPRester(api_key=self.mapi_key) as mp:
                 self.entries['bulk_derived'] = mp.get_entries_in_chemsys(self.bulk_species_symbol)
 
-        # retrieve the most stable mp-id with the given composition
-        lowest_energy_mpid = None
-        lowest_energy_entry = None
-        lowest_energy = 1000.
-        for i in self.entries['bulk_derived']:
-            if (i.composition.reduced_composition == redcomp) \
-                    and (i.energy_per_atom < lowest_energy):
-                lowest_energy_mpid = i.entry_id
-                lowest_energy_entry = i
-                lowest_energy = i.energy_per_atom
+        pd = PhaseDiagram(self.entries['bulk_derived'])
+        chem_lims = pd.get_all_chempots(redcomp)
 
-        if not lowest_energy_mpid:
-            msg = "Not able to find an mpid for composition of interest. " \
-                  "Cannot generate chempots without a computed entry."
-            logger.warning(msg)
-            raise ValueError(msg)
-        else:
-            self.mpid = lowest_energy_mpid
-            self.bulk_ce = lowest_energy_entry
-            mu = self.analyze_GGA_chempots()
-
-        return mu
+        return chem_lims
 
     def get_mp_entries(self, full_sub_approach=False):
         """
@@ -612,10 +511,6 @@ class UserChemPotAnalyzer(ChemPotAnalyzer):
             tempcl = mpcpa.analyze_GGA_chempots(
                     full_sub_approach=full_sub_approach) # Use MPentries 
 
-            # curr_pd = PhaseDiagram(personal_entry_list)
-            # for each entry in the MP database, if a similar composition 
-            # doesnt exist in the db then add it to the personal_entry_list
-
             curr_pd = PhaseDiagram(list(set().union(mpcpa.entries['bulk_derived'], mpcpa.entries['subs_set'])))
             stable_idlist = {i.composition.reduced_composition: [i.energy_per_atom, i.entry_id, i] for i in curr_pd.stable_entries}
             for mpcomp, mplist in stable_idlist.items():
@@ -649,27 +544,12 @@ class UserChemPotAnalyzer(ChemPotAnalyzer):
                     personal_entry_list.append(eltentry)
 
 
-        #see if bulk phase is unstable w.r.t phase diagram. If it is
-        #        AND no composition exists then set common_approach to False
-        pd = PhaseDiagram(personal_entry_list)
-        pda = pd 
-        common_approach = True
-        if pda.get_decomp_and_e_above_hull(self.bulk_ce, allow_negative=True)[1] < 0:
-            personal_entry_list.append(self.bulk_ce)
-        else:
-            stable_composition_exists = False
-            for i in pd.stable_entries:
-                if i.composition.reduced_composition == self.redcomp:
-                    stable_composition_exists = True
-            if not stable_composition_exists:
-                common_approach = False
+        personal_entry_list.append(self.bulk_ce)
 
         #compute chemical potentials
         if full_sub_approach:
             pd = PhaseDiagram(personal_entry_list)
-            pda = pd 
-            chem_lims = self.get_chempots_from_pda(
-                pda, common_approach=common_approach)
+            chem_lims = self.get_chempots_from_pd( pd)
         else:
             #first seperate out the bulk associated elements from those of substitutional elements
             entry_list = []
@@ -687,9 +567,7 @@ class UserChemPotAnalyzer(ChemPotAnalyzer):
 
             #now iterate through and collect chemical potentials
             pd = PhaseDiagram(entry_list)
-            pda = pd 
-            chem_lims = self.get_chempots_from_pda(
-                pda, common_approach=common_approach)
+            chem_lims = self.get_chempots_from_pd( pd)
 
             finchem_lims = {}  # this will be final chem_lims dictionary
             for key in chem_lims.keys():
@@ -711,8 +589,7 @@ class UserChemPotAnalyzer(ChemPotAnalyzer):
                         sub_specie_entries.append(entry)
 
                 pd = PhaseDiagram(sub_specie_entries)
-                pda = pd 
-                chem_lims = self.get_chempots_from_pda(pda)
+                chem_lims = self.get_chempots_from_pd(pd)
 
                 for key in chem_lims.keys():
                     face_list = key.split('-')
@@ -720,7 +597,7 @@ class UserChemPotAnalyzer(ChemPotAnalyzer):
                         face_list, sub_el=sub_el)
                     # if one less than number of bulk species then can be
                     # grouped with rest of structures
-                    if len(blk)+1 == len(self.bulk_species_symbol):
+                    if len(blk) == len(self.bulk_species_symbol):
                         if blknom not in finchem_lims.keys():
                             finchem_lims[blknom] = chem_lims[key]
                         else:
@@ -734,7 +611,45 @@ class UserChemPotAnalyzer(ChemPotAnalyzer):
                         # if chem pots determined by two (or more) sub-specie
                         # containing phases, skip this facet!
                         continue
-            chem_lims = finchem_lims.copy()
+
+            # run a check to make sure all facets dominantly defined by bulk species
+            overdependent_chempot = False
+            facets_to_delete = []
+            for facet_name, cps in finchem_lims.items():
+                cp_key_num = (len(cps.keys()) - 1) if 'name-append' in cps else len(cps.keys())
+                if cp_key_num != (len(self.bulk_species_symbol) + len(self.sub_species)):
+                    facets_to_delete.append(facet_name)
+                    print("Not using facet {} because insufficient number of bulk facets for "
+                                "bulk set {} with sub_species set {}. (only dependent on {})."
+                                "".format(facet_name, self.bulk_species_symbol, self.sub_species,
+                                          cps.get('name-append')))
+            if len(facets_to_delete) == len(finchem_lims):
+                overdependent_chempot = True
+                print(
+                    "Determined chemical potentials to be over dependent"
+                    " on a substitutional specie. Needing to revert to full_sub_approach. If "
+                    "multiple sub species exist this could take a while/break the code...")
+            else:
+                finchem_lims = {k: v for k, v in finchem_lims.items() if k not in facets_to_delete}
+
+            if not overdependent_chempot:
+                chem_lims = {}
+                for orig_facet, fc_cp_dict in finchem_lims.items():
+                    if 'name-append' not in fc_cp_dict:
+                        facet_nom = orig_facet
+                    else:
+                        full_facet_list = orig_facet.split('-')
+                        full_facet_list.extend(fc_cp_dict['name-append'].split('-'))
+                        full_facet_list.sort()
+                        facet_nom = '-'.join(full_facet_list)
+                    chem_lims[facet_nom] = {k: v for k, v in fc_cp_dict.items() if k != 'name-append'}
+            else:
+                # This is for when overdetermined chempots occur, forcing the full_sub_approach to happen
+                for sub, subentries in self.entries['subs_set'].items():
+                    for subentry in subentries:
+                        entry_list.append(subentry)
+                pd = PhaseDiagram(entry_list)
+                chem_lims = self.get_chempots_from_pd(pd)
 
         return chem_lims
 
@@ -803,10 +718,9 @@ class UserChemPotInputGenerator(object):
         #create phase diagram object for analyzing PBE-GGA energetics of structures computed in MP database
         full_structure_entries = [struct for entrykey in self.MPC.entries.keys() for struct in self.MPC.entries[entrykey]]
         pd = PhaseDiagram(full_structure_entries)
-        pda = pd 
 
         for entry in full_structure_entries:
-            if (entry.name in setupphases) and (pda.get_decomp_and_e_above_hull(entry, allow_negative=True)[1] <= energy_above_hull):
+            if (entry.name in setupphases) and (pd.get_decomp_and_e_above_hull(entry, allow_negative=True)[1] <= energy_above_hull):
                 with MPRester(api_key=self.mapi_key) as mp:
                     localstruct = mp.get_structure_by_material_id(entry.entry_id)
                 structures_to_setup[str(entry.entry_id)+'_'+str(entry.name)] = localstruct

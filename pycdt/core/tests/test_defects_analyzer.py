@@ -12,18 +12,58 @@ __date__ = "May 6, 2015"
 
 import os
 import unittest
+import tarfile
+from shutil import copyfile
 
 from monty.serialization import loadfn, dumpfn
 from monty.json import MontyDecoder, MontyEncoder
 from monty.tempfile import ScratchDir
+
+from pymatgen import __file__ as initfilep
+from pymatgen.core import Element
 from pymatgen.core.sites import PeriodicSite
 from pymatgen.core.lattice import Lattice
 from pymatgen.entries.computed_entries import ComputedStructureEntry
-from pycdt.core.defects_analyzer import ComputedDefect, DefectsAnalyzer
+from pymatgen.io.vasp import Locpot
 from pymatgen.util.testing import PymatgenTest
 
+from pycdt.core.defects_analyzer import ComputedDefect, DefectsAnalyzer, \
+    freysoldt_correction_from_paths, kumagai_correction_from_paths
+
+pmgtestfiles_loc = os.path.join(
+        os.path.split(os.path.split(initfilep)[0])[0], 'test_files')
 file_loc = os.path.abspath(os.path.join(
     __file__, '..', '..', '..', '..', 'test_files'))
+
+class FilePathCorrectionsTest(PymatgenTest):
+    def test_freysoldt_and_kumagai(self):
+        # create scratch directory with files....
+        # having to do it all at once to minimize amount of time copying over to Scratch Directory
+        with ScratchDir("."):
+            # setup with fake Locpot object copied over
+            copyfile( os.path.join( file_loc, "test_path_files.tar.gz"), "./test_path_files.tar.gz")
+            tar = tarfile.open("test_path_files.tar.gz")
+            tar.extractall()
+            tar.close()
+            blocpot = Locpot.from_file( os.path.join( file_loc, "bLOCPOT.gz"))
+            blocpot.write_file("test_path_files/bulk/LOCPOT")
+            dlocpot = Locpot.from_file( os.path.join( file_loc, "dLOCPOT.gz"))
+            dlocpot.write_file("test_path_files/sub_1_Sb_on_Ga/charge_2/LOCPOT")
+
+            fcc = freysoldt_correction_from_paths( "test_path_files/sub_1_Sb_on_Ga/charge_2/",
+                                                   "test_path_files/bulk/",
+                                                   18.12, 2, plot=True)
+            self.assertEqual( fcc, -1.2435280589593547 )
+            self.assertTrue( os.path.exists(
+                "test_path_files/sub_1_Sb_on_Ga/charge_2/Sub_Sb_on_Ga_mult32_chg_2_axis1_freysoldtplot.pdf"))
+
+            kcc = kumagai_correction_from_paths( "test_path_files/sub_1_Sb_on_Ga/charge_2/",
+                                                 "test_path_files/bulk/",
+                                                 18.12, 2, plot=True)
+            self.assertEqual( kcc, 0.6387768530616106 )
+            self.assertTrue( os.path.exists(
+                "test_path_files/sub_1_Sb_on_Ga/charge_2/Sub_Sb_on_Ga_mult32_chg_2_kumagaiplot.pdf"))
+
 
 class ComputedDefectTest(PymatgenTest):
     def setUp(self):
@@ -62,7 +102,7 @@ class DefectsAnalyzerTest(PymatgenTest):
         bulk_energy = -100
         bulk_entry = ComputedStructureEntry(bulk_struct, bulk_energy)
         e_vbm = 0.5
-        mu_elts = {'Cr': -10, 'O': -5}
+        mu_elts = {Element('Cr'): -10, Element('O'): -5}
         bandgap = 3.0
         self.da = DefectsAnalyzer(bulk_entry, e_vbm, mu_elts, bandgap)
 
@@ -153,16 +193,6 @@ class DefectsAnalyzerTest(PymatgenTest):
         self.assertArrayEqual( [list_c[0]['conc'], list_c[1]['conc']] ,
                                [6.9852762150255027e+38, 7.6553010344336244e+43])
 
-    def test_get_defects_concentration_old(self):
-        self.da.add_computed_defect(self.cd)
-        self.da.add_computed_defect(self.cd2)
-        list_c = self.da.get_defects_concentration(temp=300., ef=0.5)
-        self.assertArrayEqual( [list_c[0]['conc'], list_c[1]['conc']] ,
-                               [2.3075483087087652e+62, 1.453493521232979e+79])
-        list_c = self.da.get_defects_concentration(temp=1000., ef=0.5)
-        self.assertArrayEqual( [list_c[0]['conc'], list_c[1]['conc']] ,
-                               [6.9852762150255027e+38, 7.6553010344336244e+43])
-
     def test_get_dos(self):
         dosval = self.da._get_dos(-1., 2., 3., 4., -1.4)
         self.assertEqual( dosval, 1.5568745675641716e+45)
@@ -191,29 +221,7 @@ class DefectsAnalyzerTest(PymatgenTest):
         val = self.da._get_qtot(0.1, 300., [1., 2., 3.], [ 4., 5., 6.])
         self.assertEqual( val, 7.6228613357589505e+85)
 
-    def test_get_eq_ef(self): #no unittest until re-organization with real dos integration is available
-        pass
-
-    def test_get_non_eq_ef(self): #no unittest until re-organization with real dos integration is available
-        pass
-
-    def test_get_non_eq_qd(self): #no unittest until re-organization with real dos integration is available
-        pass
-
-    def test_get_non_eq_conc(self): #no unittest until re-organization with real dos integration is available
-        pass
-
-    def test_get_non_eq_qtot(self): #no unittest until re-organization with real dos integration is available
-        pass
-
-    def test_correct_bg(self): #deprecated
-        pass
-
-    def test_get_defect_occupancies(self): #deprecated
-        pass
-
 
 
 if __name__ == '__main__':
-    import unittest
     unittest.main()

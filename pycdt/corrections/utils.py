@@ -6,12 +6,16 @@ __author__ = 'Danny Broberg, Bharat Medasani'
 __email__ = 'dbroberg@gmail.com, mbkumar@gmail.com'
 
 import math
-
+import warnings
 import numpy as np
 norm = np.linalg.norm
 
 from pycdt.utils.units import eV_to_k, invang_to_ev, ang_to_bohr
 
+warnings.warn("Replacing PyCDT correction utils with use "
+              "corresponding objects in pymatgen.analysis.defects.corrections\n"
+              "Will remove all PyCDT utils with Version 2.5 of PyCDT.",
+              DeprecationWarning)
 def cleanlat(dat):
     """
     TODO: Identify better function name and input variable name
@@ -24,6 +28,10 @@ def cleanlat(dat):
     return list(map(norm, dat))
 
 
+warnings.warn("Replacing PyCDT correction utils with use "
+              "corresponding objects in pymatgen.analysis.defects.corrections\n"
+              "Will remove all PyCDT utils with Version 2.5 of PyCDT.",
+              DeprecationWarning)
 def genrecip(a1, a2, a3, encut):
     """
     Args:
@@ -50,6 +58,10 @@ def genrecip(a1, a2, a3, encut):
                     yield vec
 
 
+warnings.warn("Replacing PyCDT correction utils with use "
+              "corresponding objects in pymatgen.analysis.defects.corrections\n"
+              "Will remove all PyCDT utils with Version 2.5 of PyCDT.",
+              DeprecationWarning)
 def generate_reciprocal_vectors_squared(a1, a2, a3, encut):
     """
     Generate reciprocal vector magnitudes within the cutoff along the specied
@@ -83,6 +95,10 @@ def generate_reciprocal_vectors_squared(a1, a2, a3, encut):
                     yield vec2
 
 
+warnings.warn("Replacing PyCDT correction utils with use "
+              "corresponding objects in pymatgen.analysis.defects.corrections\n"
+              "Will remove all PyCDT utils with Version 2.5 of PyCDT.",
+              DeprecationWarning)
 def closestsites(struct_blk, struct_def, pos):
     """
     Returns closest site to the input position
@@ -101,6 +117,10 @@ def closestsites(struct_blk, struct_def, pos):
     return blk_close_sites[0], def_close_sites[0] 
 
 
+warnings.warn("Replacing PyCDT correction utils with use "
+              "corresponding objects in pymatgen.analysis.defects.corrections\n"
+              "Will remove all PyCDT utils with Version 2.5 of PyCDT.",
+              DeprecationWarning)
 def find_defect_pos(struct_blk, struct_def, defpos=None):
     """
     output cartesian coords of defect in bulk,defect cells.
@@ -130,8 +150,11 @@ def find_defect_pos(struct_blk, struct_def, defpos=None):
             return defpos.coords, defpos.coords
 
     sitematching = []
+    foundindex = []
     for site in struct_blk.sites:
         blksite, defsite = closestsites(struct_blk, struct_def, site.coords)
+        if type_def == 'interstitial':
+            foundindex.append(defsite[-1])
         if blksite[0].specie.symbol != defsite[0].specie.symbol:
             if type_def == 'vacancy':
                 return blksite[0].coords, None
@@ -141,12 +164,15 @@ def find_defect_pos(struct_blk, struct_def, defpos=None):
                 return blksite[0].coords, defsite[0].coords
         sitematching.append([blksite[0], blksite[1], defsite[0], defsite[1]])
 
-    if type_def == 'vacancy': 
+    if type_def == 'vacancy':
         #in case site type is same for closest site to vacancy
         sitematching.sort(key=lambda x:x[3])
         vacant = sitematching[-1]
         return vacant[0].coords, None
     elif type_def == 'interstitial':
+        for i, site in enumerate(struct_def.sites):
+            if i not in foundindex:
+                return None, site.coords
         #just in case site type is same for closest site to interstit
         sitematching.sort(key=lambda x:x[1])
         interstit = sitematching[-1]

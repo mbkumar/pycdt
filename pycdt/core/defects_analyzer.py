@@ -12,14 +12,83 @@ from math import sqrt, pi, exp
 from collections import defaultdict 
 from itertools import combinations
 
+import os
 import numpy as np
 
+from pymatgen.core import Element
 from pymatgen.core.structure import PeriodicSite, Structure
 from pymatgen.entries.computed_entries import ComputedStructureEntry
 from pymatgen.symmetry.analyzer import SpacegroupAnalyzer
 
+from pycdt.corrections.finite_size_charge_correction import get_correction_freysoldt, get_correction_kumagai
+from pycdt.utils.parse_calculations import SingleDefectParser
 from pycdt.utils.units import kb, conv, hbar
 
+import warnings
+warnings.simplefilter('default')
+
+
+def freysoldt_correction_from_paths( defect_file_path, bulk_file_path, dielectric,
+                                     defect_charge, plot=False):
+    """
+    A function for performing the Freysoldt correction with a set of file paths.
+    If this correction is used, please reference Freysoldt's original paper.
+    doi: 10.1103/PhysRevLett.102.016402
+
+    Does not require transformation.json file to exist in file path.
+
+    :param defect_file_path (str): file path to defect folder of interest
+    :param bulk_file_path (str): file path to bulk folder of interest
+    :param dielectric (float or 3x3 matrix): Dielectric constant (or tensor) for the structure
+    :param defect_charge (int): charge of defect structure of interest
+    :param plot (bool): allow for plotting electrostatic potential
+    :return:
+        Dictionary of Freysoldt Correction for defect
+    """
+    sdp = SingleDefectParser.from_paths( defect_file_path, bulk_file_path, dielectric, defect_charge)
+    _ = sdp.freysoldt_loader()
+    plt_title = os.path.join( defect_file_path,
+                             "{}_chg_{}".format(sdp.defect_entry.name, defect_charge)) if plot else None
+    correction = get_correction_freysoldt(sdp.defect_entry,
+                                          dielectric,
+                                          title=plt_title)
+
+    return correction
+
+def kumagai_correction_from_paths( defect_file_path, bulk_file_path, dielectric,
+                                   defect_charge, plot=False):
+    """
+    A function for performing the Kumagai correction with a set of file paths.
+    If this correction is used, please reference Kumagai and Oba's original paper
+    (doi: 10.1103/PhysRevB.89.195205) as well as Freysoldt's original
+    paper (doi: 10.1103/PhysRevLett.102.016402
+
+    Does not require transformation.json file to exist in file path.
+
+    :param defect_file_path (str): file path to defect folder of interest
+    :param bulk_file_path (str): file path to bulk folder of interest
+    :param dielectric (float or 3x3 matrix): Dielectric constant (or tensor) for the structure
+    :param defect_charge (int): charge of defect structure of interest
+    :param plot (bool): allow for plotting electrostatic potential
+    :return:
+        Dictionary of Kumagai Correction for defect
+    """
+    sdp = SingleDefectParser.from_paths( defect_file_path, bulk_file_path, dielectric, defect_charge)
+    _ = sdp.kumagai_loader()
+    plt_title = os.path.join( defect_file_path,
+                             "{}_chg_{}".format(sdp.defect_entry.name, defect_charge)) if plot else None
+    correction = get_correction_kumagai(sdp.defect_entry,
+                                          dielectric,
+                                          title=plt_title)
+
+    return correction
+
+
+
+warnings.warn("Replaced PyCDT usage of ComputedDefect objects with "
+              "DefectEntry objects from pymatgen.analysis.defects.core\n"
+              "Will remove ComputedDefect with Version 2.5 of PyCDT.",
+              DeprecationWarning)
 class ComputedDefect(object):
     """
     Holds all the info concerning a defect computation: 
@@ -90,6 +159,10 @@ class ComputedDefect(object):
                 name=d.get('name', None))
 
 
+warnings.warn("Replaced PyCDT usage of DefectsAnalyzer objects with "
+              "DefectPhaseDiagram objects from pymatgen.analysis.defects.thermodynamics\n"
+              "Will remove DefectsAnalyzer with Version 2.5 of PyCDT.",
+              DeprecationWarning)
 class DefectsAnalyzer(object):
     """
     a class aimed at performing standard analysis of defects
@@ -117,7 +190,7 @@ class DefectsAnalyzer(object):
     def as_dict(self):
         d = {'entry_bulk': self._entry_bulk.as_dict(),
              'e_vbm': self._e_vbm,
-             'mu_elts': self._mu_elts,
+             'mu_elts': {k.symbol:v for k,v in self._mu_elts.items()},
              'band_gap': self._band_gap,
              'defects': [d.as_dict() for d in self._defects],
              'formation_energies': self._formation_energies,
@@ -133,7 +206,7 @@ class DefectsAnalyzer(object):
         entry_bulk = ComputedStructureEntry(struct, d['entry_bulk']['energy'])
         analyzer = DefectsAnalyzer(
             entry_bulk, d['e_vbm'], 
-            {el: d['mu_elts'][el] for el in d['mu_elts']}, d['band_gap'])
+            {Element(el): d['mu_elts'][el] for el in d['mu_elts']}, d['band_gap'])
         for ddict in d['defects']:
             analyzer.add_computed_defect(ComputedDefect.from_dict(ddict))
         return analyzer
@@ -189,12 +262,11 @@ class DefectsAnalyzer(object):
             for elt in d.entry.composition.elements:
                 el_def_comp = d.entry.composition[elt] 
                 el_blk_comp = self._entry_bulk.composition[elt]
-                mu_needed_coeffs[elt] = el_blk_comp - el_def_comp
+                mu_needed_coeffs[Element(elt)] = el_blk_comp - el_def_comp
 
             sum_mus = 0.0
             for elt in mu_needed_coeffs:
-                el = elt.symbol
-                sum_mus += mu_needed_coeffs[elt] * self._mu_elts[el]
+                sum_mus += mu_needed_coeffs[elt] * self._mu_elts[elt]
 
             self._formation_energies.append(
                     d.entry.energy - self._entry_bulk.energy + \
@@ -313,9 +385,6 @@ class DefectsAnalyzer(object):
         for d in self._defects:
             df_coords = d.site.frac_coords
             target_site=None
-            #TODO make a better check this large tol. is weird
-            #TODO: Get the equivalent sites from the defect class, because
-            #TODO: this method is not designed with interstitials in mind.
             for s in struct.sites:
                 sf_coords = s.frac_coords
                 if abs(s.frac_coords[0]-df_coords[0]) < 0.1 \

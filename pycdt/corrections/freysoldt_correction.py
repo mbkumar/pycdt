@@ -26,6 +26,12 @@ from pycdt.utils.units import hart_to_ev
 
 norm = np.linalg.norm
 
+import warnings
+
+warnings.warn("Replacing PyCDT usage of Freysoldt base classes with calls to "
+              "corresponding objects in pymatgen.analysis.defects.corrections\n"
+              "Will remove QModel with Version 2.5 of PyCDT.",
+              DeprecationWarning)
 class QModel():
     """
     Model for the defect charge distribution.
@@ -74,6 +80,11 @@ class QModel():
         return -2*self.gamma2*self.x - 0.25*self.beta2*(1-self.x)
 
 
+warnings.warn("Replacing PyCDT usage of Freysoldt base classes with calls to "
+              "corresponding objects in pymatgen.analysis.defects.corrections\n"
+              "All correction plotting functionalities exist within pymatgen v2019.5.1."
+              "Version 2.5 of PyCDT will remove pycdt.corrections.freysoldt_correction.FreysoldtCorrPlotter.",
+              DeprecationWarning)
 class FreysoldtCorrPlotter(object):
     def __init__(self, x, v_R, dft_diff, final_shift, check):
         self.x = x
@@ -139,6 +150,12 @@ class FreysoldtCorrPlotter(object):
             plotter.plot(title)
 
 
+warnings.warn("Replacing PyCDT usage of Freysoldt base classes with calls to "
+              "corresponding objects in pymatgen.analysis.defects.corrections\n"
+              "Will remove pycdt.corrections.freysoldt_correction.FreysoldtCorrection "
+              "with Version 2.5 of PyCDT. (Corrections will all come from pymatgen for "
+              "longer term maintenance).",
+              DeprecationWarning)
 class FreysoldtCorrection(object):
     def __init__(self, axis, dielectricconst, pure_locpot_path,
                  defect_locpot_path, q, energy_cutoff=520,
@@ -334,7 +351,7 @@ class FreysoldtCorrection(object):
 
         return PCfreycorr
 
-    def potalign(self, title=None, widthsample=1.0, axis=None):
+    def potalign(self, title=None, widthsample=1.0, axis=None, output_sr=False):
         """
         For performing planar averaging potential alignment
 
@@ -343,6 +360,8 @@ class FreysoldtCorrection(object):
         widthsample is the width of the region in between defects where the potential alignment correction is averaged
         axis allows you to override the axis setting of class
                 (good for quickly plotting multiple axes without having to reload Locpot)
+        output_sr allows for output of the short range potential in the middle (sampled) region.
+                (Good for delocalization analysis)
         """
         logger = logging.getLogger(__name__)
         if axis is None:
@@ -383,13 +402,6 @@ class FreysoldtCorrection(object):
             self._pos=blksite
         else: #all else, do w.r.t defect site
             self._pos=defsite
-
-        ind = []
-        for i in range(3):
-            if axis == i:
-                continue
-            else:
-                ind.append(i)
 
         x = np.array(self._purelocpot.get_axis_grid(axis))  #angstrom
         nx = len(x)
@@ -477,7 +489,9 @@ class FreysoldtCorrection(object):
                 fname = 'FreyAxisData' # Extension is npz
                 plotter.to_datafile(fname)
 
-
-        return (-self._q * C)  #pot align energy correction (eV)
+        if output_sr:
+            return ((-self._q * C), tmppot)  #pot align energy correction (eV)
+        else:
+            return (-self._q * C)  #pot align energy correction (eV)
 
 

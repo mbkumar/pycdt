@@ -1,6 +1,6 @@
 """
-This module contains wrappers to the finite size supercell charge corrections
-implemented 
+This module contains calls to finite size supercell charge corrections as
+implemented in pymatgen.analysis.defects.core
 
 The methods implemented are
 1) Freysoldt correction for isotropic systems. Includes:
@@ -17,148 +17,192 @@ If you use the corrections implemented in this module, cite
    Freysoldt, Neugebauer, and Van de Walle,
     Phys. Status Solidi B. 248, 1067-1076 (2011) for isotropic correction
    Kumagai and Oba, Phys. Rev. B. 89, 195205 (2014) for anisotropic correction
-   in addition to the pycdt paper
+   in addition to the PyCDT paper
 """
 
 __author__ = 'Danny Broberg, Bharat Medasani'
 __email__ = 'dbroberg@gmail.com, mbkumar@gmail.com'
 
-import os, shutil
 import numpy as np
-from pymatgen.io.vasp.outputs import Locpot
-from pycdt.corrections.kumagai_correction import KumagaiBulkInit, KumagaiCorrection
-from pycdt.corrections.freysoldt_correction import FreysoldtCorrection
-from pycdt.corrections.sxdefect_correction import FreysoldtCorrection as SXD
 
-def get_correction_freysoldt(defect, bulk_entry, epsilon, title = None,
-                             partflag='All', averaging=False, defpos = None):
+from pycdt.corrections.sxdefect_correction import SxdefectalignWrapper as SXD
+from pymatgen.analysis.defects.corrections import FreysoldtCorrection, KumagaiCorrection
+
+
+def get_correction_freysoldt( defect_entry, epsilon, title = None,
+                              partflag='All', axis=None):
     """
     Function to compute the isotropic freysoldt correction for each defect.
+    If this correction is used, please reference Freysoldt's original paper.
+    doi: 10.1103/PhysRevLett.102.016402
     Args:
-        defect: ComputedDefect object
-        bulk_entry: ComputedStructureEntry corresponding to bulk OR bulk Locpot Object
-        epsilon: dielectric constant
+        defect_entry: DefectEntry object with the following
+            keys stored in defect.parameters:
+                required:
+                    axis_grid (3 x NGX where NGX is the length of the NGX grid
+                    in the x,y and z axis directions. Same length as planar
+                    average lists):
+                        A list of 3 numpy arrays which contain the cartesian axis
+                        values (in angstroms) that correspond to each planar avg
+                        potential supplied.
+
+                    bulk_planar_averages (3 x NGX where NGX is the length of
+                    the NGX grid in the x,y and z axis directions.):
+                        A list of 3 numpy arrays which contain the planar averaged
+                        electrostatic potential for the bulk supercell.
+
+                    defect_planar_averages (3 x NGX where NGX is the length of
+                    the NGX grid in the x,y and z axis directions.):
+                        A list of 3 numpy arrays which contain the planar averaged
+                        electrostatic potential for the defective supercell.
+
+                    bulk_sc_structure (Structure) bulk structure corresponding to
+                        defect supercell structure (uses Lattice for charge correction)
+
+                    defect_frac_sc_coords (3 x 1 array) Fracitional co-ordinates of
+                        defect location in supercell structure
+                optional:
+                    'encut' : energy cutoff desired for Freysoldt correction
+                    'madetol' : madelung tolerance for Freysoldt correction
+                    'q_model' : Charge Model for Freysoldt correction
+                    'q_model' : Charge Model for Freysoldt correction
+        epsilon (float or 3x3 matrix): Dielectric constant for the structure
         title: decides whether to plot electrostatic potential plots or not...
             if None, no plot is printed, if a string,
-            then the plot will include that string in it's label
-        partflag: four options
-                'pc' for just point charge correction, or
+            then the plot will be saved using the string
+        partflag: four options for correction output:
+               'pc' for just point charge correction, or
                'potalign' for just potalign correction, or
-               'All' for both, or
+               'All' for both (added together), or
                'AllSplit' for individual parts split up (form is [PC, potterm, full])
-        averaging (bool): method for taking 3-axis average of freysoldt.
-        defpos: (if known) defect position as a pymatgen Site object within bulk supercell
+        axis (int or None): if integer, then freysoldt correction is performed on the single axis.
+            If it is None, then averaging of the corrections for the three axes is used for the correction.
+
+    Returns Correction
     """
-    if partflag in ['All','AllSplit']:
-        nomtype='full correction'
-    elif partflag=='pc':
-        nomtype='point charge correction'
-    elif partflag=='potalign':
-        nomtype='potential alignment correction'
-    else:
-        print(partflag,' is incorrect potalign type. Must be "All","AllSplit", "pc", or "potalign".')
+    if partflag not in ['All', 'AllSplit', 'pc', 'potalign']:
+        print('{} is incorrect potalign type. Must be "All", "AllSplit", "pc", or '
+              '"potalign".'.format( partflag))
         return
 
-    if type(bulk_entry) is Locpot:
-        locpot_blk = bulk_entry
-    else:
-        locpot_blk = bulk_entry.data['locpot_path']
-    locpot_path_def = defect.entry.data['locpot_path']
-    dpat, tmplocpotnom = os.path.split(locpot_path_def)
-    charge = defect.charge
-    encut = defect.entry.data['encut']
+    q_model = defect_entry.parameters.get('q_model', None)
+    encut = defect_entry.parameters.get( 'encut', 520)
+    madetol = defect_entry.parameters.get( 'madetol', 0.0001)
 
-    if not charge:
+    if not defect_entry.charge:
         print('charge is zero so charge correction is zero')
-        return (0.,bulk_entry)
+        return 0.
 
-    if not averaging:
-        #single freysoldt correction along x-axis
-        corr_meth = FreysoldtCorrection(0, epsilon, locpot_blk,
-                                locpot_path_def, charge, energy_cutoff = encut, defect_position=defpos)
-        corr_val = corr_meth.correction(title=title,partflag=partflag)
-    else:
-        #averagefreysoldtcorrection over threeaxes
-        avgcorr = []
-        fullcorrset = []
-        locpot_def = locpot_path_def #start with path to defect
-        for ax in range(3):
-            corr_meth = FreysoldtCorrection(ax, epsilon, locpot_blk,
-                                    locpot_def, charge, energy_cutoff = encut, defect_position=defpos)
-            valset = corr_meth.correction(title=title+'ax'+str(ax+1), partflag=partflag)
+    template_defect = defect_entry.copy()
+    corr_class = FreysoldtCorrection( epsilon, q_model = q_model, energy_cutoff=encut, madetol=madetol,
+                                      axis= axis)
+    f_corr_summ = corr_class.get_correction( template_defect)
 
-            if partflag=='AllSplit':
-                avgcorr.append(valset[1])
-            else:
-                avgcorr.append(valset)
-            fullcorrset.append(valset)
-            if title:
-                homepat = os.path.abspath('.')
-                src = os.path.join(homepat, title+'ax'+str(ax+1)+'FreyplnravgPlot.pdf')
-                dst = os.path.join(dpat, title+'ax'+str(ax+1)+'FreyplnravgPlot.pdf')
-                shutil.move(src, dst)
-            locpot_blk = corr_meth._purelocpot #prevent reloading of locpots to save time
-            locpot_def = corr_meth._deflocpot
-        if partflag=='AllSplit':
-            corr_val = [valset[0], np.mean(avgcorr), valset[0]+np.mean(avgcorr), fullcorrset]
+    if title:
+        if axis is None:
+            ax_list = [[k, "axis"+str(k)] for k in corr_class.metadata["pot_plot_data"].keys()]
         else:
-            corr_val = np.mean(avgcorr)
+            ax_list = [[axis, "axis"+str(axis+1)]]
 
-    if partflag=='AllSplit':
-        freyval = corr_val[2]
-    else:
-        freyval = corr_val
+        for ax_key, ax_title in ax_list:
+            p = corr_class.plot( ax_key, title=ax_title, saved=False)
+            p.savefig(title + '_' + ax_title + '_freysoldtplot.pdf',
+                      bbox_inches='tight')
 
-    print('\n Final Freysoldt',nomtype,'value is ',freyval)
+    if partflag in ['AllSplit', 'All']:
+        freyval = np.sum( list(f_corr_summ.values()))
+    elif partflag == 'pc':
+        freyval = f_corr_summ['freysoldt_electrostatic']
+    elif partflag == 'potalign':
+        freyval = f_corr_summ['freysoldt_potential_alignment']
 
-    return (corr_val,corr_meth._purelocpot)
+    print('\n Final Freysoldt correction is {}'.format( freyval))
+
+    if partflag == 'AllSplit':
+        freyval = [f_corr_summ['freysoldt_electrostatic'],
+                    f_corr_summ['freysoldt_potential_alignment'],
+                    freyval]
+
+    return freyval
 
 
-def get_correction_kumagai(defect, path_blk, bulk_init, bulk_locpot=None,
-                           title=None, defpos = None):
+def get_correction_kumagai( defect_entry, epsilon, title = None,
+                              partflag='All'):
     """
     Function to compute the Kumagai correction for each defect (modified freysoldt for anisotropic dielectric).
     NOTE that bulk_init class must be pre-instantiated to use this function
     Args:
-        defect: ComputedDefect object
-        path_blk: location to Bulk folder (only needed if bulk_locpot not supplied)
-        bulk_init: KumagainBulkInit class object
-            note this contains the dielectric tensor to be used...
-        bulk_locpot: BulkLocpot object 
-                (if already loaded, otherwise will load from path_blk)
-        title: decides whether to plot electrostatic potential plots or not
-            if None, no plot is printed, if a string, then the plot will include that string in it's label
-        defpos: (if known) defect position as a pymatgen Site object within bulk supercell
-    """
-    epsilon = bulk_init.epsilon
-    charge = defect.charge
-    encut = defect.entry.data['encut']
+        defect_entry: DefectEntry object with the following
+            keys stored in defect.parameters:
+                required:
+                    bulk_atomic_site_averages (list):  list of bulk structure"s atomic site averaged ESPs * charge,
+                        in same order as indices of bulk structure
+                        note this is list given by VASP's OUTCAR (so it is multiplied by a test charge of -1)
 
-    if not charge:
+                    defect_atomic_site_averages (list):  list of defect structure"s atomic site averaged ESPs * charge,
+                        in same order as indices of defect structure
+                        note this is list given by VASP's OUTCAR (so it is multiplied by a test charge of -1)
+
+                    site_matching_indices (list):  list of corresponding site index values for
+                        bulk and defect site structures EXCLUDING the defect site itself
+                        (ex. [[bulk structure site index, defect structure"s corresponding site index], ... ]
+
+                    initial_defect_structure (Structure): Pymatgen Structure object representing un-relaxed defect structure
+
+                    defect_frac_sc_coords (array): Defect Position in fractional coordinates of the supercell
+                        given in bulk_structure
+                optional:
+                    gamma (float): Ewald parameter, Default is to determine it based on convergence of
+                        brute summation tolerance
+                    sampling_radius (float):r adius (in Angstrom) which sites must be outside of to be included
+                        in the correction. Publication by Kumagai advises to use Wigner-Seitz radius of
+                        defect supercell, so this is default value.
+        epsilon (float or 3x3 matrix): Dielectric constant for the structure
+        title: decides whether to plot electrostatic potential plots or not...
+            if None, no plot is printed, if a string,
+            then the plot will be saved using the string
+        partflag: four options for correction output:
+               'pc' for just point charge correction, or
+               'potalign' for just potalign correction, or
+               'All' for both (added together), or
+               'AllSplit' for individual parts split up (form is [PC, potterm, full])
+    """
+    if partflag not in ['All', 'AllSplit', 'pc', 'potalign']:
+        print('{} is incorrect potalign type. Must be "All", "AllSplit", "pc", or '
+              '"potalign".'.format( partflag))
+        return
+
+    sampling_radius = defect_entry.parameters.get( 'sampling_radius', None)
+    gamma = defect_entry.parameters.get( 'gamma', None)
+
+    if not defect_entry.charge:
         print('charge is zero so charge correction is zero')
         return 0.
 
-    outcar_path_blk = os.path.join(path_blk,'OUTCAR')
-    locpot_path_def = defect.entry.data['locpot_path']
-    dpat,dloc = os.path.split(locpot_path_def)
-    outcar_path_def = os.path.join(dpat,'OUTCAR')
+    template_defect = defect_entry.copy()
+    corr_class = KumagaiCorrection( epsilon, sampling_radius=sampling_radius,
+                                  gamma=gamma)
+    k_corr_summ = corr_class.get_correction( template_defect)
 
-    if os.path.exists(outcar_path_blk) and os.path.exists(outcar_path_def):
-        s = KumagaiCorrection(epsilon, charge, bulk_init.gamma, 
-                bulk_init.g_sum, bulk_init.structure, defect.entry.structure, 
-                energy_cutoff=encut, madetol=0.0001, 
-                bulk_outcar=outcar_path_blk, defect_outcar=outcar_path_def, defect_position=defpos)
-    else:
-        if not bulk_locpot:
-            bulk_locpot = Locpot.from_file(path_blk)
-        s = KumagaiCorrection(epsilon, charge, bulk_init.gamma,
-                bulk_init.g_sum, bulk_init.structure, defect.entry.structure,
-                energy_cutoff=encut, madetol=0.0001, 
-                bulk_locpot=bulk_locpot, defect_locpot=locpot_path_def, defect_position=defpos)
+    if title:
+        p = corr_class.plot( title="Kumagai", saved=False)
+        p.savefig(title + '_kumagaiplot.pdf',
+                  bbox_inches='tight')
 
-    kumval = s.correction(title=title, partflag='All')
-    print('\n Kumagai Correction value is ', kumval)
-    return kumval
+    if partflag in ['AllSplit', 'All']:
+        kumagai_val = np.sum( list(k_corr_summ.values()))
+    elif partflag == 'pc':
+        kumagai_val = k_corr_summ['kumagai_electrostatic']
+    elif partflag == 'potalign':
+        kumagai_val = k_corr_summ['kumagai_potential_alignment']
+
+    print('\n Final Kumagai correction is {}'.format( kumagai_val))
+
+    if partflag == 'AllSplit':
+        kumagai_val = [k_corr_summ['kumagai_electrostatic'],
+                       k_corr_summ['kumagai_potential_alignment'],
+                       kumagai_val]
+    return kumagai_val
 
 
 def get_correction_sxdefect(path_def, path_blk, epsilon, pos, charge, title=None,

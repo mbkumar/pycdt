@@ -3,6 +3,12 @@
 """
 This module is wraparound to sxdefectalign code by Freysoldt
 Applies Freysoldt correction with planar averaged potential method
+
+(NOTE from PyCDT v2.0 transition) This code is not used explicitly
+by PyCDT script, but there are no plans to merge this to pymatgen
+in the future (since equivalent functionality exists there).
+Keeping code here in case someone wants to make use of future
+sxdefectalign functionalities with a python wrapper.
 """
 
 __author__ = "Geoffroy Hautier, Danny Broberg"
@@ -21,7 +27,7 @@ from pymatgen.io.vasp.outputs import Locpot
 from monty.tempfile import ScratchDir
 
 
-class FreysoldtCorrection(object):
+class SxdefectalignWrapper(object):
     """
         NOTE from developers:
             This code is a python wrapper to sxdefectalign.
@@ -206,7 +212,7 @@ class FreysoldtCorrection(object):
         for when planar average varies by more than 0.2 eV around far region
         """
         if not self._charge: #don't need charge correction if charge is zero
-            return [[0,0,0],[0,0,0]] # why is it an double triplet?
+            return [[0,0,0],[0,0,0]]
         #correction from output (should include alignment once alignment 
         # has been done)
         result = []   

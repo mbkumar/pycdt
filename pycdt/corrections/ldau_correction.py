@@ -10,6 +10,8 @@ __status__ = "Development"
 __date__ = "Aug 22, 2016"
 
 from copy import deepcopy
+import warnings
+
 
 class LDAUCorrection(object):
     """
