@@ -12,7 +12,7 @@ def readme():
 setup(
         name="pycdt",
         packages=find_packages(),
-        version="2.0.0",
+        version="2.0.2",
         install_requires=["numpy>=1.9", "pymatgen>=2019.5.1", "matplotlib>=1.1"],
         package_data={"pycdt.utils": ["*.yaml"]},
         author="Danny Broberg, Bharat Medasani, Nils Zimmerman",
@@ -38,8 +38,7 @@ setup(
             ],
         license="MIT",
         scripts=glob.glob(os.path.join(SETUP_PTH, "scripts", "*")),
-        test_suite='nose.collector',
-        tests_require=['nose']#,
-        #entry_points={'console_scripts':['pycdt=scripts.pycdt']}
+        test_suite="nose.collector",
+        tests_require=["nose"]
 )
 
