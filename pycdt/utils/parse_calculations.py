@@ -543,7 +543,7 @@ class PostProcess(object):
         subfolders = glob.glob(os.path.join(self._root_fldr, "vac_*"))
         subfolders += glob.glob(os.path.join(self._root_fldr, "as_*"))
         subfolders += glob.glob(os.path.join(self._root_fldr, "sub_*"))
-        subfolders += glob.glob(os.path.join(self._root_fldr, "inter_*"))
+        subfolders += glob.glob(os.path.join(self._root_fldr, "Int_*"))
 
         def get_vr_and_check_locpot(fldr):
             vr_file = os.path.join(fldr,"vasprun.xml")
@@ -636,7 +636,7 @@ class PostProcess(object):
                         trans_dict["substitution_specie"] not in bulk_sc_struct.symbol_set:
                     self._substitution_species.add(
                             trans_dict["substitution_specie"])
-                elif "inter" in trans_dict["defect_type"] and \
+                elif "Int" in trans_dict["defect_type"] and \
                         trans_dict["defect_site"].specie.symbol not in bulk_sc_struct.symbol_set:
                     # added because extrinsic interstitials don't have
                     # "substitution_specie" character...
@@ -676,7 +676,7 @@ class PostProcess(object):
                     substitution_specie = trans_dict["substitution_specie"]
                     defect_site = PeriodicSite( substitution_specie, defect_site.frac_coords,
                                                 defect_site.lattice, coords_are_cartesian=False)
-                elif "int_" in defect_type:
+                elif "Int_" in defect_type:
                     defect_dict["@class"] = "Interstitial"
                 else:
                     raise ValueError("defect type {} not recognized...".format(defect_type))
