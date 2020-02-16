@@ -12,8 +12,8 @@ def readme():
 setup(
         name="pycdt",
         packages=find_packages(),
-        version="2.0.0",
-        install_requires=["numpy>=1.9", "pymatgen>=2019.5.1", "matplotlib>=1.1"],
+        version="2.0.3",
+        install_requires=["numpy>=1.18.1", "pymatgen>=2020.1.28", "matplotlib>=3.1""monty>=3.0.2"],
         package_data={"pycdt.utils": ["*.yaml"]},
         author="Danny Broberg, Bharat Medasani, Nils Zimmerman",
         author_email="mbkumar@gmail.com",
@@ -26,8 +26,9 @@ setup(
         classifiers=[
             "Programming Language :: Python :: 2",
             "Programming Language :: Python :: 2.7",
-            #"Programming Language :: Python :: 3.4",
-            "Development Status :: 1 - Alpha",
+            "Programming Language :: Python :: 3",
+            "Programming Language :: Python :: 3.8",
+            "Development Status :: 2 - Release",
             "Intended Audience :: Science/Research",
             "License :: OSI Approved :: MIT License",
             "Operating System :: OS Independent",

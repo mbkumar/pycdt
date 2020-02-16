@@ -18,7 +18,7 @@ __date__ = "Janurary 6, 2016"
 import abc
 
 
-from monty.string import str2unicode
+#from monty.string import str2unicode
 from monty.serialization import dumpfn
 from pymatgen.core.structure import PeriodicSite, Structure
 from pymatgen.core.periodic_table import Element, Specie, get_el_sp

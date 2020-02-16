@@ -2,11 +2,11 @@ INCAR:
     ENCUT: 620
     GGA: PS
     defects:
-        EDIFFG: -1e-2
-        EDIFF: 1e-7
+        EDIFFG: -1.e-2
+        EDIFF: 1.e-7
     bulk:
-        EDIFF: 1e-4
+        EDIFF: 1.e-4
     dielectric:
-        EDIFF: 1e-6
+        EDIFF: 1.e-6
 POTCAR:
     functional: PBE_52
