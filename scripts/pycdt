@@ -75,10 +75,10 @@ def generate_input(args):
     interstitial_elements = args.interstitial_elements
     settings = {}
     if args.input_settings_file:
-        if os.path.split(args.input_settings_file)[1] == 'INCAR':
-            settings = {'INCAR':{}}
+        if os.path.split(args.input_settings_file)[1] == "INCAR":
+            settings = {"INCAR":{}}
             incar = Incar.from_file(args.input_settings_file)
-            settings['INCAR'] = incar
+            settings["INCAR"] = incar
         else:
             settings = loadfn(args.input_settings_file)
 
@@ -159,15 +159,15 @@ def parse_output(args):
         mp_id = None
 
     formula = os.path.split(os.path.abspath(root_fldr))[-1]
-    initialize_logging(filename=formula+'_parser.log')
+    initialize_logging(filename=formula+"_parser.log")
 
     # parse results to get defect data and correction terms
     defect_data = PostProcess(root_fldr, mp_id, mapi_key).compile_all()
 
     # need to doctor up chemical potentials for dumpfn due to issue with
     # Element not interpretted by MontyEncoder
-    defect_data['mu_range'] = {ckey:{k.symbol:v for k,v in cdict.items()}
-                               for ckey, cdict in defect_data['mu_range'].items()}
+    defect_data["mu_range"] = {ckey:{k.symbol:v for k,v in cdict.items()}
+                               for ckey, cdict in defect_data["mu_range"].items()}
 
     dumpfn(defect_data, args.defect_data_file_name, cls=MontyEncoder, indent=2)
 
@@ -194,24 +194,24 @@ def compute_corrections(args):
     if args.epsilon:
         epsilon = args.epsilon
     else:
-        epsilon = defect_data['epsilon']
+        epsilon = defect_data["epsilon"]
 
-    defects = defect_data['defects']
+    defects = defect_data["defects"]
     for def_ind in range(len(defects)):
         if type(defects[def_ind]) == ComputedDefect:
             print("Encountered legacy ComputedDefect object. Converting to DefectEntry type for PyCDT v2.0...")
-            defects[def_ind] = convert_cd_to_de(defects[def_ind], defect_data['bulk'])
+            defects[def_ind] = convert_cd_to_de(defects[def_ind], defect_data["bulk"])
     corrections = defaultdict(list)
 
     formula = defects[0].bulk_structure.composition.reduced_formula
-    initialize_logging(filename=formula+'_correction.log')
+    initialize_logging(filename=formula+"_correction.log")
 
     #loading locpot object now is useful for both corrections
     bulk_obj = None #store either bulk Locpot or Outcar for saving time
-    if correction_method == 'freysoldt':
+    if correction_method == "freysoldt":
         for defect in defects:
-            print ('defect_name: {} q={}'.format( defect.name, defect.charge))
-            print ('-----------------------------------------\n\n')
+            print ("defect_name: {} q={}".format( defect.name, defect.charge))
+            print ("-----------------------------------------\n\n")
             def_ent_loader = SingleDefectParser( defect)
             bulk_obj = def_ent_loader.freysoldt_loader(bulk_locpot=bulk_obj)
 
@@ -221,11 +221,11 @@ def compute_corrections(args):
                                                    epsilon,
                                                    title=plt_title)
             corr_key = defect.parameters["defect_path"]
-            corrections[corr_key] = {'charge_correction': correction}
-    elif correction_method == 'kumagai':
+            corrections[corr_key] = {"charge_correction": correction}
+    elif correction_method == "kumagai":
         for defect in defects:
-            print ('defect_name: {} q={}'.format( defect.name, defect.charge))
-            print ('-----------------------------------------\n\n')
+            print ("defect_name: {} q={}".format( defect.name, defect.charge))
+            print ("-----------------------------------------\n\n")
             def_ent_loader = SingleDefectParser( defect)
             bulk_obj = def_ent_loader.kumagai_loader(bulk_outcar=bulk_obj)
 
@@ -234,10 +234,10 @@ def compute_corrections(args):
             correction = get_correction_kumagai( def_ent_loader.defect_entry,
                                                  epsilon, title = plt_title)
             corr_key = defect.parameters["defect_path"]
-            corrections[corr_key] = {'charge_correction': correction}
+            corrections[corr_key] = {"charge_correction": correction}
     else:
-        print ('Invalid correction method: ',correction_method,'. Select either ' \
-               '"freysoldt" or "kumagai"')
+        print ("Invalid correction method: ",correction_method,". Select either " \
+               "'freysoldt' or 'kumagai'")
 
     dumpfn(corrections, corrections_file_name, cls=MontyEncoder, indent=2)
 
@@ -258,14 +258,14 @@ def compute_formation_energies(args):
 
     # parse results to get defect data and correction terms
     defect_data = loadfn(defect_data_file_name, cls=MontyDecoder)
-    defects = defect_data['defects']
+    defects = defect_data["defects"]
     for def_ind in range(len(defects)):
         if type(defects[def_ind]) == ComputedDefect:
             print("Encountered legacy ComputedDefect object. Converting to DefectEntry type for PyCDT v2.0...")
-            defects[def_ind] = convert_cd_to_de(defects[def_ind], defect_data['bulk'])
+            defects[def_ind] = convert_cd_to_de(defects[def_ind], defect_data["bulk"])
 
     formula = defects[0].bulk_structure.composition.reduced_formula
-    initialize_logging(filename=formula+'_formation_energy.log')
+    initialize_logging(filename=formula+"_formation_energy.log")
 
     if os.path.isfile(corrections_file_name):
         correction_data = loadfn(corrections_file_name)  
@@ -274,18 +274,18 @@ def compute_formation_energies(args):
             computed_defect.corrections = correction_data[corr_key]
     elif corrections_file_name == "corrections.json":  # Default filename
         print("No corrections file exists! Plotting formation energies regardless...")
-        pass # Don't bother, the user is not worried about corrections
+        pass # Don"t bother, the user is not worried about corrections
     else:
         raise OSError([2, "File not found", corrections_file_name])
 
     # Gap
     if not args.bandgap:
-        bandgap = defect_data['gap']
+        bandgap = defect_data["gap"]
     else:
         bandgap = args.bandgap
 
-    vbm = defect_data['vbm']
-    mu_range = defect_data['mu_range']
+    vbm = defect_data["vbm"]
+    mu_range = defect_data["mu_range"]
 
     #doctor up mu_range because of cls Monty Decoder issue with Element
     mu_range = {ckey:{Element(k):v for k,v in cdict.items()}
@@ -296,11 +296,11 @@ def compute_formation_energies(args):
         if region == list(mu_range.keys())[0]:
             da_trans = dpd.transition_level_map
             if use_yaml:
-                with open('transition_levels.yaml', 'w') as f:
+                with open("transition_levels.yaml", "w") as f:
                     yaml.dump(da_trans, f)
             print ("============\nDefect Transition Levels (eV):\n===========")
             for dfct_name, trans_lvls in da_trans.items():
-                prt_dfct_name = dfct_name.split('@')[0]
+                prt_dfct_name = dfct_name.split("@")[0]
                 print (prt_dfct_name, trans_lvls)
                 ky_vals = sorted(trans_lvls.items(), key=lambda x: x[0])
                 for qpair, trans_lvl in ky_vals:
@@ -311,9 +311,9 @@ def compute_formation_energies(args):
             form_en_plot = dpd.plot( mu_elts=mu, xlim=None, ylim=None, ax_fontsize=1.3, lg_fontsize=1.,
                       lg_position=None, fermi_level = None, title=None, saved=False)
             form_en_plot.savefig(
-                    region+'_region_defect_form_energy.'+args.file_format,
-                    bbox_inches='tight')
-            print('printed ',region,' plot')
+                    region+"_region_defect_form_energy."+args.file_format,
+                    bbox_inches="tight")
+            print("printed ",region," plot")
 
 
 def main():
@@ -396,7 +396,7 @@ def main():
         " the data."
     correction_string = "Method to be used to compute finite size charge " \
         "correction for the defect-formation energies.\n" \
-        "Options are `freysoldt' and `kumagai'.\n" \
+        "Options are 'freysoldt' and 'kumagai'.\n" \
         "If not provided, Freysoldt method is assumed." 
     bandgap_string = "User defined band gap to plot the defect formation " \
         "energies.\nBy default, Materials Project (MP) bandgap is " \
@@ -419,27 +419,27 @@ def main():
                                     dest="mapi_key", help=mapi_string)
     parser_input_files.add_argument("-n", "--nmax", type=int, default=80,
                                     dest="nmax", help=nmax_string)
-    parser_input_files.add_argument("-or", "--oxi_range", action='append',
+    parser_input_files.add_argument("-or", "--oxi_range", action="append",
                                     type=str, nargs=3, dest="oxi_range",
                                     help=oxi_range_string)
-    parser_input_files.add_argument("-os", "--oxi_state", action='append',
+    parser_input_files.add_argument("-os", "--oxi_state", action="append",
                                     type=str, nargs=2, dest="oxi_state",
                                     help=oxi_state_string)
     parser_input_files.add_argument("-t", "--type", default="semiconductor",
                                     type=str, dest="struct_type", 
                                     help=struct_type_string)
     parser_input_files.add_argument("-noa", "--no_antisites",
-                                    action='store_false', dest="antisites",
+                                    action="store_false", dest="antisites",
                                     help=no_antisites_string)
     parser_input_files.add_argument("-ii", "--include_interstitials",
-                                    action='store_true', 
+                                    action="store_true",
                                     dest="include_interstitials",
                                     help=include_interstitials_string)
     parser_input_files.add_argument("interstitial_elements", type=str,
                                     default=[], nargs="*", \
                                     help=interstitial_elements_string)
-    parser_input_files.add_argument("--sub", action='append', type=str,
-                                    nargs="+", dest='substitutions',\
+    parser_input_files.add_argument("--sub", action="append", type=str,
+                                    nargs="+", dest="substitutions",\
                                     help=substitutions_string)
     parser_input_files.add_argument("-is", "--input_settings_file", 
                                     type=str, default=None,
@@ -478,7 +478,7 @@ def main():
                                             dest="corrections_file_name",
                                             help=corrections_file_name_string)
     parser_compute_corrections.add_argument("-p", "--plot_results",
-                                            action='store_true',
+                                            action="store_true",
                                             dest="plot_results",
                                             help=plot_results_string)
     parser_compute_corrections.add_argument("-e",  "--epsilon", type=float, 
@@ -503,19 +503,25 @@ def main():
                                          dest="corrections_file_name",
                                          help=corrections_file_name_string)
     parser_compute_energies.add_argument("-p", "--plot_results",
-                                         action='store_true',
+                                         action="store_true",
                                          dest="plot_results",
                                          help=plot_results_string)
     parser_compute_energies.add_argument("-bg", "--bandgap",
                                          type=float, default=0, dest="bandgap",
                                          help=bandgap_string)
-    parser_compute_energies.add_argument("-f", "--format", default='eps',
+    parser_compute_energies.add_argument("-f", "--format", default="eps",
                                          dest="file_format",
                                          help=plot_format_string)
     parser_compute_energies.set_defaults(func = compute_formation_energies)
 
     args = parser.parse_args()
-    args.func(args)
+    try:
+        args.func(args)
+    except:
+        print("PyCDT is a script that generates vasp input files, parses vasp output" 
+              " files, and computes the formation energy of charged defects.\n\n" 
+              "This script works based on several sub-commands with their own options."
+              " To see the options for sub-commands, type: pycdt -h")
 
 
 if __name__ == "__main__":
