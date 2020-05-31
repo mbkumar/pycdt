@@ -70,3 +70,13 @@ Questions?
 ----------
 Post your questions on `PyCDT forum <https://groups.google.com/forum/#!forum/pycdt-forum>`_.
 
+Citation
+--------
+To help support PyCDT development, if you use pycdt in your research, please cite the Comp Phys Comm[^pycdt] article.
+
+[^pycdt]: Danny Broberg, Bharat Medasani, Nils E.R. Zimmermann, Guodong Yu, Andrew Canning, Maciej Haranczyk, Mark Asta, Geoffroy Hautier,
+PyCDT: A Python toolkit for modeling point defects in semiconductors and insulators,
+Computer Physics Communications, Volume 226, 2018, Pages 165-179, ISSN 0010-4655,
+https://doi.org/10.1016/j.cpc.2018.01.004.
+(http://www.sciencedirect.com/science/article/pii/S0010465518300079)
+
