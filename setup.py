@@ -12,20 +12,18 @@ def readme():
 setup(
         name="pycdt",
         packages=find_packages(),
-        version="2.0.3",
-        install_requires=["numpy>=1.18.1", "pymatgen>=2020.1.28", "matplotlib>=3.1""monty>=3.0.2"],
+        version="2.0.4",
+        install_requires=["numpy>=1.18.1", "pymatgen>=2020.4.29", "matplotlib>=3.1""monty>=3.0.2"],
         package_data={"pycdt.utils": ["*.yaml"]},
         author="Danny Broberg, Bharat Medasani, Nils Zimmerman",
         author_email="mbkumar@gmail.com",
         maintainer="Bharat Medasani",
         maintainer_email="mbkumar@gmail.com",
-        #url="http://github.com/mbkumar/pycdcd",
+        url="http://bitbucket.org/mbkumar/pycdt",
         description="PyCDT is a python package to facilitate "
                   "DFT calculations for point defects in solids",
         long_description=readme(),
         classifiers=[
-            "Programming Language :: Python :: 2",
-            "Programming Language :: Python :: 2.7",
             "Programming Language :: Python :: 3",
             "Programming Language :: Python :: 3.8",
             "Development Status :: 2 - Release",
