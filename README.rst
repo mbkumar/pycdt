@@ -60,7 +60,7 @@ Installation
 
 Documentation
 ------------
-For help on how to use PyCDT, read the **[article](https://doi.org/10.1016/j.cpc.2018.01.004)** published in Computer Physics Communication.
+For help on how to use PyCDT, read the **`article <https://doi.org/10.1016/j.cpc.2018.01.004>`** published in Computer Physics Communication.
 
 Examples
 --------
@@ -72,7 +72,7 @@ From the pycdt root folder, go to examples folder by typing::
 
 Questions?
 ----------
-Post your questions on [PyCDT forum](https://groups.google.com/forum/#!forum/pycdt-forum).
+Post your questions on `PyCDT forum <https://groups.google.com/forum/#!forum/pycdt-forum>`_.
 
 Citation
 --------
