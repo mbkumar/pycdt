@@ -49,15 +49,18 @@ Installation
     export PATH=$PATH:PYCDT_INSTALL_DIR
     export PYTHONPATH=$PYTHONPATH:PYCDT_INSTALL_DIR
 
-4. (If not set) Set the VASP pseudopotential directory in $HOME/.pmgrc.yaml as follows::
+4. (If not set) Set the VASP pseudopotential directory in $HOME/.pmgrc.yaml using the command::
 
-     VASP_PSP_DIR: <Location of vasp pseudopotential top directory>
+     pmg config --add PMG_VASP_PSP_DIR <Location of vasp pseudopotential top directory>
 
-5. (If not set) Set the Materials Project API key in $HOME/.pmgrc.yaml as follows::
+5. (If not set) Set the Materials Project API key in $HOME/.pmgrc.yaml using the command::
 
-     MAPI_KEY: <Your mapi key obtained from www.materialsproject.org>
+     pmg config -add PMG_MAPI_KEY <Your mapi key obtained from www.materialsproject.org>
 
 
+Documentation
+------------
+For help on how to use PyCDT, read the **[article](https://doi.org/10.1016/j.cpc.2018.01.004)** published in Computer Physics Communication.
 
 Examples
 --------
@@ -66,17 +69,16 @@ From the pycdt root folder, go to examples folder by typing::
 
     cd examples
 
+
 Questions?
 ----------
-Post your questions on `PyCDT forum <https://groups.google.com/forum/#!forum/pycdt-forum>`_.
+Post your questions on [PyCDT forum](https://groups.google.com/forum/#!forum/pycdt-forum).
 
 Citation
 --------
-To help support PyCDT development, if you use pycdt in your research, please cite the Comp Phys Comm[^pycdt] article.
+To support PyCDT development, if you use pycdt in your research, please cite the following Comp Phys Comm article.
 
-[^pycdt]: Danny Broberg, Bharat Medasani, Nils E.R. Zimmermann, Guodong Yu, Andrew Canning, Maciej Haranczyk, Mark Asta, Geoffroy Hautier,
-PyCDT: A Python toolkit for modeling point defects in semiconductors and insulators,
-Computer Physics Communications, Volume 226, 2018, Pages 165-179, ISSN 0010-4655,
-https://doi.org/10.1016/j.cpc.2018.01.004.
-(http://www.sciencedirect.com/science/article/pii/S0010465518300079)
+- Danny Broberg, Bharat Medasani, Nils E.R. Zimmermann, Guodong Yu, Andrew Canning, Maciej Haranczyk, Mark Asta, Geoffroy Hautier,
+  PyCDT: A Python toolkit for modeling point defects in semiconductors and insulators,
+  Computer Physics Communications, Volume 226, 2018, Pages 165-179.
 
