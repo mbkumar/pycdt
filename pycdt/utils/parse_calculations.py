@@ -624,10 +624,15 @@ class PostProcess(object):
             fldr_name = os.path.split(fldr)[1]
             chrg_fldrs = glob.glob(os.path.join(fldr,"charge*"))
             for chrg_fldr in chrg_fldrs:
-                trans_dict = loadfn(
-                        os.path.join(chrg_fldr, "transformation.json"),
-                        cls=MontyDecoder)
-                chrg = trans_dict["charge"]
+                try:
+                    trans_dict = loadfn(
+                            os.path.join(chrg_fldr, "transformation.json"),
+                            cls=MontyDecoder)
+                    chrg = trans_dict["charge"]
+                except:
+                    logger.warning("Unable to parse transformation.jon." + 
+                                   " Parsing rest of calculations")
+                    continue
                 vr, error_msg = get_vr_and_check_locpot(chrg_fldr)
                 if error_msg:
                     logger.warning("Parsing the rest of the calculations")
