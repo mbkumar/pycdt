@@ -675,7 +675,7 @@ class ChargedDefectsStructures(object):
                         'bulk_supercell_site': as_sc_site,
                         'defect_type': 'antisite',
                         'site_specie': vac_symbol,
-                        'substituting_specie': as_symbol,
+                        'substitution_specie': as_symbol,
                         'site_multiplicity': sub.multiplicity,
                         'supercell': {'size': sc_scale,'structure': as_sc},
                         'charges': charges_as})
