@@ -11,9 +11,7 @@ __status__ = "Development"
 __date__ = "October 9, 2017"
 
 import os
-import logging
 import unittest
-import logging.config
 
 from pycdt.utils.log_util import initialize_logging
 

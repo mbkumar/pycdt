@@ -243,10 +243,10 @@ class PostProcessTest(PymatgenTest):
             pp = PostProcess(".")
             gaas_cp = pp.get_chempot_limits()
             self.assertEqual(set([u"As-GaAs", u"Ga-GaAs"]), set(gaas_cp.keys()))
-            self.assertEqual([-4.6580705550000001,  -4.9884807425],
-                             [gaas_cp["As-GaAs"][Element(elt)] for elt in ["As","Ga"]])
-            self.assertEqual([-6.609317857500001,  -3.03723344],
-                             [gaas_cp["Ga-GaAs"][Element(elt)] for elt in ["As","Ga"]])
+            self.assertEqual([-4.66,  -4.99],
+                             [round(gaas_cp["As-GaAs"][Element(elt)], 2) for elt in ["As","Ga"]])
+            self.assertEqual([-6.62,  -3.03],
+                             [round(gaas_cp["Ga-GaAs"][Element(elt)], 2) for elt in ["As","Ga"]])
 
     def test_dielectric_calculation(self):
         with ScratchDir("."):

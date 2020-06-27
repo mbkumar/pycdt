@@ -34,7 +34,6 @@ class PotcarSingleModTest(unittest.TestCase):
     def setUp(self):
         pass
 
-    @unittest.expectedFailure
     def test_from_symbol_and_functional(self):
         try:
             potcar = PotcarSingleMod.from_symbol_and_functional('Ni')
@@ -48,7 +47,6 @@ class PotcarModTest(unittest.TestCase):
     def setUp(self):
         pass
 
-    @unittest.expectedFailure
     def test_set_symbols(self):
         try:
             potcar = PotcarMod(symbols=['Ni', 'O'])
@@ -75,7 +73,6 @@ class DefectRelaxTest(unittest.TestCase):
             self.neutral_def_incar_min.items() <= drs.incar.items())
         self.assertTrue(set(self.def_keys).issubset(drs.incar))
 
-    @unittest.expectedFailure
     def test_charged_defect_incar(self):
         drs = DefectRelaxSet(self.structure, charge=1)
         self.assertIn('NELECT', drs.incar)
@@ -162,7 +159,7 @@ class MakeVaspDefectFilesTest(unittest.TestCase):
         user_settings = loadfn(os.path.join(
             file_loc, 'test_vasp_settings.yaml'))
         with ScratchDir('.'):
-            make_vasp_defect_files(self.defects, self.path, 
+            make_vasp_defect_files(self.defects, self.path,
                                    user_settings=user_settings)
             incar_loc = os.path.join(self.path, 'bulk')
             incar = Incar.from_file(os.path.join(incar_loc, "INCAR"))
@@ -176,7 +173,7 @@ class MakeVaspDefectFilesTest(unittest.TestCase):
 
 class MakeVaspDielectricFilesTest(unittest.TestCase):
     def setUp(self):
-        self.structure = Structure.from_file(os.path.join(file_loc, 
+        self.structure = Structure.from_file(os.path.join(file_loc,
                                                           'POSCAR_Cr2O3'))
         self.user_settings = loadfn(os.path.join(file_loc,
                                                  'test_vasp_settings.yaml'))
@@ -194,7 +191,7 @@ class MakeVaspDielectricFilesTest(unittest.TestCase):
 
     def test_user_modified_dielectric_files(self):
         with ScratchDir('.'):
-            make_vasp_dielectric_files(self.structure, self.path, 
+            make_vasp_dielectric_files(self.structure, self.path,
                                        user_settings=self.user_settings)
             incar = Incar.from_file(os.path.join(self.path, "INCAR"))
             self.assertTrue(
