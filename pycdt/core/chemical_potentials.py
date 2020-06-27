@@ -617,7 +617,8 @@ class UserChemPotAnalyzer(ChemPotAnalyzer):
             facets_to_delete = []
             for facet_name, cps in finchem_lims.items():
                 cp_key_num = (len(cps.keys()) - 1) if 'name-append' in cps else len(cps.keys())
-                if cp_key_num != (len(self.bulk_species_symbol) + len(self.sub_species)):
+                bulk_species_symbol = [s.symbol for s in self.bulk_composition.elements]
+                if cp_key_num != (len(bulk_species_symbol) + len(self.sub_species)):
                     facets_to_delete.append(facet_name)
                     print("Not using facet {} because insufficient number of bulk facets for "
                                 "bulk set {} with sub_species set {}. (only dependent on {})."
