@@ -795,7 +795,7 @@ class ChargedDefectsStructures(object):
                                 'interstitial', elt)
 
                         interstitials.append({
-                                'name': "inter_{}_{}".format(i+1, elt),
+                                'name': "inter_{}_{}".format(i+1, elt), #TODO fix naming convention
                                 'unique_site': intersite_object.site,
                                 'bulk_supercell_site': site_sc,
                                 'defect_type': 'interstitial',

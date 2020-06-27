@@ -188,8 +188,10 @@ class ChargedDefectsStructuresTest(PymatgenTest):
                                        include_interstitials=True,
                                        interstitial_elements=['Mn'])
         self.assertEqual(CDS.get_n_defects_of_type('interstitials'), 2)
-        fnames = [i['name'][i['name'].index('M'):] for i in CDS.defects['interstitials']]
-        self.assertEqual(sorted(fnames), sorted(['Mn_InFiT1_mult6', 'Mn_InFiT2_mult6']))
+        # fnames = [i['name'][i['name'].index('M'):] for i in CDS.defects['interstitials']]
+        # self.assertEqual(sorted(fnames), sorted(['Mn_InFiT1_mult6', 'Mn_InFiT2_mult6']))
+        fnames = [i['name'] for i in CDS.defects['interstitials']]
+        self.assertEqual(sorted(fnames), sorted(['inter_1_Mn', 'inter_2_Mn']))
         nsites = len(CDS.defects['interstitials'][0]['supercell']['structure'].sites)
         self.assertEqual(len(CDS.get_ith_supercell_of_defect_type(
                 0, 'interstitials').sites), nsites)
