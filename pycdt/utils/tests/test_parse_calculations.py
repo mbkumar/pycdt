@@ -15,6 +15,8 @@ import unittest
 import tarfile
 from shutil import copyfile
 
+import numpy as np
+
 from monty.serialization import dumpfn
 from monty.json import MontyEncoder
 from monty.tempfile import ScratchDir
@@ -214,8 +216,8 @@ class PostProcessTest(PymatgenTest):
                       [-0.00263523, 24.46276268, 5.381848290000001],
                       [0.0026437, 5.381848290000001, 24.42964103]]
             self.assertEqual(ca["epsilon"], answer)
-            self.assertEqual(ca["vbm"], 1.5516000000000001)
-            self.assertEqual(ca["gap"], 2.5390000000000001)
+            self.assertAlmostEqual(ca["vbm"], 1.5516, places=3)
+            self.assertAlmostEqual(ca["gap"], 2.5390, places=3)
             self.assertEqual(len(ca["defects"]), 2)
             self.assertEqual(ca["bulk_entry"].energy, vrobj.final_energy)
             #INSERT a simpletest for mu_range...
@@ -227,13 +229,13 @@ class PostProcessTest(PymatgenTest):
             copyfile(os.path.join(pmgtestfiles_loc, "vasprun.xml"), "bulk/vasprun.xml")
             pp = PostProcess(".")
             (testvbm, testgap) = pp.get_vbm_bandgap()
-            self.assertEqual(testvbm, 1.5516000000000001)
-            self.assertEqual(testgap, 2.5390000000000001)
+            self.assertAlmostEqual(testvbm, 1.5516, places=3)
+            self.assertAlmostEqual(testgap, 2.5390, places=3)
             #secondly check a band gap pull
             pp = PostProcess(".", mpid="mp-2534") #GaAs mpid
             (testvbm_mpid, testgap_mpid) = pp.get_vbm_bandgap()
-            self.assertEqual(testvbm_mpid, 2.6682)
-            self.assertEqual(testgap_mpid, 0.18869999999999987)
+            self.assertAlmostEqual(testvbm_mpid, 2.6682, places=3)
+            self.assertAlmostEqual(testgap_mpid, 0.1887, places=3)
 
     def test_get_chempot_limits(self):
         with ScratchDir("."):
@@ -243,10 +245,18 @@ class PostProcessTest(PymatgenTest):
             pp = PostProcess(".")
             gaas_cp = pp.get_chempot_limits()
             self.assertEqual(set([u"As-GaAs", u"Ga-GaAs"]), set(gaas_cp.keys()))
-            self.assertEqual([-4.6580705550000001,  -4.9884807425],
-                             [gaas_cp["As-GaAs"][Element(elt)] for elt in ["As","Ga"]])
-            self.assertEqual([-6.609317857500001,  -3.03723344],
-                             [gaas_cp["Ga-GaAs"][Element(elt)] for elt in ["As","Ga"]])
+            #self.assertAlmostEqual([-4.65807055,  -4.9884807425],
+            #                 [gaas_cp["As-GaAs"][Element(elt)] for elt in ["As","Ga"]], places=4)
+            #self.assertAlmostEqual([-6.6093178575,  -3.03723344],
+            #                 [gaas_cp["Ga-GaAs"][Element(elt)] for elt in ["As","Ga"]], places=4)
+            np.testing.assert_almost_equal(
+                    [-4.65807055,  -4.9884807425],
+                    [gaas_cp["As-GaAs"][Element(elt)] for elt in ["As","Ga"]], 
+                    decimal=3)
+            np.testing.assert_almost_equal(
+                    [-6.6093178575,  -3.03723344],
+                    [gaas_cp["Ga-GaAs"][Element(elt)] for elt in ["As","Ga"]], 
+                    decimal=3)
 
     def test_dielectric_calculation(self):
         with ScratchDir("."):
@@ -254,10 +264,10 @@ class PostProcessTest(PymatgenTest):
             copyfile(os.path.join(pmgtestfiles_loc, "vasprun.xml.dfpt.ionic"), "dielectric/vasprun.xml")
             pp = PostProcess(".")
             eps = pp.parse_dielectric_calculation()
-            answer = [[521.83587174, -0.00263523, 0.0026437],
-                      [-0.00263523, 24.46276268, 5.381848290000001],
-                      [0.0026437, 5.381848290000001, 24.42964103]]
-            self.assertEqual(eps, answer)
+            answer = [[521.83587174, -0.00263523,   0.0026437],
+                      [ -0.00263523,  24.46276268,  5.38184829],
+                      [  0.0026437,    5.38184829, 24.42964103]]
+            np.testing.assert_almost_equal(eps, answer, decimal=2)
 
 if __name__ == "__main__":
     unittest.main()
