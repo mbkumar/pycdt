@@ -14,13 +14,11 @@ import os
 
 from pymatgen.core import Element
 from pymatgen.core.structure import PeriodicSite, Structure, Lattice
-# from pymatgen.entries.computed_entries import ComputedStructureEntry
 from pymatgen.util.testing import PymatgenTest
 from pymatgen.analysis.defects.core import Vacancy, DefectEntry
 from pymatgen.analysis.defects.thermodynamics import DefectPhaseDiagram
 
 from pycdt.utils.plotter import DefectPlotter
-# from pycdt.core.defects_analyzer import ComputedDefect, DefectsAnalyzer
 
 
 class DefectPlotterTest(PymatgenTest):
@@ -45,19 +43,6 @@ class DefectPlotterTest(PymatgenTest):
         self.dp.get_plot_form_energy(mu_elts).savefig('test.pdf')
         self.assertTrue(os.path.exists('test.pdf'))
         os.system('rm test.pdf')
-
-    # def test_plot_conc_temp(self):
-    #     self.dp.plot_conc_temp().savefig('test.pdf')
-    #     self.assertTrue(os.path.exists('test.pdf'))
-    #     os.system('rm test.pdf')
-    #
-    # def test_plot_carriers_ef(self):
-    #     self.dp.plot_carriers_ef().savefig('test.pdf')
-    #     self.assertTrue(os.path.exists('test.pdf'))
-    #     os.system('rm test.pdf')
-
-    # def tearDown(self):
-    #     self.da
 
 
 import unittest
