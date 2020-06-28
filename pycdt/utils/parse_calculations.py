@@ -114,8 +114,8 @@ class SingleDefectParser(object):
         self.bulk_vr = bulk_vr
 
     @staticmethod
-    def from_paths( path_to_defect, path_to_bulk, dielectric, defect_charge, mpid = None,
-                    compatibility=DefectCompatibility()):
+    def from_paths(path_to_defect, path_to_bulk, dielectric, defect_charge, mpid = None,
+                   compatibility=DefectCompatibility()):
         """
         Identify defect object based on file paths. Minimal parsing performing for
         instantiating the SingleDefectParser class.
@@ -135,12 +135,12 @@ class SingleDefectParser(object):
                       "dielectric": dielectric, "mpid": mpid}
 
         # add bulk simple properties
-        bulk_vr = Vasprun( os.path.join(path_to_bulk, "vasprun.xml"))
+        bulk_vr = Vasprun(os.path.join(path_to_bulk, "vasprun.xml"))
         bulk_energy = bulk_vr.final_energy
         bulk_sc_structure = bulk_vr.initial_structure.copy()
 
         # add defect simple properties
-        defect_vr = Vasprun( os.path.join(path_to_defect, "vasprun.xml"))
+        defect_vr = Vasprun(os.path.join(path_to_defect, "vasprun.xml"))
         defect_energy = defect_vr.final_energy
         initial_defect_structure = defect_vr.initial_structure.copy()
 
@@ -246,13 +246,14 @@ class SingleDefectParser(object):
         defect_entry = DefectEntry(defect, defect_energy - bulk_energy,
                                    corrections={}, parameters=parameters)
 
-        return SingleDefectParser( defect_entry, compatibility=compatibility,
-                                   defect_vr=defect_vr, bulk_vr=bulk_vr)
+        return SingleDefectParser(defect_entry, compatibility=compatibility,
+                                  defect_vr=defect_vr, bulk_vr=bulk_vr)
 
 
     def freysoldt_loader(self, bulk_locpot=None):
         """Load metadata required for performing Freysoldt correction
-        requires "bulk_path" and "defect_path" to be loaded to DefectEntry parameters dict.
+        requires "bulk_path" and "defect_path" to be loaded to DefectEntry 
+        parameters dict.
 
         Args:
             bulk_locpot (Locpot): Add bulk Locpot object for expedited parsing.
@@ -265,66 +266,70 @@ class SingleDefectParser(object):
             return None
 
         if not bulk_locpot:
-            bulk_locpot_path = os.path.join( self.defect_entry.parameters["bulk_path"],
-                                             "LOCPOT")
-            bulk_locpot = Locpot.from_file( bulk_locpot_path)
+            bulk_locpot_path = os.path.join(self.defect_entry.parameters["bulk_path"],
+                                            "LOCPOT")
+            bulk_locpot = Locpot.from_file(bulk_locpot_path)
 
-        def_locpot_path = os.path.join( self.defect_entry.parameters["defect_path"],
-                                             "LOCPOT")
+        def_locpot_path = os.path.join(self.defect_entry.parameters["defect_path"],
+                                       "LOCPOT")
 
         def_locpot = Locpot.from_file( def_locpot_path)
 
         axis_grid = [def_locpot.get_axis_grid(i) for i in range(3)]
-        bulk_planar_averages = [bulk_locpot.get_average_along_axis(i) for i in range(3)]
+        blk_planar_averages = [bulk_locpot.get_average_along_axis(i) for i in range(3)]
         defect_planar_averages = [def_locpot.get_average_along_axis(i) for i in range(3)]
 
         defect_frac_sc_coords = self.defect_entry.site.frac_coords
 
-        self.defect_entry.parameters.update({"axis_grid": axis_grid,
-                                             "bulk_planar_averages": bulk_planar_averages,
-                                             "defect_planar_averages": defect_planar_averages,
-                                             "initial_defect_structure": def_locpot.structure,
-                                             "defect_frac_sc_coords": defect_frac_sc_coords
-                                             })
+        self.defect_entry.parameters.update({
+            "axis_grid": axis_grid,
+            "bulk_planar_averages": blk_planar_averages,
+            "defect_planar_averages": defect_planar_averages,
+            "initial_defect_structure": def_locpot.structure,
+            "defect_frac_sc_coords": defect_frac_sc_coords
+            })
 
         return bulk_locpot
 
     def kumagai_loader(self, bulk_outcar=None):
         """Load metadata required for performing Kumagai correction
-        requires "bulk_path" and "defect_path" to be loaded to DefectEntry parameters dict.
+        requires "bulk_path" and "defect_path" to be loaded to DefectEntry 
+        parameters dict.
 
         Args:
             bulk_outcar (Outcar): Add bulk Outcar object for expedited parsing.
                 If None, will load from file path variable bulk_path
         Return:
-            bulk_outcar object for reuse by another defect entry (for expedited parsing)
+            bulk_outcar object for reuse by another defect entry for 
+            expedited parsing
         """
         if not self.defect_entry.charge:
             # dont need to load outcars if charge is zero
             return None
 
         if not bulk_outcar:
-            bulk_outcar_path = os.path.join( self.defect_entry.parameters["bulk_path"],
-                                             "OUTCAR")
+            bulk_outcar_path = os.path.join(
+                    self.defect_entry.parameters["bulk_path"], "OUTCAR")
             bulk_outcar = Outcar( bulk_outcar_path)
 
-        def_outcar_path = os.path.join( self.defect_entry.parameters["defect_path"],
-                                             "OUTCAR")
-        def_outcar = Outcar( def_outcar_path)
+        def_outcar_path = os.path.join(
+                self.defect_entry.parameters["defect_path"], "OUTCAR")
+        def_outcar = Outcar(def_outcar_path)
 
         bulk_atomic_site_averages = bulk_outcar.electrostatic_potential
         defect_atomic_site_averages = def_outcar.electrostatic_potential
 
-        bulk_sc_structure = Poscar.from_file( os.path.join( self.defect_entry.parameters["bulk_path"],
-                                                            "POSCAR")).structure
+        bulk_sc_structure = Poscar.from_file(
+                os.path.join(self.defect_entry.parameters["bulk_path"],
+                                                          "POSCAR")).structure
 
-        if os.path.exists( os.path.join( self.defect_entry.parameters["defect_path"], "POSCAR")):
-            initial_defect_structure = Poscar.from_file( os.path.join( self.defect_entry.parameters["defect_path"],
-                                                                       "POSCAR")).structure
+        if os.path.exists(os.path.join(self.defect_entry.parameters["defect_path"], "POSCAR")):
+            initial_defect_structure = Poscar.from_file(os.path.join(self.defect_entry.parameters["defect_path"],
+                                                                     "POSCAR")).structure
         elif self.defect_vr:
             initial_defect_structure = self.defect_vr.initial_structure
         else:
-            initial_defect_structure = Vasprun( os.path.join( self.defect_entry.parameters["defect_path"],
+            initial_defect_structure = Vasprun(os.path.join(self.defect_entry.parameters["defect_path"],
                                                                        "vasprun.xml")).initial_structure
 
         bulksites = [site.frac_coords for site in bulk_sc_structure]
@@ -405,20 +410,16 @@ class SingleDefectParser(object):
 
         # standard run metadata
         run_metadata = {}
-        run_metadata.update( {"defect_incar": self.defect_vr.incar, "bulk_incar": self.bulk_vr.incar,
-                              "defect_kpoints": self.defect_vr.kpoints, "bulk_kpoints": self.bulk_vr.kpoints})
-        run_metadata.update( {"incar_calctype_summary":
+        run_metadata.update({"defect_incar": self.defect_vr.incar, "bulk_incar": self.bulk_vr.incar,
+                             "defect_kpoints": self.defect_vr.kpoints, "bulk_kpoints": self.bulk_vr.kpoints})
+        run_metadata.update({"incar_calctype_summary":
                                   {k: self.defect_vr.incar.get(k, None) \
                                   if self.defect_vr.incar.get(k) not in ["None", "False", False] else None \
-                                   for k in ["LHFCALC", "HFSCREEN", "IVDW", "LUSE_VDW", "LDAU", "METAGGA"]
-                                   }
-                              }
-                             )
+                                   for k in ["LHFCALC", "HFSCREEN", "IVDW", "LUSE_VDW", "LDAU", "METAGGA"]}})
         run_metadata.update({"potcar_summary":
                                  {"pot_spec": [potelt["titel"] for potelt in self.defect_vr.potcar_spec],
                                   "pot_labels": self.defect_vr.potcar_spec,
-                                  "pot_type": self.defect_vr.run_type}
-                             })
+                                  "pot_type": self.defect_vr.run_type}})
 
         self.defect_entry.parameters.update( {"run_metadata": run_metadata.copy()})
 
@@ -597,6 +598,7 @@ class PostProcess(object):
         if error_msg:
             logger.error("Abandoning parsing of the calculations")
             return {}
+
         bulk_energy = vr.final_energy
         bulk_sc_struct = vr.final_structure
         try:
@@ -748,17 +750,20 @@ class PostProcess(object):
         logger = logging.getLogger(__name__)
 
         if self._mpid:
-            cpa = MPChemPotAnalyzer( mpid = self._mpid, sub_species = self._substitution_species,
-                                   mapi_key = self._mapi_key)
+            cpa = MPChemPotAnalyzer(mpid=self._mpid, 
+                                    sub_species=self._substitution_species,
+                                    mapi_key=self._mapi_key)
         else:
-            bulkvr = Vasprun(os.path.join( self._root_fldr, "bulk", "vasprun.xml"), parse_potcar_file=False)
+            bulk_vr_path = os.path.join(self._root_fldr, "bulk", "vasprun.xml")
+            bulkvr = Vasprun(bulk_vr_path, parse_potcar_file=False)
             if not bulkvr:
-                msg = "Could not fetch computed entry for atomic chempots!"
+                msg = "In {}\n".format(os.path.join(self._root_fldr, "bulk"))
+                msg += "Could not fetch computed entry for atomic chempots!"
                 logger.warning(msg)
                 raise ValueError(msg)
-            cpa = MPChemPotAnalyzer( bulk_ce=bulkvr.get_computed_entry(),
-                                   sub_species = self._substitution_species,
-                                   mapi_key = self._mapi_key)
+            cpa = MPChemPotAnalyzer(bulk_ce=bulkvr.get_computed_entry(),
+                                    sub_species=self._substitution_species,
+                                    mapi_key=self._mapi_key)
 
         chem_lims = cpa.analyze_GGA_chempots()
 
@@ -779,8 +784,9 @@ class PostProcess(object):
         """
 
         try:
-            vr = Vasprun(os.path.join(
-                self._root_fldr,"dielectric","vasprun.xml"), parse_potcar_file=False)
+            vr = Vasprun(
+                    os.path.join(self._root_fldr, "dielectric", "vasprun.xml"),
+                    parse_potcar_file=False)
         except:
             logging.getLogger(__name__).warning(
                 "Parsing Dielectric calculation failed")
