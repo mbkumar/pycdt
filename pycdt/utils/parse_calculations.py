@@ -50,11 +50,11 @@ def convert_cd_to_de( cd, b_cse):
     if type(b_cse) != dict:
         b_cse = b_cse.as_dict()
 
-    bulk_sc_structure = Structure.from_dict( b_cse["structure"])
+    bulk_sc_structure = Structure.from_dict(b_cse["structure"])
 
     #modify defect_site as required for Defect object, confirming site exists in bulk structure
     site_cls = cd["site"]
-    defect_site = PeriodicSite.from_dict( site_cls)
+    defect_site = PeriodicSite.from_dict(site_cls)
     def_nom = cd["name"].lower()
     if "sub_" in def_nom or "as_" in def_nom:
         #modify site object for substitution site of Defect object
@@ -86,7 +86,7 @@ def convert_cd_to_de( cd, b_cse):
          "bulk_path": bulk_path,
          "encut": cd["entry"]["data"]["encut"]}
 
-    de = DefectEntry( defect_obj, uncorrected_energy, parameters = p)
+    de = DefectEntry(defect_obj, uncorrected_energy, parameters = p)
 
     return de
 
