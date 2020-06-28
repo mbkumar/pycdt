@@ -465,7 +465,7 @@ class SingleDefectParser(object):
 
             if len(mpid_fit_list) == 1:
                 mpid = mpid_fit_list[0]
-                print("Single mp-id found for bulk structure:{}.".format( mpid))
+                print("Single mp-id found for bulk structure: {}.".format( mpid))
             elif len(mpid_fit_list) > 1:
                 num_mpid_list = [int(mp.split(""-"")[1]) for mp in mpid_fit_list]
                 num_mpid_list.sort()
