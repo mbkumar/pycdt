@@ -49,35 +49,35 @@ class LegacyConversionTest(PymatgenTest):
                         "encut": 520}
         bulk_data = {"locpot_path": "bulk/path/to/files/LOCPOT"}
 
-        cse_defect = ComputedStructureEntry( ids, 100., data=defect_data)
-        cd = ComputedDefect( cse_defect, struc.sites[0],
-                             charge=-3, name="Vac_1_O")
-        b_cse = ComputedStructureEntry( struc, 10., data=bulk_data)
+        cse_defect = ComputedStructureEntry(ids, 100., data=defect_data)
+        cd = ComputedDefect(cse_defect, struc.sites[0],
+                            charge=-3, name="Vac_1_O")
+        b_cse = ComputedStructureEntry(struc, 10., data=bulk_data)
 
-        de = convert_cd_to_de( cd, b_cse)
+        de = convert_cd_to_de(cd, b_cse)
         self.assertIsInstance(de.defect, Vacancy)
         self.assertIsInstance(de, DefectEntry)
-        self.assertEqual( de.parameters["defect_path"], "defect/path/to/files")
-        self.assertEqual( de.parameters["bulk_path"], "bulk/path/to/files")
-        self.assertEqual( de.parameters["encut"], 520)
-        self.assertEqual( de.site.specie.symbol, "O")
+        self.assertEqual(de.parameters["defect_path"], "defect/path/to/files")
+        self.assertEqual(de.parameters["bulk_path"], "bulk/path/to/files")
+        self.assertEqual(de.parameters["encut"], 520)
+        self.assertEqual(de.site.specie.symbol, "O")
 
         # try again for substitution type
         # (site object had bulk specie for ComputedDefects,
         # while it should have substituional site specie for DefectEntrys...)
-        de_site_type = PeriodicSite( "Sb", vac.site.frac_coords, struc.lattice)
-        sub = Substitution( struc, de_site_type, charge=1)
+        de_site_type = PeriodicSite("Sb", vac.site.frac_coords, struc.lattice)
+        sub = Substitution(struc, de_site_type, charge=1)
         ids = sub.generate_defect_structure(1)
 
-        cse_defect = ComputedStructureEntry( ids, 100., data=defect_data)
-        cd = ComputedDefect( cse_defect, struc.sites[0],
-                             charge=1, name="Sub_1_Sb_on_O")
+        cse_defect = ComputedStructureEntry(ids, 100., data=defect_data)
+        cd = ComputedDefect(cse_defect, struc.sites[0],
+                            charge=1, name="Sub_1_Sb_on_O")
 
-        de = convert_cd_to_de( cd, b_cse)
+        de = convert_cd_to_de(cd, b_cse)
 
         self.assertIsInstance(de.defect, Substitution)
         self.assertIsInstance(de, DefectEntry)
-        self.assertEqual( de.site.specie.symbol, "Sb")
+        self.assertEqual(de.site.specie.symbol, "Sb")
 
 
 class SingleDefectParserTest(PymatgenTest):
@@ -86,7 +86,7 @@ class SingleDefectParserTest(PymatgenTest):
         # having to do it all at once to minimize amount of time copying over to Scratch Directory
         with ScratchDir("."):
             # setup with fake Locpot object copied over
-            copyfile( os.path.join( file_loc, "test_path_files.tar.gz"), "./test_path_files.tar.gz")
+            copyfile( os.path.join(file_loc, "test_path_files.tar.gz"), "./test_path_files.tar.gz")
             tar = tarfile.open("test_path_files.tar.gz")
             tar.extractall()
             tar.close()
@@ -96,50 +96,49 @@ class SingleDefectParserTest(PymatgenTest):
             dlocpot.write_file("test_path_files/sub_1_Sb_on_Ga/charge_2/LOCPOT")
 
             # test_from_path
-            sdp = SingleDefectParser.from_paths( "test_path_files/sub_1_Sb_on_Ga/charge_2/",
-                                                 "test_path_files/bulk/",
-                                                 18.12, 2)
-            self.assertIsInstance( sdp, SingleDefectParser)
-            self.assertIsInstance( sdp.defect_entry.defect, Substitution)
-            self.assertEqual( sdp.defect_entry.parameters["bulk_path"],
-                              "test_path_files/bulk/")
-            self.assertEqual( sdp.defect_entry.parameters["defect_path"],
-                              "test_path_files/sub_1_Sb_on_Ga/charge_2/")
+            sdp = SingleDefectParser.from_paths("test_path_files/sub_1_Sb_on_Ga/charge_2/",
+                                                "test_path_files/bulk/", 18.12, 2)
+            self.assertIsInstance(sdp, SingleDefectParser)
+            self.assertIsInstance(sdp.defect_entry.defect, Substitution)
+            self.assertEqual(sdp.defect_entry.parameters["bulk_path"],
+                             "test_path_files/bulk/")
+            self.assertEqual(sdp.defect_entry.parameters["defect_path"],
+                             "test_path_files/sub_1_Sb_on_Ga/charge_2/")
 
             # test_freysoldt_loader
             for param_key in ["axis_grid", "bulk_planar_averages", "defect_planar_averages", \
                                "initial_defect_structure", "defect_frac_sc_coords"]:
-                self.assertFalse( param_key in sdp.defect_entry.parameters.keys())
+                self.assertFalse(param_key in sdp.defect_entry.parameters.keys())
             bl = sdp.freysoldt_loader()
-            self.assertIsInstance( bl, Locpot)
+            self.assertIsInstance(bl, Locpot)
             for param_key in ["axis_grid", "bulk_planar_averages", "defect_planar_averages", \
                                "initial_defect_structure", "defect_frac_sc_coords"]:
-                self.assertTrue( param_key in sdp.defect_entry.parameters.keys())
+                self.assertTrue(param_key in sdp.defect_entry.parameters.keys())
 
             # test_kumagai_loader
             for param_key in ["bulk_atomic_site_averages", "defect_atomic_site_averages", \
                               "site_matching_indices", "sampling_radius", "defect_index_sc_coords"]:
-                self.assertFalse( param_key in sdp.defect_entry.parameters.keys())
+                self.assertFalse(param_key in sdp.defect_entry.parameters.keys())
             bo = sdp.kumagai_loader()
             for param_key in ["bulk_atomic_site_averages", "defect_atomic_site_averages", \
                               "site_matching_indices", "sampling_radius", "defect_index_sc_coords"]:
-                self.assertTrue( param_key in sdp.defect_entry.parameters.keys())
+                self.assertTrue(param_key in sdp.defect_entry.parameters.keys())
 
             # test_get_stdrd_metadata
             sdp.get_stdrd_metadata()
             for param_key in ["eigenvalues", "kpoint_weights", "bulk_energy", \
                               "final_defect_structure", "defect_energy", "run_metadata"]:
-                self.assertTrue( param_key in sdp.defect_entry.parameters.keys())
+                self.assertTrue(param_key in sdp.defect_entry.parameters.keys())
 
             # test_get_bulk_gap_data
             sdp.get_bulk_gap_data()
-            self.assertEqual( sdp.defect_entry.parameters["mpid"], "mp-2534")
-            self.assertAlmostEqual( sdp.defect_entry.parameters["gap"], 0.1887)
+            self.assertEqual(sdp.defect_entry.parameters["mpid"], "mp-2534")
+            self.assertAlmostEqual(sdp.defect_entry.parameters["gap"], 0.1887)
 
             # test_run_compatibility
-            self.assertFalse( 'is_compatible' in sdp.defect_entry.parameters)
+            self.assertFalse('is_compatible' in sdp.defect_entry.parameters)
             sdp.run_compatibility()
-            self.assertTrue( 'is_compatible' in sdp.defect_entry.parameters)
+            self.assertTrue('is_compatible' in sdp.defect_entry.parameters)
 
 
 class PostProcessTest(PymatgenTest):
