@@ -632,8 +632,9 @@ class PostProcess(object):
                             cls=MontyDecoder)
                     chrg = trans_dict["charge"]
                 except:
-                    logger.warning("Unable to parse transformation.jon." + 
-                                   " Parsing rest of calculations")
+                    logger.warning("Unable to parse transformation.jon" +
+                                   " in {}. ".format(chrg_fldr) + 
+                                   "Parsing rest of calculations")
                     continue
                 vr, error_msg = get_vr_and_check_locpot(chrg_fldr)
                 if error_msg:
@@ -683,7 +684,7 @@ class PostProcess(object):
                     substitution_specie = trans_dict["substitution_specie"]
                     defect_site = PeriodicSite( substitution_specie, defect_site.frac_coords,
                                                 defect_site.lattice, coords_are_cartesian=False)
-                elif "int_" in defect_type:
+                elif "inter_" in defect_type:
                     defect_dict["@class"] = "Interstitial"
                 else:
                     raise ValueError("defect type {} not recognized...".format(defect_type))
