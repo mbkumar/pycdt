@@ -626,6 +626,7 @@ class PostProcess(object):
             fldr_name = os.path.split(fldr)[1]
             chrg_fldrs = glob.glob(os.path.join(fldr,"charge*"))
             for chrg_fldr in chrg_fldrs:
+                logger.debug("Parsing folder {}".format(chrg_fldr))
                 try:
                     trans_dict = loadfn(
                             os.path.join(chrg_fldr, "transformation.json"),
