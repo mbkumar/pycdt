@@ -681,7 +681,7 @@ class PostProcess(object):
                     substitution_specie = trans_dict["substitution_specie"]
                     defect_site = PeriodicSite( substitution_specie, defect_site.frac_coords,
                                                 defect_site.lattice, coords_are_cartesian=False)
-                elif "int_" in defect_type:
+                elif "inter_" in defect_type:
                     defect_dict["@class"] = "Interstitial"
                 else:
                     raise ValueError("defect type {} not recognized...".format(defect_type))
