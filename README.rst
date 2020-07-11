@@ -32,16 +32,13 @@ Installation
     Download and install anaconda and create a new virtual environment. 
     For example, to create a new anaconda based virtual environment with a name *pycdt_venv*, run the following steps.
 
-    ```bash
     conda create -n pycdt_venv
+
     conda install -n pycdt_venv matplotlib numpy scipy setuptools
-    ```
 
     Activate this virtual environment, by running the command
-    ```bash
-    conda activate pycdt_venv
-    ```
-    If everything goes well, you should see ``pycdt_venv`` at the command line prompt.
+    ``conda activate pycdt_venv``
+    If everything goes well, you should see *pycdt_venv* at the command line prompt.
     Don't forget to activate your virtual environment whenever you are trying to 
     update or use pycdt.
 
