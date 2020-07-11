@@ -34,8 +34,8 @@ Installation
 
     conda create -n pycdt_venv
     conda install -n pycdt_venv matplotlib numpy scipy setuptools
-
    Activate this virtual environment, by running the command::
+
     conda activate pycdt_venv
    If everything goes well, you should see *pycdt_venv* at the command line prompt.
    Don't forget to activate your virtual environment whenever you are trying to 
