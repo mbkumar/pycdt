@@ -72,7 +72,7 @@ def convert_cd_to_de( cd, b_cse):
         defect_obj = Vacancy(bulk_sc_structure, defect_site, charge=cd["charge"])
     elif "as_" in def_nom or "sub_" in def_nom:
         defect_obj = Substitution(bulk_sc_structure, defect_site, charge=cd["charge"])
-    elif "int_" in def_nom:
+    elif "inter_" in def_nom:
         defect_obj = Interstitial(bulk_sc_structure, defect_site, charge=cd["charge"])
     else:
         raise ValueError("Could not recognize defect type for {}".format( cd["name"]))
