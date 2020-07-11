@@ -29,18 +29,17 @@ If not available already, use the following steps.
 Installation
 ------------
 0. (Optional step, but strongly suggested)
-    Download and install anaconda and create a new virtual environment. 
-    For example, to create a new anaconda based virtual environment with a name *pycdt_venv*, run the following steps.
+   Download and install anaconda and create a new virtual environment. 
+   For example, to create a new anaconda based virtual environment with a name *pycdt_venv*, run the following steps.::
 
     conda create -n pycdt_venv
-
     conda install -n pycdt_venv matplotlib numpy scipy setuptools
 
-    Activate this virtual environment, by running the command
-    ``conda activate pycdt_venv``
-    If everything goes well, you should see *pycdt_venv* at the command line prompt.
-    Don't forget to activate your virtual environment whenever you are trying to 
-    update or use pycdt.
+   Activate this virtual environment, by running the command::
+    conda activate pycdt_venv
+   If everything goes well, you should see *pycdt_venv* at the command line prompt.
+   Don't forget to activate your virtual environment whenever you are trying to 
+   update or use pycdt.
 
 1. Navigate to pycdt root directory::
 
@@ -63,19 +62,19 @@ Installation
     export PATH=$PATH:PYCDT_INSTALL_DIR
     export PYTHONPATH=$PYTHONPATH:PYCDT_INSTALL_DIR
 
-4. Configure your VASP pseudopotentials for use with pymatgen. 
-    ```bash 
+4. Configure your VASP pseudopotentials for use with pymatgen.::
+
     pmg config -p <EXTRACTED_VASP_POTCAR> <MY_PSP>
-    ```
-    Here  ``<EXTRACTED_VASP_POTCAR>`` is the folder where your pseudopotentials are present and 
-    ``<MY_PSP>`` is where the directory where the layout of pseudopotentials is organized  by pymatgen.
-    For more information refer to `pymatgen installation instructions https://pymatgen.org/installation.html`_.
+
+   Here  *<EXTRACTED_VASP_POTCAR>* is the folder where your pseudopotentials are present and 
+   *<MY_PSP>* is where the directory where the layout of pseudopotentials is organized  by pymatgen.
+   For more information refer to `pymatgen installation instructions https://pymatgen.org/installation.html`_.
 
 5. Set the VASP pseudopotential directory in $HOME/.pmgrc.yaml using the command::
-    ```bash
+
      pmg config --add PMG_VASP_PSP_DIR <MY_PSP>
-     ```
-     where <MY_PSP> is the directory used in the previous step.
+
+    where <MY_PSP> is the directory used in the previous step.
 
 
 6. Set the Materials Project API key in $HOME/.pmgrc.yaml using the command::
