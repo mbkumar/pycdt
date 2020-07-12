@@ -17,13 +17,13 @@ from pymatgen.core import PeriodicSite
 from pycdt.core.defectsmaker import *
 from pymatgen.util.testing import PymatgenTest
 
-file_loc = os.path.abspath(os.path.join(
+TEST_DIR = os.path.abspath(os.path.join(
     __file__, '..', '..', '..', '..', 'test_files'))
 
 class GetOptimizedScScaleTest(PymatgenTest):
     def setUp(self):
         self.gaas_prim_struct = Structure.from_file(
-                os.path.join(file_loc, 'POSCAR_GaAs'))
+                os.path.join(TEST_DIR, 'POSCAR_GaAs'))
 
     def test_biggercell_wanted(self):
         lattchange = get_optimized_sc_scale(self.gaas_prim_struct, 300)
@@ -35,7 +35,7 @@ class GetOptimizedScScaleTest(PymatgenTest):
 class DefectChargerSemiconductorTest(PymatgenTest):
     def setUp(self):
         self.gaas_struct = Structure.from_file(
-            os.path.join(file_loc, 'POSCAR_GaAs'))
+            os.path.join(TEST_DIR, 'POSCAR_GaAs'))
         self.def_charger = DefectChargerSemiconductor(self.gaas_struct)
 
     def test_vacancy_charges(self):
@@ -59,14 +59,14 @@ class DefectChargerSemiconductorTest(PymatgenTest):
 
 
     def test_substitution_charges(self):
-        s_impurity_qs = self.def_charger.get_charges('substitution', 'As', 'S')
-        se_impurity_qs = self.def_charger.get_charges('substitution', 'As', 'Se')
-        mg_impurity_qs = self.def_charger.get_charges('substitution', 'Ga', 'Mg')
-        zn_impurity_qs = self.def_charger.get_charges('substitution', 'Ga', 'Zn')
-        self.assertArrayEqual( s_impurity_qs, [-1, 0, 1, 2, 3, 4, 5, 6])
-        self.assertArrayEqual( se_impurity_qs, [-1, 0, 1, 2, 3, 4, 5, 6])
-        self.assertArrayEqual( mg_impurity_qs, [-2, -1, 0, 1, 2])
-        self.assertArrayEqual( zn_impurity_qs, [-2, -1, 0, 1, 2])
+        s_sub_qs = self.def_charger.get_charges('substitution', 'As', 'S')
+        se_sub_qs = self.def_charger.get_charges('substitution', 'As', 'Se')
+        mg_sub_qs = self.def_charger.get_charges('substitution', 'Ga', 'Mg')
+        zn_sub_qs = self.def_charger.get_charges('substitution', 'Ga', 'Zn')
+        self.assertArrayEqual(s_sub_qs, [-1, 0, 1, 2, 3, 4, 5, 6])
+        self.assertArrayEqual(se_sub_qs, [-1, 0, 1, 2, 3, 4, 5, 6])
+        self.assertArrayEqual(mg_sub_qs, [-2, -1, 0, 1, 2])
+        self.assertArrayEqual(zn_sub_qs, [-2, -1, 0, 1, 2])
 
     def test_interstitial_charges(self):
         """
@@ -85,7 +85,7 @@ class DefectChargerSemiconductorTest(PymatgenTest):
 class DefectChargerInsulatorTest(PymatgenTest):
     def setUp(self):
         cr2o3_struct = Structure.from_file(
-                os.path.join(file_loc, 'POSCAR_Cr2O3'))
+                os.path.join(TEST_DIR, 'POSCAR_Cr2O3'))
         self.def_charger = DefectChargerInsulator(cr2o3_struct)
 
     def test_vacancy_charges(self):
@@ -136,7 +136,7 @@ class DefectChargerInsulatorTest(PymatgenTest):
 class ChargedDefectsStructuresTest(PymatgenTest):
     def setUp(self):
         self.gaas_struct = Structure.from_file(
-            os.path.join(file_loc, 'POSCAR_GaAs'))
+            os.path.join(TEST_DIR, 'POSCAR_GaAs'))
         self.ga_site = self.gaas_struct.sites[0]
         self.as_site = self.gaas_struct.sites[1]
 
@@ -153,20 +153,26 @@ class ChargedDefectsStructuresTest(PymatgenTest):
 
         #test native (intrinsic) defect generation
         self.assertEqual('vac_1_Ga', CDS.defects['vacancies'][0]['name'])
-        self.assertEqual(self.ga_site, CDS.defects['vacancies'][0]['unique_site'])
+        self.assertEqual(self.ga_site,
+                         CDS.defects['vacancies'][0]['unique_site'])
         self.assertEqual('vac_2_As', CDS.defects['vacancies'][1]['name'])
-        self.assertEqual(self.as_site, CDS.defects['vacancies'][1]['unique_site'])
+        self.assertEqual(self.as_site,
+                         CDS.defects['vacancies'][1]['unique_site'])
 
-        self.assertEqual('as_1_As_on_Ga', CDS.defects['substitutions'][0]['name'])
-        self.assertEqual(self.ga_site, CDS.defects['substitutions'][0]['unique_site'])
-        self.assertEqual('as_1_Ga_on_As', CDS.defects['substitutions'][1]['name'])
-        self.assertEqual(self.as_site, CDS.defects['substitutions'][1]['unique_site'])
+        self.assertEqual('as_1_As_on_Ga',
+                         CDS.defects['substitutions'][0]['name'])
+        self.assertEqual(self.ga_site,
+                         CDS.defects['substitutions'][0]['unique_site'])
+        self.assertEqual('as_1_Ga_on_As',
+                         CDS.defects['substitutions'][1]['name'])
+        self.assertEqual(self.as_site,
+                         CDS.defects['substitutions'][1]['unique_site'])
 
 
     def test_extra_initialization(self):
-        CDS = ChargedDefectsStructures(self.gaas_struct, cellmax = 513,
-                                            struct_type='insulator',
-                                            antisites_flag=False)
+        CDS = ChargedDefectsStructures(self.gaas_struct, cellmax=513,
+                                       struct_type='insulator',
+                                       antisites_flag=False)
         self.assertIsInstance(CDS.defect_charger, DefectChargerInsulator)
         cellsize = CDS.defects['bulk']['supercell']['size']
         self.assertEqual([5, 5, 5], cellsize)
@@ -175,9 +181,11 @@ class ChargedDefectsStructuresTest(PymatgenTest):
 
     def test_subs_and_interstits(self):
         # test manual subtitution specification
-        CDS = ChargedDefectsStructures(self.gaas_struct, antisites_flag=False,
-                                       substitutions={'Ga':['Si','In'], 'As':['Sb']})
-        check_subs = {sub['name']: sub['unique_site'] for sub in CDS.defects['substitutions']}
+        CDS = ChargedDefectsStructures(
+                self.gaas_struct, antisites_flag=False,
+                substitutions={'Ga':['Si','In'], 'As':['Sb']})
+        check_subs = {sub['name']: sub['unique_site'] for sub in \
+                CDS.defects['substitutions']}
         self.assertEqual(3, len(check_subs))
         self.assertEqual(self.ga_site, check_subs['sub_1_Si_on_Ga'])
         self.assertEqual(self.ga_site, check_subs['sub_1_In_on_Ga'])
@@ -195,34 +203,39 @@ class ChargedDefectsStructuresTest(PymatgenTest):
         nsites = len(CDS.defects['interstitials'][0]['supercell']['structure'].sites)
         self.assertEqual(len(CDS.get_ith_supercell_of_defect_type(
                 0, 'interstitials').sites), nsites)
-        self.assertEqual(CDS.defects['interstitials'][0]['charges'], \
+        self.assertEqual(
+                CDS.defects['interstitials'][0]['charges'],
                 [0, 1, 2, 3, 4, 5, 6, 7])
-        self.assertEqual(CDS.defects['interstitials'][1]['charges'], \
+        self.assertEqual(
+                CDS.defects['interstitials'][1]['charges'],
                 [0, 1, 2, 3, 4, 5, 6, 7])
 
         # Test manual interstitial specification.
-        isite = PeriodicSite('Mn',
+        isite = PeriodicSite(
+                'Mn',
                 CDS.defects['interstitials'][0]['supercell']['structure'][nsites-1].coords,
-                             self.gaas_struct.lattice)
-        cds2 = ChargedDefectsStructures(self.gaas_struct,
-                                        include_interstitials=True,
-                                        standardized=False,
-                                        # standardized = False is required when manually specifying interstitial,
-                                        # because dont want base structure lattice to change
-                                        intersites=(isite,))
+                self.gaas_struct.lattice)
+        cds2 = ChargedDefectsStructures(
+                self.gaas_struct,
+                include_interstitials=True,
+                standardized=False,  # Required when manually specifying
+                                     # interstitial, because dont want base
+                                     # structure lattice to change
+                intersites=(isite,))
         self.assertEqual(cds2.get_n_defects_of_type('interstitials'), 2)
         fnames = [i['name'][i['name'].index('_')+3:] for i in cds2.defects['interstitials']]
         self.assertEqual(sorted(fnames), sorted(['As', 'Ga']))
         nsites = len(cds2.defects['interstitials'][0]['supercell']['structure'].sites)
         self.assertEqual(len(cds2.get_ith_supercell_of_defect_type(
                 0, 'interstitials').sites), nsites)
-        cds3 = ChargedDefectsStructures(self.gaas_struct,
-                                        include_interstitials=True,
-                                        standardized=False,
-                                        # standardized = False is required when manually specifying interstitial,
-                                        # because dont want base structure lattice to change
-                                        interstitial_elements=['Mn'],
-                                        intersites=(isite,))
+        cds3 = ChargedDefectsStructures(
+                self.gaas_struct,
+                include_interstitials=True,
+                standardized=False, # Required when manually specifying
+                                    # interstitial, because dont want base
+                                    # structure lattice to change
+                interstitial_elements=['Mn'],
+                intersites=(isite,))
         self.assertEqual(cds3.get_n_defects_of_type('interstitials'), 1)
         fnames = [i['name'][i['name'].index('_')+3:] for i in cds3.defects['interstitials']]
         self.assertEqual(sorted(fnames), sorted(['Mn']))
