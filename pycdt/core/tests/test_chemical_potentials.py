@@ -29,23 +29,23 @@ from pymatgen.entries.computed_entries import ComputedEntry
 from pymatgen.ext.matproj import MPRester
 from pymatgen.util.testing import PymatgenTest
 
-file_loc = os.path.abspath(os.path.join(
+TEST_DIR = os.path.abspath(os.path.join(
     __file__, '..', '..', '..', '..', 'test_files'))
 
 # class DpdAnalyzerTest(PymatgenTest):
 #     def setUp(self):
 #         dpd_path = os.path.split(inspect.getfile(DefectPhaseDiagram))[0]
-#         pymatgen_test_files = os.path.abspath(os.path.join( dpd_path, 'tests'))
+#         pymatgen_test_files = os.path.abspath(os.path.join(dpd_path, 'tests'))
 #         vbm_val = 2.6682
 #         gap = 1.5
 #         entries = list(loadfn(os.path.join(pymatgen_test_files, "GaAs_test_defentries.json")).values())
 #         for entry in entries:
-#             entry.parameters.update( {'vbm': vbm_val})
+#             entry.parameters.update({'vbm': vbm_val})
 #
 #         self.dpd = DefectPhaseDiagram(entries, vbm_val, gap)
 #
 #     def test_get_mp_chempots_from_dpd(self):
-#         cps = get_mp_chempots_from_dpd( self.dpd)
+#         cps = get_mp_chempots_from_dpd(self.dpd)
 #         self.assertEqual(set([u'As-GaAs', u'Ga-GaAs']), set(cps.keys()))
 #         self.assertEqual([ -4.66, -3.73],
 #                                [ round(cps['As-GaAs'][Element('As')],2),
@@ -81,9 +81,9 @@ file_loc = os.path.abspath(os.path.join(
 #     def test_diff_bulk_sub_phases(self):
 #         fl = ['GaAs', 'Sb', 'GaSb', 'Ga']
 #         blk, blknom, subnom = self.CPA.diff_bulk_sub_phases(fl, 'Sb')
-#         self.assertEqual( ['Ga', 'GaAs'], blk)
-#         self.assertEqual( 'Ga-GaAs', blknom)
-#         self.assertEqual( 'GaSb-Sb', subnom)
+#         self.assertEqual(['Ga', 'GaAs'], blk)
+#         self.assertEqual('Ga-GaAs', blknom)
+#         self.assertEqual('GaSb-Sb', subnom)
 #
 #
 # class MPChemPotAnalyzerTest(PymatgenTest):
@@ -106,7 +106,7 @@ file_loc = os.path.abspath(os.path.join(
 #
 #         #test (i) user's computed entry is stable w.r.t MP phase diagram; full_sub_approach = False
 #         bce = copy.copy(bulk_ce)
-#         self.MPCPA = MPChemPotAnalyzer( bulk_ce=bce, sub_species=set(['Sb', 'In']))
+#         self.MPCPA = MPChemPotAnalyzer(bulk_ce=bce, sub_species=set(['Sb', 'In']))
 #         cp_fsaf = self.MPCPA.analyze_GGA_chempots(full_sub_approach=False)
 #         self.assertEqual(set([u'Ga-GaAs-GaSb-In',u'As-GaAs-InAs-SbAs']), set(cp_fsaf.keys()))
 #         true_answer = [round(cp_fsaf['Ga-GaAs-GaSb-In'][Element(elt)],2) for elt in ['Sb', 'As', 'Ga', 'In']]
@@ -122,30 +122,30 @@ file_loc = os.path.abspath(os.path.join(
 #                               'As-GaAs-InAs-SbAs', 'GaAs-GaSb-In-InSb', 'GaAs-InAs-Sb-SbAs',
 #                               'GaAs-GaSb-InSb-Sb']), set(cp_fsat.keys()))
 #         true_answer = [round(cp_fsat["Ga-GaAs-GaSb-In"][Element(elt)],2) for elt in ['Sb', 'As', 'Ga', 'In']]
-#         self.assertEqual( [-4.44, -5.36, -3.03, -2.75],
+#         self.assertEqual([-4.44, -5.36, -3.03, -2.75],
 #                          true_answer)
 #         true_answer = [round(cp_fsat["GaAs-InAs-InSb-Sb"][Element(elt)],2) for elt in ['Sb', 'As', 'Ga', 'In']]
-#         self.assertEqual( [-4.13, -4.91, -3.48, -2.96],
+#         self.assertEqual([-4.13, -4.91, -3.48, -2.96],
 #                          true_answer)
 #         true_answer = [round(cp_fsat["GaAs-In-InAs-InSb"][Element(elt)],2) for elt in ['Sb', 'As', 'Ga', 'In']]
-#         self.assertEqual( [-4.33, -5.12, -3.27, -2.75],
+#         self.assertEqual([-4.33, -5.12, -3.27, -2.75],
 #                          true_answer)
 #         true_answer = [round(cp_fsat["As-GaAs-InAs-SbAs"][Element(elt)],2) for elt in ['Sb', 'As', 'Ga', 'In']]
-#         self.assertEqual( [-4.16, -4.66, -3.73, -3.21],
+#         self.assertEqual([-4.16, -4.66, -3.73, -3.21],
 #                          true_answer)
 #         true_answer = [round(cp_fsat["GaAs-GaSb-In-InSb"][Element(elt)],2) for elt in ['Sb', 'As', 'Ga', 'In']]
-#         self.assertEqual( [-4.33, -5.25, -3.14, -2.75],
+#         self.assertEqual([-4.33, -5.25, -3.14, -2.75],
 #                          true_answer)
 #         true_answer = [round(cp_fsat["GaAs-InAs-Sb-SbAs"][Element(elt)],2) for elt in ['Sb', 'As', 'Ga', 'In']]
-#         self.assertEqual( [-4.13, -4.69, -3.7, -3.18],
+#         self.assertEqual([-4.13, -4.69, -3.7, -3.18],
 #                          true_answer)
 #         true_answer = [round(cp_fsat["GaAs-GaSb-InSb-Sb"][Element(elt)],2) for elt in ['Sb', 'As', 'Ga', 'In']]
-#         self.assertEqual( [-4.13, -5.05, -3.34, -2.96],
+#         self.assertEqual([-4.13, -5.05, -3.34, -2.96],
 #                          true_answer)
 #
 #         #test (iii) not stable, composition exists in list of stable comps of PD; full_sub_approach = False
 #         us_bce=ComputedEntry(Composition({'Ga':1, 'As':1}), -8)
-#         self.MPCPA = MPChemPotAnalyzer( bulk_ce=us_bce)
+#         self.MPCPA = MPChemPotAnalyzer(bulk_ce=us_bce)
 #         cp_fsaf_us_ce = self.MPCPA.analyze_GGA_chempots(full_sub_approach=False)
 #         self.assertEqual(set(['As-GaAs', 'Ga-GaAs']), set(cp_fsaf_us_ce.keys()))
 #         self.assertEqual([-4.66, -3.73],
@@ -156,19 +156,19 @@ file_loc = os.path.abspath(os.path.join(
 #         #test (ii) user's computed entry is stable w.r.t MP phase diagram
 #         #       AND  composition DOESNT exists in list of stable comps of PD; full_sub_approach = False
 #         s_cdne_bce = ComputedEntry(Composition({'Ga':2, 'As':3}), -21.5)
-#         self.MPCPA = MPChemPotAnalyzer( bulk_ce=s_cdne_bce)
+#         self.MPCPA = MPChemPotAnalyzer(bulk_ce=s_cdne_bce)
 #         cp_fsaf_s_cdne = self.MPCPA.analyze_GGA_chempots(full_sub_approach=False)
 #         self.assertEqual(set(['Ga2As3-GaAs', 'As-Ga2As3']), set(cp_fsaf_s_cdne.keys()))
 #         for tested, answer in zip([round(cp_fsaf_s_cdne['Ga2As3-GaAs'][Element(elt)],2) for elt in ['As', 'Ga']],
 #                                   [-4.73, -3.66]):
-#             self.assertAlmostEqual( answer,tested)
+#             self.assertAlmostEqual(answer,tested)
 #         self.assertEqual([-4.66, -3.76],
 #                          [round(cp_fsaf_s_cdne['As-Ga2As3'][Element(elt)],2) for elt in ['As', 'Ga']])
 #
 #         #test (iv) not stable, composition DOESNT exists in list of stable comps of PD; full_sub_approach = False
 #         #       case a) simple 2D phase diagram
 #         us_cdne_bce_a = ComputedEntry(Composition({'Ga':2, 'As':3}), -20.)
-#         self.MPCPA = MPChemPotAnalyzer( bulk_ce=us_cdne_bce_a)
+#         self.MPCPA = MPChemPotAnalyzer(bulk_ce=us_cdne_bce_a)
 #         cp_fsaf_us_cdne_a = self.MPCPA.analyze_GGA_chempots(full_sub_approach=False)
 #         self.assertEqual(set(['As-GaAs']), set(cp_fsaf_us_cdne_a.keys()))
 #         self.assertEqual([-4.66, -3.73],
@@ -176,7 +176,7 @@ file_loc = os.path.abspath(os.path.join(
 #
 #         #       case b) larger phase diagram
 #         us_cdne_bce_b = ComputedEntry(Composition({'Ga':2, 'As':3, 'Sb':2}), -20.)
-#         self.MPCPA = MPChemPotAnalyzer( bulk_ce=us_cdne_bce_b)
+#         self.MPCPA = MPChemPotAnalyzer(bulk_ce=us_cdne_bce_b)
 #         cp_fsaf_us_cdne_b = self.MPCPA.analyze_GGA_chempots(full_sub_approach=False)
 #         self.assertEqual(set(['GaAs-Sb-SbAs']), set(cp_fsaf_us_cdne_b.keys()))
 #         self.assertEqual([-4.13, -4.69, -3.70],
@@ -199,7 +199,7 @@ file_loc = os.path.abspath(os.path.join(
 #         self.MPCPA.get_mp_entries()
 #         ents = self.MPCPA.entries
 #         self.assertEqual(set(['bulk_derived', 'subs_set']), set(ents.keys()))
-#         self.assertTrue( len(ents['bulk_derived']))
+#         self.assertTrue(len(ents['bulk_derived']))
 
 
 class UserChemPotAnalyzerTest(PymatgenTest):
@@ -212,51 +212,65 @@ class UserChemPotAnalyzerTest(PymatgenTest):
         #set up a local phase diagram object...
         # test non mp case,
         with ScratchDir('.'):
-            os.mkdir('PhaseDiagram')
-            os.mkdir('PhaseDiagram/Ga')
-            copyfile( os.path.join(file_loc, 'vasprun.xml_Ga'), 'PhaseDiagram/Ga/vasprun.xml')
-            os.mkdir('PhaseDiagram/As')
-            copyfile( os.path.join(file_loc, 'vasprun.xml_As'), 'PhaseDiagram/As/vasprun.xml')
-            os.mkdir('PhaseDiagram/GaAs')
-            copyfile( os.path.join(file_loc, 'vasprun.xml_GaAs'), 'PhaseDiagram/GaAs/vasprun.xml')
-            cp = self.UCPA.read_phase_diagram_and_chempots(full_sub_approach=False, include_mp_entries=False)
+            #os.mkdir('PhaseDiagram')
+            os.makedirs(os.path.join("PhaseDiagram", "Ga"))
+            copyfile(os.path.join(TEST_DIR, 'vasprun.xml_Ga'),
+                     os.path.join("PhaseDiagram", "Ga", "vasprun.xml"))
+            os.mkdir(os.path.join('PhaseDiagram', 'As'))
+            copyfile(os.path.join(TEST_DIR, 'vasprun.xml_As'),
+                     os.path.join("PhaseDiagram", "As", "vasprun.xml"))
+            os.mkdir(os.path.join("PhaseDiagram", "GaAs"))
+            copyfile(os.path.join(TEST_DIR, 'vasprun.xml_GaAs'),
+                     os.path.join("PhaseDiagram", "GaAs", "vasprun.xml"))
+            cp = self.UCPA.read_phase_diagram_and_chempots(
+                    full_sub_approach=False, include_mp_entries=False)
             self.assertEqual(set(['As-GaAs', 'Ga-GaAs']), set(cp.keys()))
-            self.assertEqual([ -5.36, -4.29],
-                             [round(cp['As-GaAs'][Element(elt)],2) for elt in ['As', 'Ga']])
-            self.assertEqual([-6.04, -3.61],
-                             [round(cp['Ga-GaAs'][Element(elt)],2) for elt in ['As', 'Ga']])
+            self.assertEqual(
+                    [-5.36, -4.29],
+                    [round(cp['As-GaAs'][Element(elt)], 2) for elt in ['As', 'Ga']])
+            self.assertEqual(
+                    [-6.04, -3.61],
+                    [round(cp['Ga-GaAs'][Element(elt)], 2) for elt in ['As', 'Ga']])
 
         # followed by an case where MP needs to supplement...
         with ScratchDir('.'):
             os.mkdir('PhaseDiagram')
             #NO Ga entry included this time
-            os.mkdir('PhaseDiagram/As')
-            copyfile(os.path.join(file_loc, 'vasprun.xml_As'), 'PhaseDiagram/As/vasprun.xml')
-            os.mkdir('PhaseDiagram/GaAs')
-            copyfile(os.path.join(file_loc, 'vasprun.xml_GaAs'), 'PhaseDiagram/GaAs/vasprun.xml')
-            cp = self.UCPA.read_phase_diagram_and_chempots(full_sub_approach=False, include_mp_entries=True)
+            os.mkdir(os.path.join("PhaseDiagram", "As"))
+            copyfile(os.path.join(TEST_DIR, 'vasprun.xml_As'), 
+                     os.path.join("PhaseDiagram", "As", "vasprun.xml"))
+            os.mkdir(os.path.join("PhaseDiagram", "GaAs"))
+            copyfile(os.path.join(TEST_DIR, 'vasprun.xml_GaAs'),
+                     os.path.join("PhaseDiagram", "GaAs", "vasprun.xml"))
+            cp = self.UCPA.read_phase_diagram_and_chempots(
+                    full_sub_approach=False, include_mp_entries=True)
             self.assertEqual(set(['As-GaAs', 'Ga-GaAs']), set(cp.keys()))
-            self.assertEqual([-5.36, -4.29],
-                             [round(cp['As-GaAs'][Element(elt)],2) for elt in ['As', 'Ga']])
-            self.assertEqual([-6.62, -3.03],
-                             [round(cp['Ga-GaAs'][Element(elt)],2) for elt in ['As', 'Ga']])
+            self.assertEqual(
+                    [-5.36, -4.29],
+                    [round(cp['As-GaAs'][Element(elt)], 2) for elt in ['As', 'Ga']])
+            self.assertEqual(
+                    [-6.62, -3.03],
+                    [round(cp['Ga-GaAs'][Element(elt)], 2) for elt in ['As', 'Ga']])
 
 
 class UserChemPotInputGeneratorTest(PymatgenTest):
     def setUp(self):
-        self.UCPIGT = UserChemPotInputGenerator(Composition({'Ga':1, 'As':1}))
+        self.UCPIGT = UserChemPotInputGenerator(Composition({'Ga': 1, 'As': 1}))
 
     def test_setup_phase_diagram_calculations(self):
         # test that files get craeted for some file of interest...
         with ScratchDir('.'):
-            self.UCPIGT.setup_phase_diagram_calculations(full_phase_diagram = True)
-            self.assertTrue( os.path.exists('PhaseDiagram/'))
-            self.assertTrue( os.path.exists('PhaseDiagram/mp-11_As'))
-            self.assertTrue( os.path.exists('PhaseDiagram/mp-11_As/POSCAR'))
-            self.assertTrue( os.path.exists('PhaseDiagram/mp-142_Ga'))
-            self.assertTrue( os.path.exists('PhaseDiagram/mp-142_Ga/POSCAR'))
-            self.assertTrue( os.path.exists('PhaseDiagram/mp-2534_GaAs/'))
-            self.assertTrue( os.path.exists('PhaseDiagram/mp-2534_GaAs/POSCAR'))
+            self.UCPIGT.setup_phase_diagram_calculations(full_phase_diagram=True)
+            # self.assertTrue(os.path.exists('PhaseDiagram')) # redundant
+            # self.assertTrue(os.path.exists('PhaseDiagram/mp-11_As')) # redundant
+            self.assertTrue(os.path.exists(
+                    os.path.join("PhaseDiagram", "mp-11_As", "POSCAR")))
+            # self.assertTrue(os.path.exists('PhaseDiagram/mp-142_Ga')) # redundant
+            self.assertTrue(os.path.exists(
+                    os.path.join("PhaseDiagram", "mp-142_Ga", "POSCAR")))
+            # self.assertTrue(os.path.exists('PhaseDiagram/mp-2534_GaAs/')) # redundant
+            self.assertTrue(os.path.exists(
+                    os.path.join("PhaseDiagram", "mp-2534_GaAs", "POSCAR")))
 
 
 if __name__ == '__main__':
