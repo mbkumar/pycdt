@@ -12,10 +12,12 @@ DFT calculations and can process the output of the DFT calculations.
 The code is modular and any DFT code can be integrated into PyCDT for defect 
 calculations. 
 
+------------
 Requirements
 ------------
 PyCDT requires pymatgen (and its dependencies) and optionally sxdefectalign packages.
 
+------------
 Source Code
 ------------
 If not available already, use the following steps.
@@ -26,6 +28,7 @@ If not available already, use the following steps.
 
     git clone https://bitbucket.org/mbkumar/pycdt.git
 
+------------
 Installation
 ------------
 0. (Optional step, but strongly suggested)
@@ -68,7 +71,7 @@ Installation
 
    Here  *<EXTRACTED_VASP_POTCAR>* is the folder where your pseudopotentials are present and 
    *<MY_PSP>* is where the directory where the layout of pseudopotentials is organized  by pymatgen.
-   For more information refer to `pymatgen installation instructions https://pymatgen.org/installation.html`_.
+   For more information refer to `pymatgen installation instructions <https://pymatgen.org/installation.html>`_.
 
 5. Set the VASP pseudopotential directory in $HOME/.pmgrc.yaml using the command::
 
