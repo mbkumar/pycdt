@@ -75,9 +75,9 @@ Installation
 
 5. Set the VASP pseudopotential directory in $HOME/.pmgrc.yaml using the command::
 
-     pmg config --add PMG_VASP_PSP_DIR <MY_PSP>
+    pmg config --add PMG_VASP_PSP_DIR <MY_PSP>
 
-    where <MY_PSP> is the directory used in the previous step.
+   where <MY_PSP> is the directory used in the previous step.
 
 
 6. Set the Materials Project API key in $HOME/.pmgrc.yaml using the command::
@@ -91,7 +91,6 @@ For help on how to use PyCDT, read the `article <https://doi.org/10.1016/j.cpc.2
 
 Examples
 --------
-
 From the pycdt root folder, go to examples folder by typing::
 
     cd examples
