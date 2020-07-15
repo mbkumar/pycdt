@@ -70,7 +70,7 @@ Installation
     pmg config -p <EXTRACTED_VASP_POTCAR> <MY_PSP>
 
    Here  *<EXTRACTED_VASP_POTCAR>* is the folder where your pseudopotentials are present and 
-   *<MY_PSP>* is where the directory where the layout of pseudopotentials is organized  by pymatgen.
+   *<MY_PSP>* is the directory where the layout of pseudopotentials is organized  by pymatgen.
    For more information refer to `pymatgen installation instructions <https://pymatgen.org/installation.html>`_.
 
 5. Set the VASP pseudopotential directory in $HOME/.pmgrc.yaml using the command::
