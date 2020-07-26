@@ -508,10 +508,12 @@ class UserChemPotAnalyzer(ChemPotAnalyzer):
             mpcpa = MPChemPotAnalyzer(
                     bulk_ce=self.bulk_ce, sub_species=self.sub_species, 
                     mapi_key=self.mapi_key)
-            tempcl = mpcpa.analyze_GGA_chempots(
-                    full_sub_approach=full_sub_approach) # Use MPentries 
+            mpcpa.get_mp_entries(full_sub_approach=full_sub_approach)
 
-            curr_pd = PhaseDiagram(list(set().union(mpcpa.entries['bulk_derived'], mpcpa.entries['subs_set'])))
+            full_entries = mpcpa.entries['bulk_derived']
+            for entry_set in mpcpa.entries['subs_set'].values():
+                full_entries.extend(entry_set)
+            curr_pd = PhaseDiagram(full_entries)
             stable_idlist = {i.composition.reduced_composition: [i.energy_per_atom, i.entry_id, i] for i in curr_pd.stable_entries}
             for mpcomp, mplist in stable_idlist.items():
                 matched = False
@@ -530,7 +532,9 @@ class UserChemPotAnalyzer(ChemPotAnalyzer):
             personal_entry_list.append(self.bulk_ce)
             #if you dont have entries for elemental corners of phase diagram then code breaks
             #manually inserting entries with energies of zero for competeness...USER DO NOT USE THIS
-            eltcount = {elt:0 for elt in set(self.bulk_ce.composition.elements)}
+            eltcount = {elt:0 for elt in self.bulk_ce.composition.elements}
+            for elt_sym in self.sub_species:
+                eltcount[Element(elt_sym)] = 0
             for pentry in personal_entry_list:
                 if pentry.is_element:
                     eltcount[pentry.composition.elements[0]] += 1
@@ -563,7 +567,7 @@ class UserChemPotAnalyzer(ChemPotAnalyzer):
                 if bulk_associated:
                     entry_list.append(localentry)
                 else:
-                    sub_associated_entry_list(localentry)
+                    sub_associated_entry_list.append(localentry)
 
             #now iterate through and collect chemical potentials
             pd = PhaseDiagram(entry_list)
@@ -583,6 +587,7 @@ class UserChemPotAnalyzer(ChemPotAnalyzer):
             # the elements in the total composition will be from the native
             # species present rather than the sub species (a good approximation)
             for sub_el in self.sub_species:
+                sub_el = Element(sub_el)
                 sub_specie_entries = entry_list[:]
                 for entry in sub_associated_entry_list:
                     if sub_el in entry.composition.elements:
@@ -594,10 +599,11 @@ class UserChemPotAnalyzer(ChemPotAnalyzer):
                 for key in chem_lims.keys():
                     face_list = key.split('-')
                     blk, blknom, subnom = self.diff_bulk_sub_phases(
-                        face_list, sub_el=sub_el)
+                        face_list, sub_el=sub_el.symbol)
                     # if one less than number of bulk species then can be
                     # grouped with rest of structures
-                    if len(blk) == len(self.bulk_species_symbol):
+                    bulk_species_symbol = [s.symbol for s in self.bulk_composition.elements]
+                    if len(blk) == len(bulk_species_symbol):
                         if blknom not in finchem_lims.keys():
                             finchem_lims[blknom] = chem_lims[key]
                         else:
