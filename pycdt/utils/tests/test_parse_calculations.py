@@ -32,9 +32,9 @@ from pycdt.core.defects_analyzer import ComputedDefect
 from pycdt.utils.parse_calculations import PostProcess, convert_cd_to_de, SingleDefectParser
 
 pmgtestfiles_loc = os.path.join(
-        os.path.split(os.path.split(initfilep)[0])[0], "test_files")
+        os.path.split(os.path.split(initfilep)[0])[0], "test_files") #Pymatgen testfiles
 file_loc = os.path.abspath(
-        os.path.join(__file__, "..", "..", "..", "..", "test_files")) #Pycdt Testfiles
+        os.path.join(__file__, "..", "..", "..", "..", "test_files")) #Pycdt testfiles
 
 
 class LegacyConversionTest(PymatgenTest):
@@ -142,6 +142,8 @@ class SingleDefectParserTest(PymatgenTest):
 
 
 class PostProcessTest(PymatgenTest):
+    @unittest.skipIf(not os.path.exists(pmgtestfiles_loc),
+                     "Pymatgen test files do not exist locally")
     def test_parse_defect_calculations_AND_compile_all(self):
         #testing both parse defect_calculatiosn And the compile all methods because they both require a file structure...
         with ScratchDir("."):
@@ -155,7 +157,8 @@ class PostProcessTest(PymatgenTest):
             os.mkdir("dielectric")
             copyfile(os.path.join(pmgtestfiles_loc, "vasprun.xml.dfpt.ionic"), "dielectric/vasprun.xml")
 
-            vrobj = Vasprun( os.path.join(pmgtestfiles_loc, "vasprun.xml"))
+            # vrobj = Vasprun( os.path.join(pmgtestfiles_loc, "vasprun.xml"))
+            vrobj = Vasprun( os.path.join(self.TEST_FILES_DIR, "vasprun.xml"))
 
             os.mkdir("vac_1_As")
             os.mkdir("vac_1_As/charge_0")
@@ -221,6 +224,8 @@ class PostProcessTest(PymatgenTest):
             self.assertEqual(ca["bulk_entry"].energy, vrobj.final_energy)
             #INSERT a simpletest for mu_range...
 
+    @unittest.skipIf(not os.path.exists(pmgtestfiles_loc),
+                     "Pymatgen test files do not exist locally")
     def test_get_vbm_bandgap(self):
         with ScratchDir("."):
             os.mkdir("bulk")
@@ -246,13 +251,15 @@ class PostProcessTest(PymatgenTest):
             self.assertEqual(set([u"As-GaAs", u"Ga-GaAs"]), set(gaas_cp.keys()))
             np.testing.assert_almost_equal(
                     [-4.65807055,  -4.9884807425],
-                    [gaas_cp["As-GaAs"][Element(elt)] for elt in ["As","Ga"]], 
+                    [gaas_cp["As-GaAs"][Element(elt)] for elt in ["As","Ga"]],
                     decimal=3)
             np.testing.assert_almost_equal(
-                    [-6.6093178575,  -3.03723344],
-                    [gaas_cp["Ga-GaAs"][Element(elt)] for elt in ["As","Ga"]], 
+                    [-6.618,  -3.028],
+                    [gaas_cp["Ga-GaAs"][Element(elt)] for elt in ["As","Ga"]],
                     decimal=3)
 
+    @unittest.skipIf(not os.path.exists(pmgtestfiles_loc),
+                     "Pymatgen test files do not exist locally")
     def test_dielectric_calculation(self):
         with ScratchDir("."):
             os.mkdir("dielectric")
