@@ -25,37 +25,6 @@ file_loc = os.path.abspath(os.path.join(
     __file__,'..', '..', '..', '..', 'test_files'))
 
 
-class PotcarSingleModTest(unittest.TestCase):
-    """
-    This test is applicable for the specific case where POTCAR files are not
-    organized according to The Materials Project directory layout, but
-    in the default layout.
-    """
-    def setUp(self):
-        pass
-
-    def test_from_symbol_and_functional(self):
-        try:
-            potcar = PotcarSingleMod.from_symbol_and_functional('Ni')
-        except:
-            potcar = None
-
-        self.assertIsNotNone(potcar)
-
-
-class PotcarModTest(unittest.TestCase):
-    def setUp(self):
-        pass
-
-    def test_set_symbols(self):
-        try:
-            potcar = PotcarMod(symbols=['Ni', 'O'])
-        except:
-            potcar = None
-
-        self.assertIsNotNone(potcar)
-
-
 class DefectRelaxTest(unittest.TestCase):
     def setUp(self):
         self.structure = Structure.from_file(os.path.join(

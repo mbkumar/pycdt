@@ -29,85 +29,6 @@ MODULE_DIR = os.path.dirname(os.path.abspath(__file__))
 CONFIG = loadfn(os.path.join(MODULE_DIR, "DefectSet.yaml"))
 
 
-class PotcarSingleMod(PotcarSingle):
-
-    def __init__(self, *args, **kwargs):
-        super(self.__class__, self).__init__(*args, **kwargs)
-
-    #@staticmethod
-    #def from_file(filename):
-    #    with smart_open.smart_open(filename, "rt") as f:
-    #        return PotcarSingle(f.read())
-
-    @staticmethod
-    def from_symbol_and_functional(symbol, functional=None):
-        if functional is None:
-            functional = SETTINGS.get("PMG_DEFAULT_FUNCTIONAL", "PBE")
-        funcdir = PotcarSingle.functional_dir[functional]
-
-        if not os.path.isdir(os.path.join(
-                SETTINGS.get("PMG_VASP_PSP_DIR"), funcdir)):
-            functional_dir = {"LDA_US": "pot",
-                              "PW91_US": "pot_GGA", 
-                              "LDA": "potpaw", 
-                              "PW91": "potpaw_GGA", 
-                              "LDA_52": "potpaw_LDA.52",
-                              "LDA_54": "potpaw_LDA.54",
-                              "PBE": "potpaw_PBE", 
-                              "PBE_52": "potpaw_PBE.52",
-                              "PBE_54": "potpaw_PBE.54",
-                              }
-            funcdir = functional_dir[functional]
-
-        d = SETTINGS.get("PMG_VASP_PSP_DIR")
-        if d is None:
-            raise ValueError("No POTCAR directory found. Please set "
-                             "the VASP_PSP_DIR environment variable")
-
-        paths_to_try = [os.path.join(d, funcdir, "POTCAR.{}".format(symbol)),
-                        os.path.join(d, funcdir, symbol, "POTCAR.Z"),
-                        os.path.join(d, funcdir, symbol, "POTCAR")]
-        for p in paths_to_try:
-            p = os.path.expanduser(p)
-            p = zpath(p)
-            if os.path.exists(p):
-                return PotcarSingleMod.from_file(p)
-        raise IOError("You do not have the right POTCAR with functional " +
-                      "{} and label {} in your VASP_PSP_DIR".format(functional,
-                                                                    symbol))
-
-
-class PotcarMod(Potcar):
-
-    def __init__(self, **kwargs):
-        super(self.__class__, self).__init__(**kwargs)
-
-    def set_symbols(self, symbols, functional=None,
-                    sym_potcar_map=None):
-        """
-        Initialize the POTCAR from a set of symbols. Currently, the POTCARs can
-        be fetched from a location specified in .pmgrc.yaml. Use pmg config
-        to add this setting.
-
-        Args:
-            symbols ([str]): A list of element symbols
-            functional (str): The functional to use. If None, the setting
-                PMG_DEFAULT_FUNCTIONAL in .pmgrc.yaml is used, or if this is
-                not set, it will default to PBE.
-            sym_potcar_map (dict): A map of symbol:raw POTCAR string. If
-                sym_potcar_map is specified, POTCARs will be generated from
-                the given map data rather than the config file location.
-        """
-        del self[:]
-        if sym_potcar_map:
-            for el in symbols:
-                self.append(PotcarSingleMod(sym_potcar_map[el]))
-        else:
-            for el in symbols:
-                p = PotcarSingleMod.from_symbol_and_functional(el, functional)
-                self.append(p)
-
-
 class DefectRelaxSet(MPRelaxSet):
     """
     Extension to MPRelaxSet which modifies some parameters appropriate
@@ -142,7 +63,8 @@ class DefectRelaxSet(MPRelaxSet):
         """
         Potcar object.
         """
-        return PotcarMod(symbols=self.potcar_symbols, functional=self.potcar_functional)
+        return Potcar(symbols=self.potcar_symbols,
+                      functional=self.potcar_functional)
 
     @property
     def all_input(self):
@@ -184,7 +106,8 @@ class DefectStaticSet(MPStaticSet):
         """
         Potcar object.
         """
-        return PotcarMod(symbols=self.potcar_symbols, functional=self.potcar_functional)
+        return Potcar(symbols=self.potcar_symbols,
+                      functional=self.potcar_functional)
 
     @property
     def all_input(self):
@@ -219,15 +142,15 @@ class DielectricSet(MPStaticSet):
         dielectric_settings.update(user_incar_settings)
         kwargs['user_incar_settings'] = dielectric_settings
 
-        super(self.__class__, self).__init__(structure, lepsilon=True, **kwargs)
+        super().__init__(structure, lepsilon=True, **kwargs)
 
     @property
     def potcar(self):
         """
         Potcar object.
         """
-        return PotcarMod(symbols=self.potcar_symbols, 
-                         functional=self.potcar_functional)
+        return Potcar(symbols=self.potcar_symbols, 
+                      functional=self.potcar_functional)
 
     @property
     def all_input(self):
@@ -256,7 +179,8 @@ def write_additional_files(path, trans_dict=None, incar={}, kpoints=None,
         NOTE from developers:
             This code is primarily used for dumping extra files
             for users desiring to do HSE
-            will not be used in command line code or maintained (with unit tests etc.)
+            will not be used in command line code or maintained 
+            (with unit tests etc.)
             going forward (as of 12/15/2017).
             However, we are keeping function here to allow for
             current users to make use of it...
