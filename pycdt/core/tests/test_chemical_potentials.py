@@ -22,7 +22,8 @@ from monty.tempfile import ScratchDir
 from pycdt.core.chemical_potentials import ChemPotAnalyzer, MPChemPotAnalyzer, \
     UserChemPotAnalyzer, UserChemPotInputGenerator, get_mp_chempots_from_dpd
 
-from pymatgen.core import Composition, Element
+from pymatgen.core.composition import Composition
+from pymatgen.core.periodic_table import Element
 from pymatgen.analysis.phase_diagram import PhaseDiagram
 from pymatgen.analysis.defects.thermodynamics import DefectPhaseDiagram
 from pymatgen.entries.computed_entries import ComputedEntry

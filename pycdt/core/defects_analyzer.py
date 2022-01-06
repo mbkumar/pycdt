@@ -15,7 +15,7 @@ from itertools import combinations
 import os
 import numpy as np
 
-from pymatgen.core import Element
+from pymatgen.core.periodic_table import Element
 from pymatgen.core.structure import PeriodicSite, Structure
 from pymatgen.entries.computed_entries import ComputedStructureEntry
 from pymatgen.symmetry.analyzer import SpacegroupAnalyzer

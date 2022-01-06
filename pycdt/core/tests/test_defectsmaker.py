@@ -13,7 +13,7 @@ __date__ = "June 6, 2016"
 import os
 
 from pymatgen.core.structure import Structure
-from pymatgen.core import PeriodicSite
+from pymatgen.core.sites import PeriodicSite
 from pycdt.core.defectsmaker import *
 from pymatgen.util.testing import PymatgenTest
 
