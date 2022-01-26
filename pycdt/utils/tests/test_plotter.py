@@ -12,7 +12,7 @@ __date__ = "July 19, 2017"
 
 import os
 
-from pymatgen.core import Element
+from pymatgen.core.periodic_table import Element
 from pymatgen.core.structure import PeriodicSite, Structure, Lattice
 from pymatgen.util.testing import PymatgenTest
 from pymatgen.analysis.defects.core import Vacancy, DefectEntry

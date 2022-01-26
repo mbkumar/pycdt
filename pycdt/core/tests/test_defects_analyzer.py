@@ -21,7 +21,7 @@ from monty.json import MontyDecoder, MontyEncoder
 from monty.tempfile import ScratchDir
 
 from pymatgen import __file__ as initfilep
-from pymatgen.core import Element
+from pymatgen.core.periodic_table import Element
 from pymatgen.core.sites import PeriodicSite
 from pymatgen.core.lattice import Lattice
 from pymatgen.entries.computed_entries import ComputedStructureEntry

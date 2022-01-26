@@ -15,7 +15,8 @@ __date__ = "Sep 14, 2014"
 import os
 import logging
 
-from pymatgen import Structure, Element
+from pymatgen.core.periodic_table import Element
+from pymatgen.core.structure import Structure
 from pymatgen.entries.computed_entries import ComputedStructureEntry
 from pymatgen.ext.matproj import MPRester
 from pymatgen.io.vasp.outputs import Vasprun

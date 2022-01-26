@@ -30,7 +30,7 @@ from monty.serialization import dumpfn, loadfn
 from monty.json import MontyEncoder, MontyDecoder
 
 from pymatgen.ext.matproj import MPRester
-from pymatgen.core import Element
+from pymatgen.core.periodic_table import Element
 from pymatgen.core.structure import Structure
 from pymatgen.symmetry.analyzer import SpacegroupAnalyzer
 from pymatgen.io.vasp.inputs import Incar

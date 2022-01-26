@@ -22,7 +22,8 @@ from monty.json import MontyEncoder
 from monty.tempfile import ScratchDir
 
 from pymatgen import __file__ as initfilep
-from pymatgen.core import Element, PeriodicSite
+from pymatgen.core.periodic_table import Element 
+from pymatgen.core.sites import PeriodicSite
 from pymatgen.io.vasp import Vasprun, Locpot
 from pymatgen.analysis.defects.core import DefectEntry, Vacancy, Substitution
 from pymatgen.entries.computed_entries import ComputedStructureEntry

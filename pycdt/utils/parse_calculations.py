@@ -20,7 +20,8 @@ import numpy as np
 from monty.serialization import loadfn, dumpfn
 from monty.json import MontyEncoder, MontyDecoder
 
-from pymatgen.core import PeriodicSite, Structure
+from pymatgen.core.sites import PeriodicSite
+from pymatgen.core.structure import Structure
 from pymatgen.ext.matproj import MPRester
 from pymatgen.io.vasp.outputs import Vasprun, Locpot, Outcar, Poscar
 from pymatgen.io.vasp.inputs import Potcar
