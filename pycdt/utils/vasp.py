@@ -122,6 +122,9 @@ class DefectRelaxSet(MPRelaxSet):
         defect_settings = deepcopy(CONFIG['defect'])
         defect_settings.update(user_incar_settings)
         kwargs['user_incar_settings'] = defect_settings
+        if not "user_potcar_functional" in kwargs and \
+                "PMG_DEFAULT_FUNCTIONAL" in SETTINGS:
+            kwargs["user_potcar_functional"] = SETTINGS["PMG_DEFAULT_FUNCTIONAL"]
 
         super(self.__class__, self).__init__(structure, **kwargs)
         self.charge = charge
@@ -142,6 +145,7 @@ class DefectRelaxSet(MPRelaxSet):
         """
         Potcar object.
         """
+        print("Inside potcar", self.potcar_functional)
         return PotcarMod(symbols=self.potcar_symbols, functional=self.potcar_functional)
 
     @property
@@ -176,6 +180,8 @@ class DefectStaticSet(MPStaticSet):
         bulk_settings = deepcopy(CONFIG['bulk'])
         bulk_settings.update(user_incar_settings)
         kwargs['user_incar_settings'] = bulk_settings
+        if not "user_potcar_functional" in kwargs and "PMG_DEFAULT_FUNCTIONAL" in SETTINGS:
+            kwargs["user_potcar_functional"] = SETTINGS["PMG_DEFAULT_FUNCTIONAL"]
 
         super(self.__class__, self).__init__(structure, **kwargs)
 
@@ -218,6 +224,9 @@ class DielectricSet(MPStaticSet):
         dielectric_settings = CONFIG['dielectric']
         dielectric_settings.update(user_incar_settings)
         kwargs['user_incar_settings'] = dielectric_settings
+        if not "user_potcar_functional" in kwargs and "PMG_DEFAULT_FUNCTIONAL" in SETTINGS:
+            kwargs["user_potcar_functional"] = SETTINGS[
+                "PMG_DEFAULT_FUNCTIONAL"]
 
         super(self.__class__, self).__init__(structure, lepsilon=True, **kwargs)
 
@@ -226,7 +235,7 @@ class DielectricSet(MPStaticSet):
         """
         Potcar object.
         """
-        return PotcarMod(symbols=self.potcar_symbols, 
+        return PotcarMod(symbols=self.potcar_symbols,
                          functional=self.potcar_functional)
 
     @property
@@ -318,7 +327,7 @@ def make_vasp_defect_files(defects, path_base, user_settings={}, hse=False):
     user_incar_def.update(user_incar_blk_def)
     user_kpoints = user_settings.pop('KPOINTS', {})
     potcar_settings = user_settings.pop('POTCAR', {})
-    potcar_functional = potcar_settings.pop('functional', 'PBE')
+    potcar_functional = potcar_settings.pop('functional', None)
 
     for defect in comb_defs:
         for charge in defect['charges']:
@@ -364,7 +373,6 @@ def make_vasp_defect_files(defects, path_base, user_settings={}, hse=False):
     s = bulk_sys
     dict_transf = {'defect_type': 'bulk', 'supercell': s['size']}
 
-    #potcar_functional = user_potcar.get('functional', 'PBE')
     blk_static_set = DefectStaticSet(s['structure'],
                                      user_incar_settings=user_incar_blk,
                                      user_potcar_settings=potcar_settings,
@@ -556,7 +564,7 @@ def make_vasp_dielectric_files(struct, path=None, user_settings={}, hse=False):
     user_kpoints = user_settings.pop('KPOINTS', {})
     grid_density = user_kpoints.get('grid_density', 1000)
     potcar_settings = user_settings.pop('POTCAR', {})
-    potcar_functional = potcar_settings.pop('functional', 'PBE')
+    potcar_functional = potcar_settings.pop('functional', None)
     dielectric_set = DielectricSet(struct,
                                    user_incar_settings=user_incar,
                                    user_potcar_settings=potcar_settings,
